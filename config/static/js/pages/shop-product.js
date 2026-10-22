@@ -170,23 +170,28 @@
         }
 
         if (variantInput) variantInput.value = variant.id;
-        currentStock = Number(variant.stock || 0);
+        currentStock = listingSelect && listingSelect.value ? Number(selectedListingStock()) : Number(variant.stock || 0);
+        if (listingSelect && listingSelect.value) updateListingPrice();
         if (statusEl) statusEl.innerHTML = currentStock > 0 ? `<strong>${formatPrice(currentStock)} عدد</strong> از این ترکیب موجود است` : "این ترکیب ناموجود است.";
 
-        const existingQuantity = cartQuantityForVariant(variant);
+        const existingQuantity = cartQuantityForCurrent(variant);
         if (quantityInput && existingQuantity === 0) quantityInput.value = 1;
         renderCartState(variant);
     };
 
     const selectInitialVariant = () => {
         if (!variants.length) {
-            currentStock = null;
-            const existingQuantity = cartQuantityForVariant(null);
+            currentStock = listingSelect && listingSelect.value ? Number(selectedListingStock()) : null;
+            const existingQuantity = cartQuantityForCurrent(null);
             if (quantityInput) quantityInput.disabled = existingQuantity > 0;
             if (quantityWrap) quantityWrap.classList.toggle("is-in-cart", existingQuantity > 0);
-            if (addButton) { addButton.hidden = existingQuantity > 0; addButton.disabled = existingQuantity > 0; }
+            if (addButton) {
+                addButton.hidden = existingQuantity > 0;
+                addButton.disabled = existingQuantity > 0 || Boolean(listingSelect && !listingSelect.value) || (currentStock !== null && currentStock <= 0);
+            }
             if (inCartLink) inCartLink.hidden = existingQuantity === 0;
             if (inCartQuantity && existingQuantity) inCartQuantity.textContent = `${formatPrice(existingQuantity)} عدد`;
+            updateListingPrice();
             updateQuantityUI();
             return;
         }
@@ -221,10 +226,22 @@
     quantityInput?.addEventListener("input", updateQuantityUI);
     quantityInput?.addEventListener("blur", updateQuantityUI);
 
+    listingSelect?.addEventListener("change", () => {
+        if (variants.length) {
+            renderColors();
+            renderSizes();
+            renderVariant();
+        } else {
+            currentStock = listingSelect.value ? Number(selectedListingStock()) : null;
+            updateListingPrice();
+            renderCartState(null);
+        }
+    });
+
     addForm?.addEventListener("submit", async (event) => {
         event.preventDefault();
         const variant = findVariant();
-        if (!addButton || addButton.disabled || !variant) return;
+        if (!addButton || addButton.disabled || (variants.length > 0 && !variant) || (listingSelect && !listingSelect.value)) return;
         addButton.disabled = true;
         addButton.classList.add("is-loading");
         addButton.textContent = "در حال افزودن...";
@@ -239,8 +256,13 @@
             const result = await response.json().catch(() => ({}));
             if (!response.ok || !result.ok) throw new Error(result.message || "افزودن به سبد خرید انجام نشد.");
             updateHeaderCount(result.count);
-            cartVariants[cartKeyForVariant(variant)] = Number(result.quantity || quantityInput?.value || 1);
-            renderVariant();
+            if (listingSelect && listingSelect.value) {
+                cartListings[listingSelect.value] = Number(result.quantity || quantityInput?.value || 1);
+            } else {
+                cartVariants[cartKeyForVariant(variant)] = Number(result.quantity || quantityInput?.value || 1);
+            }
+            if (variants.length) renderVariant();
+            else renderCartState(null);
             showToast("این مدل به سبد خرید اضافه شد.");
         } catch (error) {
             addButton.hidden = false;
