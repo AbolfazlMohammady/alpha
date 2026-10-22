@@ -252,7 +252,7 @@ def create_daily_settlement_batches(*, now=None):
     created = []
     vendors = Vendor.objects.filter(status=Vendor.Status.ACTIVE).order_by("id")
     for vendor in vendors:
-        eligible = list(
+        candidates = list(
             VendorOrder.objects.filter(
                 vendor=vendor,
                 status=VendorOrder.Status.DELIVERED,
@@ -265,8 +265,22 @@ def create_daily_settlement_batches(*, now=None):
                 SettlementBatch.Status.PAID,
             ])
             .distinct()
+            .prefetch_related("shipments")
             .order_by("id")
         )
+        eligible = []
+        for candidate in candidates:
+            shipments = list(candidate.shipments.all())
+            # Do not settle before carrier delivery or while centrally-paid
+            # shipment costs are unknown.
+            if not shipments or any(shipment.status != Shipment.Status.DELIVERED for shipment in shipments):
+                continue
+            if any(
+                shipment.payer == Shipment.Payer.PLATFORM and shipment.actual_cost is None
+                for shipment in shipments
+            ):
+                continue
+            eligible.append(candidate)
         if not eligible:
             continue
         key = f"daily-settlement:{vendor.id}:{now.date().isoformat()}"
@@ -490,7 +504,7 @@ def reconcile_shipment_actual_cost(*, shipment: Shipment, actual_cost: int, acto
                 {"account": expense, "debit": 0, "credit": abs(delta), "memo": str(locked.uuid)},
             ])
         post_journal(
-            idempotency_key=f"shipment-cost:{locked.uuid}:{actual_cost}",
+            idempotency_key=f"shipment-cost:{locked.uuid}:{previous if previous is not None else 'none'}:{actual_cost}",
             kind="shipping_cost",
             description=f"تطبیق هزینه نهایی حمل مرسوله {locked.tracking_number or locked.uuid}",
             lines=lines,
@@ -506,3 +520,75 @@ def reconcile_shipment_actual_cost(*, shipment: Shipment, actual_cost: int, acto
             },
         )
         return locked, True
+
+
+def account_balance(account: LedgerAccount) -> int:
+    totals = account.lines.filter(entry__status__in=[JournalEntry.Status.POSTED, JournalEntry.Status.REVERSED]).aggregate(
+        debit=Sum("debit"), credit=Sum("credit")
+    )
+    debit = int(totals["debit"] or 0)
+    credit = int(totals["credit"] or 0)
+    if account.kind in {LedgerAccount.Kind.ASSET, LedgerAccount.Kind.EXPENSE}:
+        return debit - credit
+    return credit - debit
+
+
+def trial_balance(*, currency="IRT"):
+    """Return posted-account totals; total debits and credits must reconcile."""
+    rows = []
+    total_debit = total_credit = 0
+    accounts = LedgerAccount.objects.filter(currency=currency, is_active=True).order_by("code")
+    for account in accounts:
+        totals = account.lines.filter(entry__status=JournalEntry.Status.POSTED).aggregate(
+            debit=Sum("debit"), credit=Sum("credit")
+        )
+        debit, credit = int(totals["debit"] or 0), int(totals["credit"] or 0)
+        if debit or credit:
+            rows.append({"account": account.code, "name": account.name, "debit": debit, "credit": credit, "balance": account_balance(account)})
+        total_debit += debit
+        total_credit += credit
+    return {
+        "currency": currency,
+        "rows": rows,
+        "total_debit": total_debit,
+        "total_credit": total_credit,
+        "balanced": total_debit == total_credit,
+    }
+
+
+def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: bool, actor=None):
+    """Post a full-refund reversal only after the payment provider confirms it."""
+    from apps.orders.models import Order
+
+    if not refund_confirmed or not refund_reference.strip():
+        raise ValidationError("برای ثبت بازپرداخت باید تأیید قطعی سرویس پرداخت و شناسه مرجع وجود داشته باشد.")
+    with transaction.atomic():
+        locked_order = Order.objects.select_for_update().get(pk=order.pk)
+        if locked_order.payment_status == Order.PaymentStatus.REFUNDED:
+            existing = JournalEntry.objects.filter(idempotency_key=f"order-refund:{locked_order.uuid}").first()
+            if existing:
+                return existing, False
+            raise ValidationError("سفارش بازپرداخت‌شده است اما سند مالی آن پیدا نشد؛ بررسی لازم است.")
+        if locked_order.payment_status != Order.PaymentStatus.PAID:
+            raise ValidationError("فقط سفارش پرداخت‌شده را می‌توان بازپرداخت کرد.")
+        original = JournalEntry.objects.filter(
+            idempotency_key=f"order-paid:{locked_order.uuid}",
+            status=JournalEntry.Status.POSTED,
+        ).first()
+        if not original:
+            raise ValidationError("سند مالی اصلی سفارش پیدا نشد؛ بازپرداخت حسابداری متوقف شد.")
+        reversal, created = reverse_journal(
+            entry=original,
+            idempotency_key=f"order-refund:{locked_order.uuid}",
+            reason=f"بازپرداخت تأییدشده: {refund_reference}",
+            created_by=actor,
+        )
+        locked_order.payment_status = Order.PaymentStatus.REFUNDED
+        locked_order.status = Order.Status.REFUNDED
+        locked_order.payment_reference = f"{locked_order.payment_reference}|REFUND:{refund_reference}"[:120]
+        locked_order.save(update_fields=("payment_status", "status", "payment_reference", "updated_at"))
+        VendorOrder.objects.filter(order=locked_order).exclude(status=VendorOrder.Status.DELIVERED).update(
+            status=VendorOrder.Status.CANCELLED,
+            updated_at=timezone.now(),
+        )
+        return reversal, created
