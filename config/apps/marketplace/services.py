@@ -513,7 +513,7 @@ def reconcile_shipment_actual_cost(*, shipment: Shipment, actual_cost: int, acto
             source=FinancialReconciliation.Source.CARRIER_INVOICE,
             external_reference=f"{locked.uuid}:{actual_cost}",
             internal_reference=vendor_order.order.number,
-            expected_amount=locked.customer_charge,
+            expected_amount=locked.quoted_cost,
             actual_amount=actual_cost,
             currency=vendor_order.currency,
             details={
