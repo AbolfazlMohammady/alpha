@@ -260,10 +260,11 @@ def vendor_products_api(request):
             "compare_at_price": listing.compare_at_price,
             "stock_quantity": listing.stock_quantity,
             "wholesale_enabled": listing.wholesale_enabled,
-            "wholesale_tiers": [{"minimum_quantity": tier.minimum_quantity, "unit_price": tier.unit_price} for tier in listing.wholesale_tiers.all()],
+            "wholesale_tiers": [{"id": tier.id, "minimum_quantity": tier.minimum_quantity, "unit_price": tier.unit_price} for tier in listing.wholesale_tiers.all()],
             "supports_custom_printing": listing.supports_custom_printing,
             "weight_grams": listing.weight_grams,
             "package_dimensions_cm": [listing.package_length_cm, listing.package_width_cm, listing.package_height_cm],
+            "handling_days": listing.handling_days,
         } for listing in listings]})
     if request.method != "POST":
         return _error("متد درخواست پشتیبانی نمی‌شود.", 405)
