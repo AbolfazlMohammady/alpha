@@ -91,11 +91,11 @@ class ShippingQuoteAdmin(ReadOnlyAuditAdmin):
 
 
 @admin.register(Shipment)
-class ShipmentAdmin(admin.ModelAdmin):
+class ShipmentAdmin(ReadOnlyAuditAdmin):
     list_display = ("vendor_order", "provider", "status", "tracking_number", "quoted_cost", "actual_cost", "created_at")
     list_filter = ("provider", "status", "payer", "created_at")
     search_fields = ("tracking_number", "external_shipment_id", "vendor_order__order__number", "vendor_order__vendor__store_name")
-    readonly_fields = ("uuid", "created_at", "updated_at", "booked_at", "handed_over_at", "delivered_at", "last_event_at")
+    readonly_fields = tuple(field.name for field in Shipment._meta.fields)
     list_select_related = ("vendor_order", "vendor_order__vendor", "vendor_order__order")
 
 
@@ -151,6 +151,10 @@ class SettlementBatchAdmin(ReadOnlyAuditAdmin):
     inlines = (SettlementLineInline,)
     readonly_fields = tuple(field.name for field in SettlementBatch._meta.fields)
     actions = ("approve_and_submit_selected",)
+
+    def has_change_permission(self, request, obj=None):
+        # Keep all fields read-only while allowing the explicit approval action.
+        return request.user.is_active and request.user.is_staff
 
     @admin.action(description="تأیید و ارسال تسویه‌های انتخاب‌شده برای واریز")
     def approve_and_submit_selected(self, request, queryset):
