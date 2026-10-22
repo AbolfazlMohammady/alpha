@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.shop.models import Product, ProductImage, ProductVariant
+from apps.marketplace.models import VendorProduct, Vendor
 
 from apps.users.models import Address
 from apps.customizer.models import DesignDraft
@@ -104,7 +105,15 @@ def custom_design_cart_add_view(request, slug):
             payload = json.loads(request.body.decode("utf-8"))
             preview_front = preview_back = None
         variant_id = payload.pop("variant_id", None)
+        vendor_listing_id = payload.pop("vendor_listing_id", None)
         variant = get_object_or_404(ProductVariant, id=variant_id, product=product, is_active=True) if variant_id else None
+        vendor_listing = get_object_or_404(
+            VendorProduct.objects.select_related("vendor"),
+            pk=vendor_listing_id,
+            product=product,
+            status=VendorProduct.Status.ACTIVE,
+            vendor__status=Vendor.Status.ACTIVE,
+        ) if vendor_listing_id else None
         design = save_design_draft(request=request, product=product, payload=payload, variant=variant)
         update_fields = []
         if preview_front:
@@ -124,7 +133,7 @@ def custom_design_cart_add_view(request, slug):
         if update_fields:
             update_fields.append("updated_at")
             design.save(update_fields=update_fields)
-        item = add_design_to_cart(request, design=design, quantity=1)
+        item = add_design_to_cart(request, design=design, quantity=1, vendor_listing=vendor_listing)
     except Exception as exc:
         return JsonResponse({"ok": False, "message": str(exc) or "طراحی قابل افزودن به سبد نیست."}, status=400)
     totals = _cart_totals(item.cart, request)
@@ -134,13 +143,22 @@ def custom_design_cart_add_view(request, slug):
 def cart_add_view(request):
     product_id = request.POST.get("product_id")
     variant_id = request.POST.get("variant_id") or None
+    vendor_listing_id = request.POST.get("vendor_listing_id") or None
     quantity = request.POST.get("quantity", "1")
     product = get_object_or_404(Product.objects.select_related("category"), pk=product_id, is_active=True, category__is_active=True)
+    vendor_listing = get_object_or_404(
+        VendorProduct.objects.select_related("vendor"),
+        pk=vendor_listing_id,
+        product=product,
+        status=VendorProduct.Status.ACTIVE,
+        vendor__status=Vendor.Status.ACTIVE,
+        vendor__user__is_active=True,
+    ) if vendor_listing_id else None
     variant = None
     if variant_id:
         variant = get_object_or_404(ProductVariant, pk=variant_id, product=product, is_active=True)
     try:
-        item = add_to_cart(request, product=product, variant=variant, quantity=quantity)
+        item = add_to_cart(request, product=product, variant=variant, vendor_listing=vendor_listing, quantity=quantity)
     except (ValueError, TypeError):
         message = "اطلاعات انتخاب‌شده برای افزودن به سبد صحیح نیست."
         try:
@@ -156,7 +174,7 @@ def cart_add_view(request):
 
     totals = _cart_totals(item.cart, request)
     if _is_json_request(request):
-        return JsonResponse({"ok": True, **totals, "item_id": item.id, "variant_id": item.variant_id, "quantity": item.quantity, "message": "محصول به سبد خرید اضافه شد."})
+        return JsonResponse({"ok": True, **totals, "item_id": item.id, "variant_id": item.variant_id, "vendor_listing_id": item.vendor_listing_id, "quantity": item.quantity, "message": "محصول به سبد خرید اضافه شد."})
     messages.success(request, "محصول به سبد خرید اضافه شد.")
     return redirect("orders:cart")
 
