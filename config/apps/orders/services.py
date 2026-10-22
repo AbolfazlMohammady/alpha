@@ -435,6 +435,11 @@ def create_order_from_cart(*, user, cart, address, customer_note="", shipping_qu
                 "custom_design_snapshot": {},
             })
 
+        has_vendor_items = any(row.get("vendor_listing") is not None for row in order_rows)
+        has_platform_items = any(row.get("vendor_listing") is None for row in order_rows)
+        if has_vendor_items and has_platform_items:
+            raise ValidationError("سبد خرید شامل کالاهای فروشندگان و کالاهای خارج از مارکت‌پلیس است؛ لطفاً آن‌ها را در سفارش‌های جداگانه ثبت کنید.")
+
         from apps.marketplace.services import consume_shipping_quotes
         shipping_amount, used_shipping_quotes = consume_shipping_quotes(
             user=user,
