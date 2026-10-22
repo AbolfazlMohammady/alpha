@@ -412,3 +412,60 @@ class SettlementLine(models.Model):
         if self.batch.status not in {SettlementBatch.Status.DRAFT, SettlementBatch.Status.PENDING_APPROVAL}:
             raise ValidationError("اقلام تسویه پس از تأیید قابل حذف نیستند.")
         return super().delete(*args, **kwargs)
+
+
+
+class FinancialReconciliation(models.Model):
+    class Source(models.TextChoices):
+        PAYMENT_GATEWAY = "payment_gateway", "درگاه پرداخت"
+        BANK_PAYOUT = "bank_payout", "واریز بانکی"
+        CARRIER_INVOICE = "carrier_invoice", "صورتحساب حمل"
+        BANK_STATEMENT = "bank_statement", "گردش حساب بانکی"
+        MANUAL = "manual", "ثبت دستی"
+
+    class Status(models.TextChoices):
+        UNMATCHED = "unmatched", "ناقص"
+        MATCHED = "matched", "تطبیق‌شده"
+        MISMATCH = "mismatch", "دارای مغایرت"
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    source = models.CharField(max_length=24, choices=Source.choices, db_index=True)
+    external_reference = models.CharField(max_length=180)
+    internal_reference = models.CharField(max_length=180, blank=True, db_index=True)
+    expected_amount = models.BigIntegerField(null=True, blank=True)
+    actual_amount = models.BigIntegerField(null=True, blank=True)
+    currency = models.CharField(max_length=3, default="IRT")
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.UNMATCHED, db_index=True)
+    details = models.JSONField(default=dict, blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="marketplace_reconciliations", null=True, blank=True)
+    reconciled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [models.UniqueConstraint(fields=("source", "external_reference"), name="unique_external_reconciliation_ref")]
+        indexes = [models.Index(fields=("source", "status", "created_at"), name="market_reconcile_status_idx")]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old = type(self).objects.filter(pk=self.pk).values("source", "external_reference", "expected_amount", "actual_amount", "currency", "details").first()
+            if old and self.status in {self.Status.MATCHED, self.Status.MISMATCH}:
+                new = {
+                    "source": self.source,
+                    "external_reference": self.external_reference,
+                    "expected_amount": self.expected_amount,
+                    "actual_amount": self.actual_amount,
+                    "currency": self.currency,
+                    "details": self.details,
+                }
+                if old != new:
+                    raise ValidationError("سابقه تطبیق مالی قطعی قابل ویرایش نیست؛ یک رکورد اصلاحی جدید ثبت کنید.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.status in {self.Status.MATCHED, self.Status.MISMATCH}:
+            raise ValidationError("سابقه تطبیق مالی قطعی قابل حذف نیست.")
+        return super().delete(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.source} / {self.external_reference} / {self.status}"
