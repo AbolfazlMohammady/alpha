@@ -35,7 +35,7 @@ class Migration(migrations.Migration):
                 ("updated_at", models.DateTimeField(auto_now=True)),
                 ("user", models.OneToOneField(on_delete=django.db.models.deletion.PROTECT, related_name="vendor_profile", to=settings.AUTH_USER_MODEL)),
             ],
-            options={"ordering": ("store_name",)},
+            options={"ordering": ("store_name",), "indexes": [models.Index(fields=["status", "created_at"], name="market_vendor_status_idx")]},
         ),
         migrations.CreateModel(
             name="VendorProduct",
