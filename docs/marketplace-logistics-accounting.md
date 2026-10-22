@@ -4,7 +4,7 @@ This change adds the first backend foundation for seller-owned listings, shippin
 
 ## Important integration boundary
 
-The carrier and payout clients are configurable adapters, not a claim that a live Tipax, National Post, bank, or PSP contract is already connected. The repository does not contain verified production API credentials or a confirmed carrier/payout contract. Do not enable live order taking until the request/response schemas, authentication, commercial terms, and test-environment results have been confirmed with each provider. Existing order payment still uses the project's manual/test payment flow; connect the real payment gateway callback before production.
+The carrier and payout clients are configurable adapters, not a claim that a live Tipax, National Post, bank, or PSP contract is already connected. The repository does not contain verified production API credentials or a confirmed carrier/payout contract. Do not enable live order taking until the request/response schemas, authentication, commercial terms, and test-environment results have been confirmed with each provider. Existing order payment still uses the project's manual/test payment flow; connect the real payment gateway callback before production. Automatic payout additionally requires explicit `PAYOUT_AMOUNT_MULTIPLIER` and `PAYOUT_API_CURRENCY` values after verifying the store's toman/rial convention against the bank API; the adapter intentionally refuses to guess either setting.
 
 All monetary amounts use the repository's integer IRT convention. Keep one unit convention end-to-end (the storefront currently labels amounts as toman); never use floats for money.
 
