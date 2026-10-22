@@ -739,7 +739,7 @@ def trial_balance(*, currency="IRT"):
     }
 
 
-def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: bool, refund_source="bank", actor=None):
+def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: bool, actual_refund_amount, refund_source="bank", actor=None):
     """Record a confirmed full refund as a new financial event.
 
     The refund is not a blind reversal of the original receipt: gateway funds
@@ -751,6 +751,12 @@ def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: 
     refund_reference = str(refund_reference or "").strip()
     if not refund_confirmed or not refund_reference:
         raise ValidationError("برای ثبت بازپرداخت باید تأیید قطعی سرویس پرداخت و شناسه مرجع وجود داشته باشد.")
+    try:
+        actual_refund_amount = int(actual_refund_amount)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError("مبلغ واقعی بازپرداخت معتبر نیست.") from exc
+    if actual_refund_amount <= 0:
+        raise ValidationError("مبلغ واقعی بازپرداخت باید مثبت باشد.")
     if refund_source not in {"bank", "gateway_clearing"}:
         raise ValidationError("منبع بازپرداخت باید حساب بانکی یا مانده درگاه باشد.")
     with transaction.atomic():
@@ -763,6 +769,8 @@ def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: 
             raise ValidationError("سفارش بازپرداخت‌شده است اما سند مالی آن پیدا نشد؛ بررسی لازم است.")
         if locked_order.payment_status != Order.PaymentStatus.PAID:
             raise ValidationError("فقط سفارش پرداخت‌شده را می‌توان بازپرداخت کرد.")
+        if actual_refund_amount != locked_order.total_amount:
+            raise ValidationError("این سرویس فقط بازپرداخت کامل را پشتیبانی می‌کند؛ مبلغ واقعی با مبلغ سفارش برابر نیست.")
         shipped_orders = VendorOrder.objects.filter(
             order=locked_order,
             status__in=[VendorOrder.Status.SHIPPED, VendorOrder.Status.DELIVERED, VendorOrder.Status.DISPUTED],
@@ -836,7 +844,7 @@ def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: 
             external_reference=f"refund:{refund_reference}",
             internal_reference=locked_order.number,
             expected_amount=locked_order.total_amount,
-            actual_amount=locked_order.total_amount,
+            actual_amount=actual_refund_amount,
             details={"order_uuid": str(locked_order.uuid), "refund_source": refund_source, "journal_entry_id": reversal.id},
             actor=actor,
         )
