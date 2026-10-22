@@ -3,6 +3,7 @@ import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 import django.utils.timezone
+import uuid
 
 
 class Migration(migrations.Migration):
@@ -62,7 +63,7 @@ class Migration(migrations.Migration):
             name="ShippingQuote",
             fields=[
                 ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
-                ("uuid", models.UUIDField(default=__import__("uuid").uuid4, editable=False, unique=True)),
+                ("uuid", models.UUIDField(default=uuid.uuid4, editable=False, unique=True)),
                 ("provider", models.CharField(choices=[("tipax", "تیپاکس"), ("post", "شرکت ملی پست")], max_length=16)),
                 ("status", models.CharField(choices=[("valid", "معتبر"), ("consumed", "استفاده‌شده"), ("expired", "منقضی‌شده")], db_index=True, default="valid", max_length=12)),
                 ("amount", models.PositiveBigIntegerField()),
@@ -79,5 +80,10 @@ class Migration(migrations.Migration):
                 ("vendor_listing", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="shipping_quotes", to="marketplace.vendorproduct")),
             ],
             options={"ordering": ("-created_at",), "indexes": [models.Index(fields=["user", "status", "expires_at"], name="market_quote_user_status_idx")]},
+        ),
+        migrations.AddField(
+            model_name="shippingquote",
+            name="order",
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name="shipping_quotes", to="orders.order"),
         ),
     ]
