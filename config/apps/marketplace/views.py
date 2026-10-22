@@ -16,7 +16,7 @@ from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_
 from apps.orders.models import Cart, CartItem
 from apps.users.models import Address
 from .models import SettlementBatch, Shipment, Vendor, VendorOrder, VendorProduct
-from .services import approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_payout_result
+from .services import approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_external_reconciliation, record_payout_result, trial_balance
 from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
 
 
@@ -341,6 +341,49 @@ def shipment_update_status_api(request, shipment_uuid):
     except (PermissionDenied, ValidationError) as exc:
         return _error(exc, 403 if isinstance(exc, PermissionDenied) else 400)
     except (TypeError, ValueError) as exc:
+        return _error(exc)
+
+
+@staff_member_required
+@require_GET
+def trial_balance_api(request):
+    currency = request.GET.get("currency", "IRT")
+    if currency != "IRT":
+        return _error("در این نسخه فقط ارز IRT پشتیبانی می‌شود.")
+    report = trial_balance(currency=currency)
+    return JsonResponse({"ok": True, **report})
+
+
+@staff_member_required
+@require_POST
+def external_reconciliation_api(request):
+    try:
+        payload = _json_body(request)
+        source = str(payload.get("source", ""))
+        if source not in {choice for choice, _label in __import__("apps.marketplace.models", fromlist=["FinancialReconciliation"]).FinancialReconciliation.Source.choices}:
+            return _error("منبع تطبیق مالی معتبر نیست.")
+        record, created = record_external_reconciliation(
+            source=source,
+            external_reference=payload.get("external_reference"),
+            internal_reference=payload.get("internal_reference", ""),
+            expected_amount=payload.get("expected_amount"),
+            actual_amount=payload.get("actual_amount"),
+            currency=payload.get("currency", "IRT"),
+            details=payload.get("details") if isinstance(payload.get("details"), dict) else {},
+            actor=request.user,
+        )
+        return JsonResponse({
+            "ok": True,
+            "created": created,
+            "uuid": str(record.uuid),
+            "source": record.source,
+            "external_reference": record.external_reference,
+            "expected_amount": record.expected_amount,
+            "actual_amount": record.actual_amount,
+            "status": record.status,
+            "delta": None if record.expected_amount is None or record.actual_amount is None else record.actual_amount - record.expected_amount,
+        })
+    except (ValidationError, TypeError, ValueError) as exc:
         return _error(exc)
 
 
