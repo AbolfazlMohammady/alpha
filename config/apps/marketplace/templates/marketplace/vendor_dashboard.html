@@ -165,7 +165,7 @@
         if (!data.results.length) { box.innerHTML = '<p class="vd-muted">هنوز محصولی ثبت نکرده‌ای.</p>'; return; }
         box.innerHTML = data.results.map((item) => `
             <article class="vd-item">
-                <div class="vd-item-head"><h3>${escapeHtml(item.product_name)}</h3><span class="vd-badge">${escapeHtml(item.status)}</span></div>
+                <div class="vd-item-head"><h3>${escapeHtml(item.product_name)}</h3><span class="vd-badge">${escapeHtml(item.status_label || item.status)}</span></div>
                 <div class="vd-details">
                     <span>شناسه محصول: ${item.product_id}</span>
                     <span>قیمت: ${money(item.retail_price)} تومان</span>
