@@ -577,7 +577,28 @@ def shipment_book_api(request, order_id):
             shipment.status = Shipment.Status.BOOKED
             shipment.last_error = ""
             shipment.save(update_fields=("external_shipment_id", "tracking_number", "label_url", "provider_payload", "booked_at", "status", "last_error", "updated_at"))
-        return JsonResponse({"ok": True, "shipment_id": str(shipment.uuid), "tracking_number": shipment.tracking_number, "label_url": shipment.label_url, "status": shipment.status})
+        cost_reconciliation_pending = False
+        if result.get("actual_cost") is not None:
+            try:
+                shipment, _ = reconcile_shipment_actual_cost(
+                    shipment=shipment,
+                    actual_cost=result["actual_cost"],
+                    actor=request.user,
+                )
+            except ValidationError as exc:
+                cost_reconciliation_pending = True
+                Shipment.objects.filter(pk=shipment.pk).update(
+                    last_error=f"مرسوله ثبت شد اما تطبیق هزینه نیاز به بررسی دارد: {exc}",
+                    last_event_at=timezone.now(),
+                )
+        return JsonResponse({
+            "ok": True,
+            "shipment_id": str(shipment.uuid),
+            "tracking_number": shipment.tracking_number,
+            "label_url": shipment.label_url,
+            "status": shipment.status,
+            "cost_reconciliation_pending": cost_reconciliation_pending,
+        })
     except PermissionDenied as exc:
         return _error(exc, 403)
     except CarrierNotConfigured as exc:
