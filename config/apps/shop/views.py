@@ -621,6 +621,7 @@ class ProductDetailView(DetailView):
             cart_lines = CartItem.objects.filter(
                 vendor_listing_id__in=listing_ids,
                 cart__status=Cart.Status.ACTIVE,
+                custom_design__isnull=True,
             )
             if self.request.user.is_authenticated:
                 cart_lines = cart_lines.filter(cart__user=self.request.user)
@@ -629,8 +630,8 @@ class ProductDetailView(DetailView):
             else:
                 cart_lines = cart_lines.none()
             cart_listing_data = {
-                str(row["vendor_listing_id"]): row["quantity"]
-                for row in cart_lines.values("vendor_listing_id").annotate(quantity=Sum("quantity"))
+                f'{row["vendor_listing_id"]}:{row["variant_id"] or 0}': row["quantity"]
+                for row in cart_lines.values("vendor_listing_id", "variant_id").annotate(quantity=Sum("quantity"))
             }
         context["cart_listing_data"] = schema_json(cart_listing_data)
         canonical_url = absolute_url(self.request, self.request.path)
