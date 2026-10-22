@@ -18,7 +18,7 @@ from apps.orders.models import Cart, CartItem
 from apps.users.models import Address
 from apps.shop.models import Product
 from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorOrder, VendorProduct, WholesalePriceTier
-from .services import approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_carrier_invoice_payment, record_external_reconciliation, record_payout_result, trial_balance
+from .services import approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_carrier_invoice_payment, record_external_reconciliation, record_gateway_settlement, record_payout_result, trial_balance
 from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
 
 
@@ -530,6 +530,30 @@ def trial_balance_api(request):
         return _error("در این نسخه فقط ارز IRT پشتیبانی می‌شود.")
     report = trial_balance(currency=currency)
     return JsonResponse({"ok": True, **report})
+
+
+@staff_member_required
+@require_POST
+def gateway_settlement_api(request):
+    try:
+        payload = _json_body(request)
+        entry, created = record_gateway_settlement(
+            settlement_reference=payload.get("settlement_reference"),
+            gross_amount=payload.get("gross_amount"),
+            net_amount=payload.get("net_amount"),
+            fee_amount=payload.get("fee_amount", 0),
+            actual_bank_amount=payload.get("actual_bank_amount"),
+            actor=request.user,
+        )
+        return JsonResponse({
+            "ok": True,
+            "created": created,
+            "journal_entry_id": entry.id,
+            "idempotency_key": entry.idempotency_key,
+            "status": entry.status,
+        })
+    except (ValidationError, TypeError, ValueError) as exc:
+        return _error(exc)
 
 
 @staff_member_required
