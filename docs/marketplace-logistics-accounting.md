@@ -59,9 +59,9 @@ Both require the project's Celery worker and Beat to be running. Run these after
 
 ## API overview
 
-All seller endpoints require login and ownership checks. Admin endpoints require staff access.
+Seller dashboard UI is available at /marketplace/vendor/dashboard/. All seller endpoints require login and ownership checks. Admin endpoints require staff access.
 
-- GET /marketplace/api/vendor/dashboard/
+- GET /marketplace/api/vendor/dashboard/\n- GET /marketplace/api/vendor/orders/\n- POST /marketplace/api/vendor/profile/shipping/
 - GET|POST /marketplace/api/vendor/products/
 - POST /marketplace/api/vendor/products/<listing_id>/
 - POST /marketplace/api/vendor/products/<listing_id>/wholesale/
