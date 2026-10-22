@@ -54,7 +54,9 @@ def submit_settlement_payout(batch_id: int):
         # than blindly retried (which could duplicate a bank transfer).
         batch.status = SettlementBatch.Status.PROCESSING
         batch.failure_reason = ""
-        batch.save(update_fields=("status", "failure_reason"))
+        batch.payout_attempts += 1
+        payout_idempotency_key = f"{batch.idempotency_key}:attempt:{batch.payout_attempts}"
+        batch.save(update_fields=("status", "failure_reason", "payout_attempts", "updated_at"))
         multiplier_value = os.environ.get("PAYOUT_AMOUNT_MULTIPLIER", "").strip()
         payout_currency = os.environ.get("PAYOUT_API_CURRENCY", "").strip().upper()
         if not multiplier_value or not payout_currency:
@@ -69,7 +71,7 @@ def submit_settlement_payout(batch_id: int):
         if multiplier <= 0:
             raise PayoutNotConfigured("PAYOUT_AMOUNT_MULTIPLIER باید مثبت باشد.")
         payload = {
-            "idempotency_key": batch.idempotency_key,
+            "idempotency_key": payout_idempotency_key,
             "client_reference": str(batch.uuid),
             "amount": batch.payable_amount * multiplier,
             "currency": payout_currency,
@@ -92,7 +94,7 @@ def submit_settlement_payout(batch_id: int):
             auth_header: auth_value,
             "Accept": "application/json",
             "Content-Type": "application/json",
-            "Idempotency-Key": batch.idempotency_key,
+            "Idempotency-Key": payout_idempotency_key,
             "User-Agent": "BabaeiMarketplace/1.0",
         },
     )
