@@ -1,6 +1,10 @@
 from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.utils.html import format_html
+from django.utils.text import slugify
+from django.db import transaction
+
+from apps.shop.models import Category
 
 from .models import (
     CategoryRequest, FinancialReconciliation, JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
@@ -256,15 +260,42 @@ class CategoryRequestAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "reviewed_at", "reviewed_by")
     actions = ("approve_requests", "reject_requests")
 
-    @admin.action(description="تأیید درخواست‌های دسته‌بندی")
+    @admin.action(description="تأیید درخواست‌ها و ایجاد دسته‌بندی")
     def approve_requests(self, request, queryset):
         from django.utils import timezone
-        updated = queryset.filter(status=CategoryRequest.Status.PENDING).update(
-            status=CategoryRequest.Status.APPROVED,
-            reviewed_by=request.user,
-            reviewed_at=timezone.now(),
+
+        created_categories = 0
+        approved_requests = 0
+        with transaction.atomic():
+            pending = queryset.select_for_update().filter(status=CategoryRequest.Status.PENDING)
+            for category_request in pending:
+                category = Category.objects.filter(name__iexact=category_request.name).first()
+                if category is None:
+                    base_slug = slugify(category_request.name, allow_unicode=True) or f"category-{category_request.pk}"
+                    candidate = base_slug[:150]
+                    suffix = 2
+                    while Category.objects.filter(slug=candidate).exists():
+                        tail = f"-{suffix}"
+                        candidate = f"{base_slug[:150-len(tail)]}{tail}"
+                        suffix += 1
+                    category = Category.objects.create(
+                        name=category_request.name,
+                        slug=candidate,
+                        description=category_request.description,
+                        is_active=True,
+                    )
+                    created_categories += 1
+                category_request.status = CategoryRequest.Status.APPROVED
+                category_request.reviewed_by = request.user
+                category_request.reviewed_at = timezone.now()
+                if category_request.reviewer_note:
+                    category_request.reviewer_note = category_request.reviewer_note
+                category_request.save(update_fields=("status", "reviewed_by", "reviewed_at"))
+                approved_requests += 1
+        self.message_user(
+            request,
+            f"{approved_requests} درخواست تأیید شد؛ {created_categories} دسته‌بندی جدید ایجاد شد.",
         )
-        self.message_user(request, f"{updated} درخواست تأیید شد.")
 
     @admin.action(description="رد درخواست‌های دسته‌بندی")
     def reject_requests(self, request, queryset):
