@@ -594,6 +594,7 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
             or request_snapshot.get("cart_items_fingerprint") != group_fingerprint
             or request_snapshot.get("cart_item_ids") != payload["cart_item_ids"]
             or request_snapshot.get("listing_ids") != payload["listing_ids"]
+            or request_snapshot.get("vendor_id") != vendor.pk
             or request_snapshot.get("origin_postal_code") != vendor.pickup_postal_code
             or request_snapshot.get("destination_postal_code") != address.postal_code
             or any(request_snapshot.get(key) != payload[key] for key in (
