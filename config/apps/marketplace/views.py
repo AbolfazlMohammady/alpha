@@ -15,8 +15,8 @@ from django.views.decorators.http import require_GET, require_POST
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
 from apps.orders.models import Cart, CartItem
 from apps.users.models import Address
-from .models import SettlementBatch, Shipment, Vendor, VendorOrder
-from .services import approve_settlement, create_shipping_quote, mark_vendor_order_delivered, record_payout_result
+from .models import SettlementBatch, Shipment, Vendor, VendorOrder, VendorProduct
+from .services import approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_payout_result
 
 
 def _json_body(request):
@@ -155,10 +155,20 @@ def vendor_order_action_api(request, order_id):
 def shipment_quote_api(request, order_id):
     try:
         vendor_order = _vendor_order_for_user(request.user, order_id)
-        payload = validate_quote_input(_json_body(request))
-        provider = str(_json_body(request).get("provider", "tipax")).lower()
+        raw_payload = _json_body(request)
+        provider = str(raw_payload.get("provider", "tipax")).lower()
         if provider not in {"tipax", "post"}:
             return _error("شرکت حمل‌ونقل انتخاب‌شده پشتیبانی نمی‌شود.")
+        if not vendor_order.vendor.pickup_postal_code:
+            return _error("کد پستی مبدأ فروشنده در پنل تکمیل نشده است.")
+        # The seller may describe the packed parcel, but may not override either
+        # postal code or declared value from the immutable order snapshot.
+        raw_payload.update({
+            "origin_postal_code": vendor_order.vendor.pickup_postal_code,
+            "destination_postal_code": vendor_order.order.shipping_postal_code,
+            "declared_value": vendor_order.subtotal,
+        })
+        payload = validate_quote_input(raw_payload)
         quote = get_carrier(provider).quote(payload)
         shipment = Shipment.objects.create(
             vendor_order=vendor_order,
@@ -313,14 +323,20 @@ def shipment_update_status_api(request, shipment_uuid):
             shipment.last_event_at = now
             if target == Shipment.Status.DELIVERED:
                 shipment.delivered_at = now
-                shipment.actual_cost = payload.get("actual_cost", shipment.actual_cost)
                 vendor_order = shipment.vendor_order
                 mark_vendor_order_delivered(vendor_order, delivered_at=now)
             if target == Shipment.Status.RETURNED:
                 shipment.vendor_order.status = VendorOrder.Status.DISPUTED
                 shipment.vendor_order.save(update_fields=("status", "updated_at"))
-            shipment.save(update_fields=("status", "last_event_at", "delivered_at", "actual_cost", "updated_at"))
-        return JsonResponse({"ok": True, "shipment_id": str(shipment.uuid), "status": shipment.status})
+            shipment.save(update_fields=("status", "last_event_at", "delivered_at", "updated_at"))
+            if payload.get("actual_cost") is not None:
+                reconcile_shipment_actual_cost(
+                    shipment=shipment,
+                    actual_cost=payload["actual_cost"],
+                    actor=request.user,
+                )
+                shipment.refresh_from_db()
+        return JsonResponse({"ok": True, "shipment_id": str(shipment.uuid), "status": shipment.status, "actual_cost": shipment.actual_cost})
     except (PermissionDenied, ValidationError) as exc:
         return _error(exc, 403 if isinstance(exc, PermissionDenied) else 400)
     except (TypeError, ValueError) as exc:
