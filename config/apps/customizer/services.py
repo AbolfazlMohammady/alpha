@@ -299,7 +299,7 @@ def validate_body_placement(placement: Placement, existing):
     # the customer sees on the shirt.
 
 
-def validate_design_payload(product, payload, variant=None, request=None):
+def validate_design_payload(product, payload, variant=None, request=None, vendor_listing=None):
     if not isinstance(payload, dict):
         raise ValidationError("اطلاعات طراحی نامعتبر است.")
 
@@ -310,7 +310,7 @@ def validate_design_payload(product, payload, variant=None, request=None):
     if variant is not None and (
         variant.product_id != product.id
         or not variant.is_active
-        or variant.stock_quantity <= 0
+        or (vendor_listing is None and variant.stock_quantity <= 0)
     ):
         raise ValidationError("رنگ و سایز انتخاب‌شده موجود نیست.")
     if variant is None and product.variants.filter(is_active=True).exists():
@@ -516,12 +516,18 @@ def validate_design_payload(product, payload, variant=None, request=None):
 
 
 @transaction.atomic
-def save_design_draft(*, request, product, payload, variant=None):
+def save_design_draft(*, request, product, payload, variant=None, vendor_listing=None, base_price_override=None):
     if not request.session.session_key:
         request.session.create()
     normalized, total_price, base_price = validate_design_payload(
-        product, payload, variant=variant, request=request
+        product, payload, variant=variant, request=request, vendor_listing=vendor_listing
     )
+    if base_price_override is not None:
+        base_price_override = int(base_price_override)
+        if base_price_override <= 0:
+            raise ValidationError("قیمت پایه فروشنده معتبر نیست.")
+        total_price = int(total_price) - int(base_price) + base_price_override
+        base_price = base_price_override
     draft = DesignDraft.objects.create(
         product=product,
         variant=variant,
