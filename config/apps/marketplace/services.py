@@ -716,3 +716,40 @@ def record_external_reconciliation(*, source, external_reference, expected_amoun
             reconciled_at=timezone.now() if status != FinancialReconciliation.Status.UNMATCHED else None,
         )
         return record, True
+
+
+
+def record_carrier_invoice_payment(*, invoice_reference: str, amount: int, actor=None, provider_reference=""):
+    """Record a confirmed payment against the central carrier payable balance."""
+    invoice_reference = str(invoice_reference or "").strip()
+    amount = int(amount)
+    if not invoice_reference or amount <= 0:
+        raise ValidationError("شناسه صورتحساب و مبلغ پرداختی مثبت الزامی است.")
+    with transaction.atomic():
+        payable = get_system_account("carrier_payable", "بدهی به شرکت حمل‌ونقل", LedgerAccount.Kind.LIABILITY)
+        clearing = get_system_account("gateway_clearing", "وجوه دریافتی درگاه", LedgerAccount.Kind.ASSET)
+        available = account_balance(payable)
+        if available < amount:
+            raise ValidationError(f"مبلغ پرداختی از بدهی ثبت‌شده به شرکت حمل بیشتر است؛ مانده ثبت‌شده {available}.")
+        reference = str(provider_reference or invoice_reference).strip()[:180]
+        entry, created = post_journal(
+            idempotency_key=f"carrier-payment:{invoice_reference}",
+            kind="carrier_payment",
+            description=f"پرداخت صورتحساب حمل {invoice_reference}",
+            lines=[
+                {"account": payable, "debit": amount, "credit": 0, "memo": reference},
+                {"account": clearing, "debit": 0, "credit": amount, "memo": reference},
+            ],
+            created_by=actor,
+            metadata={"invoice_reference": invoice_reference, "provider_reference": reference},
+        )
+        record_external_reconciliation(
+            source=FinancialReconciliation.Source.CARRIER_INVOICE,
+            external_reference=f"payment:{invoice_reference}",
+            internal_reference=entry.idempotency_key,
+            expected_amount=amount,
+            actual_amount=amount,
+            details={"provider_reference": reference, "journal_entry_id": entry.id},
+            actor=actor,
+        )
+        return entry, created
