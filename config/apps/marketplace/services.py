@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 import hashlib
+import json
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
@@ -47,11 +48,20 @@ def post_journal(*, idempotency_key, kind, description, lines, order=None, vendo
     if len(normalized) < 2 or debit_total != credit_total:
         raise ValidationError(f"سند نامتوازن است: بدهکار {debit_total}، بستانکار {credit_total}.")
 
+    fingerprint_payload = [
+        {"account_id": account.pk, "debit": debit, "credit": credit, "currency": account.currency, "memo": memo}
+        for account, debit, credit, memo in normalized
+    ]
+    fingerprint = hashlib.sha256(
+        json.dumps(fingerprint_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
     with transaction.atomic():
         existing = JournalEntry.objects.filter(idempotency_key=idempotency_key).first()
         if existing:
             if existing.status not in {JournalEntry.Status.POSTED, JournalEntry.Status.REVERSED}:
                 raise ValidationError("کلید تکراری به سند ناقص متصل است؛ بررسی مدیریتی لازم است.")
+            if existing.metadata.get("_posting_fingerprint") != fingerprint:
+                raise ValidationError("کلید idempotency قبلاً با مبالغ متفاوت استفاده شده است؛ ثبت جدید متوقف شد.")
             return existing, False
         try:
             entry = JournalEntry.objects.create(
@@ -61,7 +71,7 @@ def post_journal(*, idempotency_key, kind, description, lines, order=None, vendo
                 order=order,
                 vendor_order=vendor_order,
                 created_by=created_by,
-                metadata=metadata or {},
+                metadata={**(metadata or {}), "_posting_fingerprint": fingerprint},
             )
             JournalLine.objects.bulk_create([
                 JournalLine(entry=entry, account=account, debit=debit, credit=credit, memo=memo)
