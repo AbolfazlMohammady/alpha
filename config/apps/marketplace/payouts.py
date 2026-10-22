@@ -55,11 +55,17 @@ def submit_settlement_payout(batch_id: int):
         batch.status = SettlementBatch.Status.PROCESSING
         batch.failure_reason = ""
         batch.save(update_fields=("status", "failure_reason"))
+        try:
+            multiplier = int(os.environ.get("PAYOUT_AMOUNT_MULTIPLIER", "1"))
+        except ValueError as exc:
+            raise PayoutNotConfigured("PAYOUT_AMOUNT_MULTIPLIER باید عدد صحیح باشد.") from exc
+        if multiplier <= 0:
+            raise PayoutNotConfigured("PAYOUT_AMOUNT_MULTIPLIER باید مثبت باشد.")
         payload = {
             "idempotency_key": batch.idempotency_key,
             "client_reference": str(batch.uuid),
-            "amount": batch.payable_amount,
-            "currency": batch.currency,
+            "amount": batch.payable_amount * multiplier,
+            "currency": os.environ.get("PAYOUT_API_CURRENCY", batch.currency),
             "beneficiary": {
                 "iban": batch.vendor.bank_iban.replace(" ", "").upper(),
                 "account_name": batch.vendor.bank_account_name,
@@ -68,12 +74,15 @@ def submit_settlement_payout(batch_id: int):
         }
 
     url = base_url + "/" + path.lstrip("/")
+    auth_header = os.environ.get("PAYOUT_API_AUTH_HEADER", "Authorization")
+    auth_scheme = os.environ.get("PAYOUT_API_AUTH_SCHEME", "Bearer").strip()
+    auth_value = f"{auth_scheme} {token}" if auth_scheme else token
     request = urllib.request.Request(
         url,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
         method="POST",
         headers={
-            "Authorization": f"Bearer {token}",
+            auth_header: auth_value,
             "Accept": "application/json",
             "Content-Type": "application/json",
             "Idempotency-Key": batch.idempotency_key,
@@ -102,8 +111,23 @@ def submit_settlement_payout(batch_id: int):
         )
         raise PayoutError("نتیجه درخواست واریز نامشخص است؛ برای جلوگیری از واریز تکراری، ابتدا مغایرت‌گیری کنید.") from exc
 
-    reference = str(data.get("transfer_id") or data.get("reference") or data.get("id") or "")[:180]
-    provider_status = str(data.get("status") or "").lower()
+    def path_value(path):
+        value = data
+        for part in path.split(".") if path else []:
+            if isinstance(value, dict):
+                value = value.get(part)
+            else:
+                return None
+        return value
+
+    reference = str(
+        path_value(os.environ.get("PAYOUT_RESPONSE_REFERENCE_PATH", ""))
+        or data.get("transfer_id") or data.get("reference") or data.get("id") or ""
+    )[:180]
+    provider_status = str(
+        path_value(os.environ.get("PAYOUT_RESPONSE_STATUS_PATH", ""))
+        or data.get("status") or ""
+    ).lower()
     if not reference:
         SettlementBatch.objects.filter(pk=batch_id, status=SettlementBatch.Status.PROCESSING).update(
             failure_reason="سرویس درخواست را پاسخ داد اما شناسه انتقال نداشت؛ تطبیق دستی لازم است."
