@@ -7,6 +7,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
@@ -332,15 +333,20 @@ def shipment_quote_api(request, order_id):
         })
         payload = validate_quote_input(raw_payload)
         quote = get_carrier(provider).quote(payload)
-        shipment = Shipment.objects.create(
-            vendor_order=vendor_order,
-            provider=provider,
-            status=Shipment.Status.QUOTED,
-            quoted_cost=quote.amount,
-            quote_reference=quote.reference,
-            quote_expires_at=_parse_datetime(quote.expires_at),
-            provider_payload={"quote": quote.raw or {}, "request": payload},
-        )
+        with transaction.atomic():
+            locked_order = VendorOrder.objects.select_for_update().get(pk=vendor_order.pk)
+            already_allocated = Shipment.objects.filter(vendor_order=locked_order).aggregate(total=Sum("customer_charge"))["total"] or 0
+            customer_charge = max(int(locked_order.customer_shipping_amount) - int(already_allocated), 0)
+            shipment = Shipment.objects.create(
+                vendor_order=locked_order,
+                provider=provider,
+                status=Shipment.Status.QUOTED,
+                quoted_cost=quote.amount,
+                customer_charge=customer_charge,
+                quote_reference=quote.reference,
+                quote_expires_at=_parse_datetime(quote.expires_at),
+                provider_payload={"quote": quote.raw or {}, "request": payload},
+            )
         return JsonResponse({
             "ok": True,
             "shipment_id": str(shipment.uuid),
