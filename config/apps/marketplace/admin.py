@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 
 from .models import (
-    JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
+    FinancialReconciliation, JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
     Shipment, ShippingQuote, Vendor, VendorOrder, VendorProduct, WholesalePriceTier,
 )
 
@@ -186,3 +186,12 @@ class SettlementBatchAdmin(ReadOnlyAuditAdmin):
 class SettlementLineAdmin(ReadOnlyAuditAdmin):
     list_display = ("batch", "vendor_order", "gross_amount", "commission_amount", "payable_amount")
     list_select_related = ("batch", "vendor_order")
+
+
+
+@admin.register(FinancialReconciliation)
+class FinancialReconciliationAdmin(ReadOnlyAuditAdmin):
+    list_display = ("source", "external_reference", "internal_reference", "expected_amount", "actual_amount", "status", "currency", "reconciled_at")
+    list_filter = ("source", "status", "currency", "created_at")
+    search_fields = ("external_reference", "internal_reference")
+    list_select_related = ("recorded_by",)
