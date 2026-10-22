@@ -6,7 +6,6 @@ import hashlib
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Sum
-from django.db.models import Sum
 from django.utils import timezone
 
 from .models import (
