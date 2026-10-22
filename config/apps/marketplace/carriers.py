@@ -109,7 +109,7 @@ class JsonCarrierClient:
         prefix = self.provider_code.upper()
         configured_path = os.environ.get(f"{prefix}_{amount_path_env}", "")
         value = self._path_value(data, configured_path) if configured_path else None
-        if value is None:
+        if value is None and not configured_path:
             # Common top-level fields are a fallback only; official response
             # mapping should be configured for the contracted carrier API.
             for key in ("amount", "price", "cost", "shipping_cost", "total"):
