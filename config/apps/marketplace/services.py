@@ -488,18 +488,28 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
     total = 0
     for item in seller_items:
         quote = by_item.get(item.id)
+        listing = VendorProduct.objects.select_for_update().get(pk=item.vendor_listing_id)
+        if item.custom_design_id:
+            expected_unit_price = int(item.custom_design.total_price)
+        else:
+            expected_unit_price = int(listing.retail_price)
+            if listing.wholesale_enabled:
+                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=item.quantity).order_by("-minimum_quantity").first()
+                if tier:
+                    expected_unit_price = int(tier.unit_price)
+        request_snapshot = (quote.provider_payload.get("request") or {}) if quote else {}
         if (
             not quote
             or quote.vendor_listing_id != item.vendor_listing_id
             or quote.quantity != item.quantity
             or quote.address_fingerprint != fingerprint
-            or int((quote.provider_payload.get("request") or {}).get("declared_value", -1)) != int(item.unit_price) * item.quantity
-            or int((quote.provider_payload.get("request") or {}).get("weight_grams", -1)) != item.vendor_listing.weight_grams * item.quantity
-            or int((quote.provider_payload.get("request") or {}).get("length_cm", -1)) != item.vendor_listing.package_length_cm
-            or int((quote.provider_payload.get("request") or {}).get("width_cm", -1)) != item.vendor_listing.package_width_cm
-            or int((quote.provider_payload.get("request") or {}).get("height_cm", -1)) != item.vendor_listing.package_height_cm * item.quantity
+            or int(request_snapshot.get("declared_value", -1)) != expected_unit_price * item.quantity
+            or int(request_snapshot.get("weight_grams", -1)) != listing.weight_grams * item.quantity
+            or int(request_snapshot.get("length_cm", -1)) != listing.package_length_cm
+            or int(request_snapshot.get("width_cm", -1)) != listing.package_width_cm
+            or int(request_snapshot.get("height_cm", -1)) != listing.package_height_cm * item.quantity
         ):
-            raise ValidationError("استعلام ارسال با آدرس، فروشنده یا تعداد فعلی سبد مطابقت ندارد.")
+            raise ValidationError("استعلام ارسال با آدرس، فروشنده، قیمت یا بسته‌بندی فعلی مطابقت ندارد.")
         total += quote.amount
     ShippingQuote.objects.filter(id__in=[quote.id for quote in quotes]).update(
         status=ShippingQuote.Status.CONSUMED,
@@ -647,6 +657,20 @@ def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: 
             raise ValidationError("سفارش بازپرداخت‌شده است اما سند مالی آن پیدا نشد؛ بررسی لازم است.")
         if locked_order.payment_status != Order.PaymentStatus.PAID:
             raise ValidationError("فقط سفارش پرداخت‌شده را می‌توان بازپرداخت کرد.")
+        shipped_orders = VendorOrder.objects.filter(
+            order=locked_order,
+            status__in=[VendorOrder.Status.SHIPPED, VendorOrder.Status.DELIVERED, VendorOrder.Status.DISPUTED],
+        ).exists()
+        booked_shipments = Shipment.objects.filter(
+            vendor_order__order=locked_order,
+            status__in=[
+                Shipment.Status.BOOKED, Shipment.Status.PICKUP_REQUESTED,
+                Shipment.Status.HANDED_OVER, Shipment.Status.IN_TRANSIT,
+                Shipment.Status.DELIVERED, Shipment.Status.RETURNED,
+            ],
+        ).exists()
+        if shipped_orders or booked_shipments:
+            raise ValidationError("این سفارش وارد فرایند ارسال شده است؛ بازپرداخت باید همراه با گردش مرجوعی و هزینه حمل انجام شود.")
         original = JournalEntry.objects.filter(
             idempotency_key=f"order-paid:{locked_order.uuid}",
             status=JournalEntry.Status.POSTED,
