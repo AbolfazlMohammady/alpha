@@ -148,6 +148,10 @@ AXES_COOLOFF_TIME = timedelta(hours=1)
 AXES_CACHE = 'default'
 AUTHENTICATION_BACKENDS = ["apps.users.backends.BabaeiAxesBackend", "django.contrib.auth.backends.ModelBackend"]
 CACHES = {"default": {"BACKEND": "django_redis.cache.RedisCache", "LOCATION": redis_cache_url, "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"}}}
+# Ensure the log directory exists before Django configures FileHandler.
+LOG_DIR = BASE_DIR / "data" / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 LOGGING = {"version": 1, "disable_existing_loggers": False, "formatters": {"verbose": {"format": "{asctime} | {levelname} | {name} | {message}", "style": "{"}}, "filters": {}, "handlers": {"console": {"level": "INFO", "class": "logging.StreamHandler", "formatter": "verbose"}, "file": {"level": "INFO", "class": "logging.handlers.RotatingFileHandler", "filename": "data/logs/application.log", "maxBytes": 1024 * 1024 * 5, "backupCount": 5, "formatter": "verbose"}}, "loggers": {"apps": {"handlers": ["console", "file"], "level": "INFO", "propagate": False}}}
 
 
