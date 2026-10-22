@@ -504,23 +504,6 @@ def create_order_from_cart(*, user, cart, address, customer_note="", shipping_qu
             for row in order_rows
         ])
 
-        design_ids = [
-            row["custom_design"].id
-            for row in order_rows
-            if row.get("custom_design") is not None
-        ]
-        if design_ids:
-            from django.utils import timezone
-            DesignDraft.objects.filter(
-                id__in=design_ids,
-                status__in=[DesignDraft.Status.DRAFT, DesignDraft.Status.CART],
-            ).update(
-                status=DesignDraft.Status.CONFIRMED,
-                confirmed_at=timezone.now(),
-                user=user,
-                session_key="",
-            )
-
         locked_cart.status = Cart.Status.CONVERTED
         locked_cart.save(update_fields=["status", "updated_at"])
 
