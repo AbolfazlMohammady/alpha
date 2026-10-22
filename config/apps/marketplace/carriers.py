@@ -60,17 +60,16 @@ class JsonCarrierClient:
         self._require(path)
         url = self.base_url + "/" + path.lstrip("/")
         body = None if payload is None else json.dumps(payload, ensure_ascii=False).encode("utf-8")
-        request = urllib.request.Request(
-            url,
-            data=body,
-            method=method,
-            headers={
-                "Authorization": f"Bearer {self.token}",
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-                "User-Agent": "BabaeiMarketplace/1.0",
-            },
-        )
+        auth_header = os.environ.get(f"{self.provider_code.upper()}_API_AUTH_HEADER", "Authorization")
+        auth_scheme = os.environ.get(f"{self.provider_code.upper()}_API_AUTH_SCHEME", "Bearer").strip()
+        auth_value = f"{auth_scheme} {self.token}" if auth_scheme else self.token
+        headers = {
+            auth_header: auth_value,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "User-Agent": "BabaeiMarketplace/1.0",
+        }
+        request = urllib.request.Request(url, data=body, method=method, headers=headers)
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 raw = response.read(2_000_000)
@@ -93,50 +92,92 @@ class JsonCarrierClient:
             raise CarrierError("پاسخ API شرکت حمل‌ونقل JSON معتبر نیست.") from exc
 
     @staticmethod
-    def _amount(data):
-        # Configure/normalize the provider-specific mapping after receiving its
-        # official schema. These common keys are a convenience, not a guarantee.
-        for key in ("amount", "price", "cost", "shipping_cost", "total"):
-            value = data.get(key)
-            if value is not None:
-                try:
-                    amount = int(Decimal(str(value)))
-                except (InvalidOperation, ValueError, TypeError, OverflowError) as exc:
-                    raise CarrierError("مبلغ اعلام‌شده توسط شرکت حمل‌ونقل قابل‌خواندن نیست.") from exc
-                if amount < 0:
-                    raise CarrierError("شرکت حمل‌ونقل هزینه منفی اعلام کرده است.")
-                return amount
-        raise CarrierError("کلید مبلغ در پاسخ API پیدا نشد؛ mapping پاسخ باید مطابق مستندات رسمی تنظیم شود.")
+    def _path_value(data, path):
+        if not path:
+            return None
+        value = data
+        for part in path.split("."):
+            if isinstance(value, dict):
+                value = value.get(part)
+            elif isinstance(value, list) and part.isdigit() and int(part) < len(value):
+                value = value[int(part)]
+            else:
+                return None
+        return value
+
+    def _amount(self, data):
+        prefix = self.provider_code.upper()
+        configured_path = os.environ.get(f"{prefix}_QUOTE_AMOUNT_PATH", "")
+        value = self._path_value(data, configured_path) if configured_path else None
+        if value is None:
+            # Common top-level fields are a fallback only; official response
+            # mapping should be configured for the contracted carrier API.
+            for key in ("amount", "price", "cost", "shipping_cost", "total"):
+                value = data.get(key)
+                if value is not None:
+                    break
+        if value is None:
+            raise CarrierError("کلید مبلغ در پاسخ API پیدا نشد؛ مسیر مبلغ را مطابق مستندات رسمی تنظیم کنید.")
+        try:
+            amount = int(Decimal(str(value)))
+        except (InvalidOperation, ValueError, TypeError, OverflowError) as exc:
+            raise CarrierError("مبلغ اعلام‌شده توسط شرکت حمل‌ونقل قابل‌خواندن نیست.") from exc
+        if amount < 0:
+            raise CarrierError("شرکت حمل‌ونقل هزینه منفی اعلام کرده است.")
+        return amount
 
     def quote(self, payload: dict) -> ShippingQuote:
         data = self._request(self.quote_path, payload=payload)
+        prefix = self.provider_code.upper()
+        reference_path = os.environ.get(f"{prefix}_QUOTE_REFERENCE_PATH", "")
+        expiry_path = os.environ.get(f"{prefix}_QUOTE_EXPIRES_PATH", "")
+        reference = self._path_value(data, reference_path) if reference_path else None
+        expiry = self._path_value(data, expiry_path) if expiry_path else None
         return ShippingQuote(
             provider=self.provider_code,
             amount=self._amount(data),
             currency=str(data.get("currency", "IRT"))[:3],
-            reference=str(data.get("quote_id") or data.get("reference") or data.get("id") or "")[:160],
-            expires_at=data.get("expires_at"),
+            reference=str(reference or data.get("quote_id") or data.get("reference") or data.get("id") or "")[:160],
+            expires_at=expiry or data.get("expires_at"),
             raw=data,
         )
 
     def create_shipment(self, payload: dict) -> dict:
         data = self._request(self.shipment_path, payload=payload)
-        tracking = data.get("tracking_number") or data.get("tracking_code") or data.get("barcode") or ""
-        shipment_id = data.get("shipment_id") or data.get("id") or data.get("reference") or ""
+        prefix = self.provider_code.upper()
+        tracking_path = os.environ.get(f"{prefix}_SHIPMENT_TRACKING_PATH", "")
+        shipment_path = os.environ.get(f"{prefix}_SHIPMENT_ID_PATH", "")
+        label_path = os.environ.get(f"{prefix}_SHIPMENT_LABEL_PATH", "")
+        tracking = self._path_value(data, tracking_path) if tracking_path else None
+        shipment_id = self._path_value(data, shipment_path) if shipment_path else None
+        label = self._path_value(data, label_path) if label_path else None
+        tracking = tracking or data.get("tracking_number") or data.get("tracking_code") or data.get("barcode") or ""
+        shipment_id = shipment_id or data.get("shipment_id") or data.get("id") or data.get("reference") or ""
+        label = label or data.get("label_url") or data.get("label") or ""
         if not tracking and not shipment_id:
             raise CarrierError("مرسوله در پاسخ API شناسه یا کد رهگیری ندارد؛ وضعیت را از پنل شرکت بررسی کنید.")
         return {
             "external_shipment_id": str(shipment_id)[:160],
             "tracking_number": str(tracking)[:160],
-            "label_url": str(data.get("label_url") or data.get("label") or "")[:1000],
+            "label_url": str(label)[:1000],
             "raw": data,
         }
 
     def track(self, tracking_number: str) -> dict:
         if not tracking_number:
             raise ValidationError("کد رهگیری الزامی است.")
+        prefix = self.provider_code.upper()
         path = self.tracking_path.format(tracking_number=urllib.parse.quote(tracking_number, safe=""))
-        return self._request(path, method="GET")
+        data = self._request(path, method="GET")
+        status_path = os.environ.get(f"{prefix}_TRACKING_STATUS_PATH", "")
+        cost_path = os.environ.get(f"{prefix}_TRACKING_COST_PATH", "")
+        status = self._path_value(data, status_path) if status_path else None
+        cost = self._path_value(data, cost_path) if cost_path else None
+        if status is not None:
+            data = {**data, "status": status}
+        if cost is not None:
+            data = {**data, "actual_cost": cost}
+        return data
 
 
 class TipaxClient(JsonCarrierClient):
