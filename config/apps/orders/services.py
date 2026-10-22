@@ -409,7 +409,7 @@ def create_order_from_cart(*, user, cart, address, customer_note="", shipping_qu
             })
 
         from apps.marketplace.services import consume_shipping_quotes
-        shipping_amount = consume_shipping_quotes(
+        shipping_amount, used_shipping_quotes = consume_shipping_quotes(
             user=user,
             cart=locked_cart,
             address=address,
@@ -439,6 +439,9 @@ def create_order_from_cart(*, user, cart, address, customer_note="", shipping_qu
             currency="IRT",
             customer_note=customer_note.strip(),
         )
+        if used_shipping_quotes:
+            from apps.marketplace.models import ShippingQuote
+            ShippingQuote.objects.filter(pk__in=[quote.pk for quote in used_shipping_quotes]).update(order=order)
 
         OrderItem.objects.bulk_create([
             OrderItem(
