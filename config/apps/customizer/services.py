@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.utils import timezone
 
 from .models import Artwork, ArtworkAreaPrice, CustomizerPricingSettings, DesignDraft, DesignLayer, PrintAreaView
 from .temp_storage import delete_customizer_temp_file, resolve_customizer_temp_path, save_bytes_to_temp, save_uploaded_file_to_temp
