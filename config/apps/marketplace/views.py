@@ -142,7 +142,7 @@ def vendor_dashboard_api(request):
     delivered = orders.filter(status=VendorOrder.Status.DELIVERED).count()
     payable = sum(
         batch.payable_amount for batch in vendor.settlements.filter(
-            status__in=[SettlementBatch.Status.PENDING_APPROVAL, SettlementBatch.Status.APPROVED, SettlementBatch.Status.PROCESSING]
+            status__in=[SettlementBatch.Status.PENDING_APPROVAL, SettlementBatch.Status.APPROVED, SettlementBatch.Status.PROCESSING, SettlementBatch.Status.FAILED]
         )
     )
     paid = sum(batch.payable_amount for batch in vendor.settlements.filter(status=SettlementBatch.Status.PAID))
