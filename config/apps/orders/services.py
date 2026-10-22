@@ -282,7 +282,7 @@ def clear_cart(request) -> None:
     invalidate_product_cart_cache(request)
 
 
-def create_order_from_cart(*, user, cart, address, customer_note=""):
+def create_order_from_cart(*, user, cart, address, customer_note="", shipping_quote_ids=None):
     """Convert the active cart into an immutable order snapshot."""
     from apps.shop.models import ProductVariant
 
@@ -408,6 +408,14 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
                 "custom_design_snapshot": {},
             })
 
+        from apps.marketplace.services import consume_shipping_quotes
+        shipping_amount = consume_shipping_quotes(
+            user=user,
+            cart=locked_cart,
+            address=address,
+            items=items,
+            quote_ids=shipping_quote_ids or [],
+        )
         recipient_name = " ".join(str(address.recipient_display_name or "").split())
         if len(recipient_name) < 2:
             raise ValueError("برای ثبت سفارش، نام و نام خانوادگی گیرنده را در پروفایل یا خود آدرس تکمیل کنید.")
@@ -426,8 +434,8 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
             shipping_address=address.description or address.title,
             subtotal=subtotal,
             discount_amount=0,
-            shipping_amount=0,
-            total_amount=subtotal,
+            shipping_amount=shipping_amount,
+            total_amount=subtotal + shipping_amount,
             currency="IRT",
             customer_note=customer_note.strip(),
         )
