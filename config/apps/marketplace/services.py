@@ -124,21 +124,20 @@ def create_vendor_orders_for_paid_order(order):
     items = list(order.items.all())
     if not items:
         return []
-    listings = {
-        listing.product_id: listing
-        for listing in VendorProduct.objects.select_related("vendor").filter(
-            product_id__in=[item.product_id for item in items],
-            status=VendorProduct.Status.ACTIVE,
-            vendor__status=Vendor.Status.ACTIVE,
-            vendor__user__is_active=True,
-        )
-    }
-    if len(listings) != len({item.product_id for item in items}):
+    # Seller identity is snapshotted on each order line. Never infer a seller
+    # from product_id alone: multiple vendors may list the same catalog product.
+    if any(not item.vendor_listing_id for item in items):
         # Deliberately avoid partial seller routing for a mixed/legacy order.
         return []
     grouped = {}
     for item in items:
-        listing = listings[item.product_id]
+        listing = item.vendor_listing
+        if (
+            listing.status != VendorProduct.Status.ACTIVE
+            or listing.vendor.status != Vendor.Status.ACTIVE
+            or not listing.vendor.user.is_active
+        ):
+            raise ValidationError("یکی از فروشندگان سفارش در زمان تسویه سفارش فعال نیست.")
         grouped.setdefault(listing.vendor_id, {"vendor": listing.vendor, "items": [], "subtotal": 0})
         gross = int(item.line_total)
         grouped[listing.vendor_id]["subtotal"] += gross
@@ -193,10 +192,7 @@ def create_vendor_orders_for_paid_order(order):
         clearing = get_system_account("gateway_clearing", "وجوه دریافتی درگاه", LedgerAccount.Kind.ASSET, order.currency)
         commission_account = get_system_account("platform_commission", "درآمد کمیسیون پلتفرم", LedgerAccount.Kind.REVENUE, order.currency)
         shipping_account = get_system_account("shipping_funds_payable", "وجوه تخصیص‌یافته به حمل", LedgerAccount.Kind.LIABILITY, order.currency)
-        discount_account = get_system_account("sales_discounts", "تخفیف‌های فروش", LedgerAccount.Kind.EXPENSE, order.currency)
         journal_lines = [{"account": clearing, "debit": int(order.total_amount), "credit": 0, "memo": order.number}]
-        if order.discount_amount:
-            journal_lines.append({"account": discount_account, "debit": int(order.discount_amount), "credit": 0, "memo": order.number})
         for vendor, vendor_order, net_sales, commission, payable in lines:
             payable_account = get_system_account(
                 f"vendor_payable_{vendor.id}",
