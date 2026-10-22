@@ -17,6 +17,7 @@ from apps.orders.models import Cart, CartItem
 from apps.users.models import Address
 from .models import SettlementBatch, Shipment, Vendor, VendorOrder, VendorProduct
 from .services import approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_payout_result
+from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
 
 
 def _json_body(request):
@@ -368,7 +369,29 @@ def settlement_queue_api(request):
 def settlement_approve_api(request, batch_id):
     try:
         batch = approve_settlement(batch_id=batch_id, approver=request.user)
-        return JsonResponse({"ok": True, "batch_id": batch.id, "status": batch.status, "approved_at": batch.approved_at.isoformat()})
+        try:
+            batch = submit_settlement_payout(batch.id)
+        except PayoutNotConfigured as exc:
+            # Approval remains recorded; the batch cannot be paid until the
+            # contracted bank/PSP payout API is configured.
+            return JsonResponse({
+                "ok": True,
+                "batch_id": batch.id,
+                "status": batch.status,
+                "approved_at": batch.approved_at.isoformat(),
+                "payout_submitted": False,
+                "payout_message": str(exc),
+            })
+        except PayoutError as exc:
+            return _error(exc, 502)
+        return JsonResponse({
+            "ok": True,
+            "batch_id": batch.id,
+            "status": batch.status,
+            "approved_at": batch.approved_at.isoformat(),
+            "payout_submitted": True,
+            "payout_reference": batch.payout_reference,
+        })
     except (PermissionDenied, ValidationError) as exc:
         return _error(exc, 403 if isinstance(exc, PermissionDenied) else 409)
 
