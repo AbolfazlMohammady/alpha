@@ -174,11 +174,32 @@ class SettlementBatchAdmin(ReadOnlyAuditAdmin):
     list_select_related = ("vendor", "approved_by")
     inlines = (SettlementLineInline,)
     readonly_fields = tuple(field.name for field in SettlementBatch._meta.fields)
-    actions = ("approve_and_submit_selected",)
+    actions = ("approve_and_submit_selected", "reopen_failed_for_retry")
 
     def has_change_permission(self, request, obj=None):
         # Keep all fields read-only while allowing the explicit approval action.
         return request.user.is_active and request.user.is_staff
+
+    @admin.action(description="پس از بررسی پنل بانک، آماده‌سازی مجدد تسویه ناموفق")
+    def reopen_failed_for_retry(self, request, queryset):
+        from django.contrib import messages
+        from django.db import transaction
+        reopened = 0
+        blocked = 0
+        for batch in queryset:
+            with transaction.atomic():
+                locked = SettlementBatch.objects.select_for_update().get(pk=batch.pk)
+                if locked.status != SettlementBatch.Status.FAILED or locked.payout_reference:
+                    blocked += 1
+                    continue
+                locked.status = SettlementBatch.Status.APPROVED
+                locked.failure_reason = "پس از بررسی دستی تأیید شد که واریز قبلی انجام نشده است؛ آماده ارسال مجدد."
+                locked.save(update_fields=("status", "failure_reason"))
+                reopened += 1
+        if reopened:
+            self.message_user(request, f"{reopened} تسویه برای ارسال مجدد آماده شد. حالا اقدام تأیید و ارسال را اجرا کن.", messages.WARNING)
+        if blocked:
+            self.message_user(request, f"{blocked} مورد به‌دلیل وضعیت یا مرجع پرداخت قابل بازگشایی نبود.", messages.ERROR)
 
     @admin.action(description="تأیید و ارسال تسویه‌های انتخاب‌شده برای واریز")
     def approve_and_submit_selected(self, request, queryset):
