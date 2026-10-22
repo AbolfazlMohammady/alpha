@@ -5,6 +5,8 @@ from . import views
 app_name = "marketplace"
 
 urlpatterns = [
+    path("vendor/dashboard/", views.vendor_dashboard_page, name="vendor_dashboard_page"),
+    path("api/vendor/profile/shipping/", views.vendor_shipping_profile_api, name="vendor_shipping_profile_api"),
     path("api/shipping/quote/", views.cart_shipping_quote_api, name="cart_shipping_quote_api"),
     path("api/vendor/dashboard/", views.vendor_dashboard_api, name="vendor_dashboard_api"),
     path("api/vendor/orders/", views.vendor_orders_api, name="vendor_orders_api"),
