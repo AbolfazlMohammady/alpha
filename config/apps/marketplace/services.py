@@ -563,7 +563,7 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
             uuid__in=normalized_ids,
             user=user,
             cart_item__cart=cart,
-            status=ShippingQuote.Status.QUOTED,
+            status=ShippingQuote.Status.VALID,
             expires_at__gt=now,
         )
     )
