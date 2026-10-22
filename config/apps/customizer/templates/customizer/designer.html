@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static shop_tags %}
 
 {% block title %}استودیو طراحی سه‌بعدی | BABAEI{% endblock %}
 {% block meta_description %}{{ og_description }}{% endblock %}
@@ -263,6 +263,20 @@
                 </div>
             </div>
             <div class="variant-card" id="variant-card"><select id="variant-select" aria-label="انتخاب رنگ و سایز"><option value="">انتخاب رنگ و سایز</option></select></div>
+            {% if vendor_listings %}
+            <div class="variant-card" id="printing-vendor-card">
+                <label for="designer-vendor-listing">فروشنده محصول چاپی</label>
+                <select id="designer-vendor-listing" aria-label="انتخاب فروشنده چاپ">
+                    <option value="">انتخاب فروشنده</option>
+                    {% for listing in vendor_listings %}
+                    <option value="{{ listing.id }}" data-price="{{ listing.retail_price }}" data-stock="{{ listing.stock_quantity }}" {% if not listing.stock_quantity %}disabled{% endif %}>
+                        {{ listing.vendor.store_name }} — {{ listing.retail_price|price }} تومان{% if listing.stock_quantity %} · موجود{% else %} · ناموجود{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                <small>قیمت پایه طراحی بر اساس فروشنده انتخاب‌شده محاسبه می‌شود؛ هزینه لیبل‌ها جداگانه اضافه می‌شود.</small>
+            </div>
+            {% endif %}
             <div class="premium-label-summary" id="premium-label-summary"></div>
             <div class="price-breakdown" id="price-breakdown"></div>
         </aside>

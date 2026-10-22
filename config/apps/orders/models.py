@@ -62,6 +62,7 @@ class Cart(models.Model):
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("shop.Product", on_delete=models.PROTECT, related_name="cart_items")
+    vendor_listing = models.ForeignKey("marketplace.VendorProduct", on_delete=models.PROTECT, related_name="cart_items", null=True, blank=True)
     variant = models.ForeignKey(
         "shop.ProductVariant",
         on_delete=models.PROTECT,
@@ -85,13 +86,23 @@ class CartItem(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=("cart", "variant"),
-                condition=Q(variant__isnull=False, custom_design__isnull=True),
+                condition=Q(variant__isnull=False, custom_design__isnull=True, vendor_listing__isnull=True),
                 name="unique_cart_variant_item",
             ),
             models.UniqueConstraint(
+                fields=("cart", "variant", "vendor_listing"),
+                condition=Q(variant__isnull=False, custom_design__isnull=True, vendor_listing__isnull=False),
+                name="unique_cart_vendor_variant_item",
+            ),
+            models.UniqueConstraint(
                 fields=("cart", "product"),
-                condition=Q(variant__isnull=True, custom_design__isnull=True),
+                condition=Q(variant__isnull=True, custom_design__isnull=True, vendor_listing__isnull=True),
                 name="unique_cart_product_item",
+            ),
+            models.UniqueConstraint(
+                fields=("cart", "product", "vendor_listing"),
+                condition=Q(variant__isnull=True, custom_design__isnull=True, vendor_listing__isnull=False),
+                name="unique_cart_vendor_product_item",
             ),
             models.UniqueConstraint(
                 fields=("cart", "custom_design"),
@@ -106,6 +117,17 @@ class CartItem(models.Model):
     def unit_price(self):
         if self.custom_design_id:
             return self.custom_design.total_price
+        if self.vendor_listing_id:
+            price = self.vendor_listing.retail_price
+            if self.vendor_listing.wholesale_enabled:
+                total_listing_quantity = self.cart.items.filter(
+                    vendor_listing_id=self.vendor_listing_id,
+                    custom_design__isnull=True,
+                ).aggregate(total=models.Sum("quantity"))["total"] or self.quantity
+                tier = self.vendor_listing.wholesale_tiers.filter(minimum_quantity__lte=total_listing_quantity).order_by("-minimum_quantity").first()
+                if tier:
+                    price = tier.unit_price
+            return price
         return self.variant.effective_price if self.variant_id else self.product.base_price
 
     @property
@@ -114,6 +136,8 @@ class CartItem(models.Model):
 
     @property
     def available_stock(self):
+        if self.vendor_listing_id:
+            return self.vendor_listing.stock_quantity
         return self.variant.stock_quantity if self.variant_id else None
 
     def __str__(self):
@@ -198,6 +222,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("shop.Product", on_delete=models.PROTECT, related_name="order_items")
+    vendor_listing = models.ForeignKey("marketplace.VendorProduct", on_delete=models.PROTECT, related_name="order_items", null=True, blank=True)
     variant = models.ForeignKey(
         "shop.ProductVariant",
         on_delete=models.PROTECT,

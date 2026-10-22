@@ -21,6 +21,7 @@
 
     <form method="post" class="checkout-layout">
         {% csrf_token %}
+        <input type="hidden" name="shipping_quote_ids" id="shippingQuoteIds" value="{{ shipping_quote_ids }}">
 
         <div class="checkout-main">
             <section class="order-card">
@@ -85,12 +86,16 @@
 
             <div class="checkout-items">
                 {% for item in items %}
-                <article class="checkout-item">
+                <article class="checkout-item" {% if item.vendor_listing_id %}data-cart-item-id="{{ item.id }}" data-vendor-listing-id="{{ item.vendor_listing_id }}" data-vendor-id="{{ item.vendor_listing.vendor_id }}" data-requires-shipping="true"{% endif %}>
                     <div>
                         <strong>{% if item.custom_design %}طراحی سفارشی{% else %}{{ item.product.name }}{% endif %}</strong>
                         {% if item.custom_design %}<small>{{ item.custom_design.design_code }}</small>{% endif %}
                         {% if item.variant %}
                         <small>{{ item.variant.color.name }} · {{ item.variant.size.name }}</small>
+                        {% endif %}
+                        {% if item.vendor_listing %}
+                        <small>فروشنده: {{ item.vendor_listing.vendor.store_name }}</small>
+                        <small class="shipping-quote-status" data-shipping-status="{{ item.id }}">هزینه ارسال محاسبه نشده</small>
                         {% endif %}
                     </div>
                     <div class="checkout-item__meta">
@@ -101,17 +106,33 @@
                 {% endfor %}
             </div>
 
-            <div class="checkout-summary__rows">
-                <div><span>جمع کالاها</span><strong>{{ subtotal|price }} تومان</strong></div>
-                <div><span>ارسال</span><strong>رایگان</strong></div>
+            <div class="checkout-summary__rows" data-subtotal="{{ subtotal }}">
+                <div><span>جمع کالاها</span><strong id="checkoutSubtotal">{{ subtotal|price }} تومان</strong></div>
+                <div><span>ارسال</span><strong id="shippingAmountDisplay">برای محاسبه انتخاب کن</strong></div>
             </div>
+            {% if mixed_fulfilment %}
+            <div class="order-card" role="alert" style="margin-top:12px;border-color:#b45309;">
+                این سبد شامل کالاهای فروشندگان و کالاهای خارج از مارکت‌پلیس است. فعلاً باید این نوع کالاها را در سفارش‌های جداگانه خریداری کنی تا ارسال و تسویه هر سفارش درست محاسبه شود.
+            </div>
+            {% endif %}
+            {% if has_vendor_listings %}
+            <div class="order-card" style="margin-top: 14px; padding: 14px;">
+                <label for="shippingProvider">شرکت حمل‌ونقل</label>
+                <select id="shippingProvider" class="order-textarea" style="min-height: 44px;">
+                    <option value="tipax">تیپاکس</option>
+                    <option value="post">شرکت ملی پست</option>
+                </select>
+                <button class="order-btn order-btn--secondary" type="button" id="quoteShippingButton" style="margin-top: 10px; width: 100%;">محاسبه هزینه ارسال</button>
+                <p id="shippingQuoteMessage" role="status" aria-live="polite" class="checkout-summary__hint">هزینه ارسال برای هر فروشنده جداگانه است و پیش از پرداخت باید محاسبه شود.</p>
+            </div>
+            {% endif %}
 
             <div class="checkout-summary__total">
                 <span>مبلغ قابل پرداخت</span>
-                <strong>{{ total_amount|price }} <small>تومان</small></strong>
+                <strong id="checkoutTotal" data-subtotal="{{ subtotal }}">{{ total_amount|price }} <small>تومان</small></strong>
             </div>
 
-            <button class="order-btn order-btn--primary" type="submit" {% if not addresses %}disabled{% endif %}>
+            <button class="order-btn order-btn--primary" type="submit" {% if not addresses or mixed_fulfilment %}disabled{% endif %}>
                 ادامه و ورود به پرداخت
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
             </button>
@@ -146,6 +167,97 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     sync();
+
+    const form = document.querySelector(".checkout-layout");
+    const quoteButton = document.getElementById("quoteShippingButton");
+    const quoteIdsInput = document.getElementById("shippingQuoteIds");
+    const shippingDisplay = document.getElementById("shippingAmountDisplay");
+    const totalDisplay = document.getElementById("checkoutTotal");
+    const quoteMessage = document.getElementById("shippingQuoteMessage");
+    const providerSelect = document.getElementById("shippingProvider");
+    const addressInputs = [...document.querySelectorAll("input[name='address_id']")];
+    const sellerItems = [...document.querySelectorAll("[data-requires-shipping='true']")];
+    const mixedFulfilment = {{ mixed_fulfilment|yesno:"true,false" }};
+    const money = (value) => new Intl.NumberFormat("fa-IR").format(value);
+    const clearQuotes = () => {
+        if (quoteIdsInput) quoteIdsInput.value = "";
+        sellerItems.forEach((item) => {
+            const status = item.querySelector("[data-shipping-status]");
+            if (status) status.textContent = "هزینه ارسال محاسبه نشده";
+        });
+        if (shippingDisplay) shippingDisplay.textContent = sellerItems.length ? "محاسبه نشده" : "رایگان";
+        if (totalDisplay) totalDisplay.innerHTML = money(Number(totalDisplay.dataset.subtotal || 0)) + ' <small>تومان</small>';
+    };
+    addressInputs.forEach((input) => input.addEventListener("change", clearQuotes));
+    if (providerSelect) providerSelect.addEventListener("change", clearQuotes);
+
+    if (quoteButton) {
+        quoteButton.addEventListener("click", async () => {
+            const address = document.querySelector("input[name='address_id']:checked");
+            if (!address) {
+                if (quoteMessage) quoteMessage.textContent = "ابتدا آدرس تحویل را انتخاب کن.";
+                return;
+            }
+            quoteButton.disabled = true;
+            quoteButton.textContent = "در حال استعلام...";
+            clearQuotes();
+            try {
+                const csrf = form.querySelector("input[name='csrfmiddlewaretoken']")?.value || "";
+                const groups = new Map();
+                sellerItems.forEach((item) => {
+                    const vendorId = item.dataset.vendorId;
+                    if (!groups.has(vendorId)) groups.set(vendorId, []);
+                    groups.get(vendorId).push(item);
+                });
+                const results = await Promise.all([...groups.values()].map(async (groupItems) => {
+                    const item = groupItems[0];
+                    const response = await fetch("/marketplace/api/shipping/quote/", {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: {"Content-Type": "application/json", "X-CSRFToken": csrf, "Accept": "application/json"},
+                        body: JSON.stringify({
+                            cart_item_id: Number(item.dataset.cartItemId),
+                            address_id: Number(address.value),
+                            provider: providerSelect.value
+                        })
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.ok) throw new Error(data.error || "استعلام هزینه ارسال ناموفق بود.");
+                    const label = money(data.amount) + " تومان · ارسال مشترک از " + (data.provider === "tipax" ? "تیپاکس" : "پست");
+                    groupItems.forEach((groupItem) => {
+                        const status = groupItem.querySelector("[data-shipping-status]");
+                        if (status) status.textContent = label;
+                    });
+                    return data;
+                }));
+                const totalShipping = results.reduce((sum, result) => sum + Number(result.amount), 0);
+                quoteIdsInput.value = results.map((result) => result.quote_id).join(",");
+                shippingDisplay.textContent = money(totalShipping) + " تومان";
+                totalDisplay.innerHTML = money(Number(totalDisplay.dataset.subtotal || 0) + totalShipping) + ' <small>تومان</small>';
+                if (quoteMessage) quoteMessage.textContent = "هزینه‌ها تا زمان انقضای استعلام معتبرند. اگر آدرس، تعداد یا قیمت کالا تغییر کرد دوباره استعلام بگیر.";
+            } catch (error) {
+                clearQuotes();
+                if (quoteMessage) quoteMessage.textContent = error.message || "اتصال به شرکت حمل‌ونقل برقرار نشد.";
+            } finally {
+                quoteButton.disabled = false;
+                quoteButton.textContent = "محاسبه هزینه ارسال";
+            }
+        });
+    }
+    if (form) {
+        form.addEventListener("submit", (event) => {
+            if (mixedFulfilment) {
+                event.preventDefault();
+                if (quoteMessage) quoteMessage.textContent = "کالاهای فروشندگان و کالاهای خارج از مارکت‌پلیس را در دو سفارش جدا ثبت کن.";
+                return;
+            }
+            if (sellerItems.length && !quoteIdsInput.value.trim()) {
+                event.preventDefault();
+                if (quoteMessage) quoteMessage.textContent = "قبل از ادامه، هزینه ارسال را محاسبه کن.";
+                quoteButton?.focus();
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

@@ -17,6 +17,7 @@
     const priceBreakdown = document.getElementById("price-breakdown");
     const totalEl = document.getElementById("designer-total");
     const variantSelect = document.getElementById("variant-select");
+    const vendorListingSelect = document.getElementById("designer-vendor-listing");
     const saveButton = document.getElementById("save-design");
     const saveStatus = document.getElementById("save-status");
     const uploadInput = document.getElementById("artwork-upload");
@@ -317,7 +318,8 @@
 
     function renderPrices() {
         const variant = variants.find((item) => String(item.id) === String(variantSelect.value));
-        const base = variant ? Number(variant.price) : basePrice;
+        const selectedVendorOption = vendorListingSelect && vendorListingSelect.value ? vendorListingSelect.selectedOptions[0] : null;
+        const base = selectedVendorOption ? Number(selectedVendorOption.dataset.price || 0) : (variant ? Number(variant.price) : basePrice);
         let total = base;
         const lines = [`<div class="price-line"><span>لباس</span><strong>${formatPrice(base)} تومان</strong></div>`];
         layers.forEach((layer) => {
@@ -551,12 +553,19 @@
     }
 
     variantSelect.addEventListener("change", renderPrices);
+    vendorListingSelect?.addEventListener("change", renderPrices);
 
     if (saveButton) saveButton.addEventListener("click", async () => {
         saveButton.disabled = true;
         saveStatus.textContent = "در حال بررسی و ذخیره طراحی…";
+        if (vendorListingSelect && !vendorListingSelect.value) {
+            saveStatus.textContent = "برای چاپ سفارشی، ابتدا فروشنده را انتخاب کن.";
+            saveButton.disabled = false;
+            return;
+        }
         const payload = {
             variant_id: variantSelect.value || null,
+            vendor_listing_id: vendorListingSelect?.value || null,
             version: 1,
             layers: layers.map(({ artwork_id, area_id, x, y, width, height, rotation }) => ({ artwork_id, area_id, x, y, width, height, rotation })),
         };

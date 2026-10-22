@@ -6,7 +6,7 @@ import re
 
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import Avg, Case, CharField, Count, Exists, F, IntegerField, Max, Min, OuterRef, Prefetch, Q, Subquery, Value, When
+from django.db.models import Avg, Case, CharField, Count, Exists, F, IntegerField, Max, Min, OuterRef, Prefetch, Q, Subquery, Sum, Value, When
 from django.db.models.functions import Concat
 from django.http import HttpResponsePermanentRedirect
 from django.contrib import messages
@@ -601,6 +601,39 @@ class ProductDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        from apps.marketplace.models import Vendor, VendorProduct
+        from apps.orders.models import Cart, CartItem
+        vendor_listings = list(
+            VendorProduct.objects.filter(
+                product=self.object,
+                status=VendorProduct.Status.ACTIVE,
+                vendor__status=Vendor.Status.ACTIVE,
+                vendor__user__is_active=True,
+            )
+            .select_related("vendor")
+            .prefetch_related("wholesale_tiers")
+            .order_by("retail_price", "id")
+        )
+        context["vendor_listings"] = vendor_listings
+        cart_listing_data = {}
+        listing_ids = [listing.id for listing in vendor_listings]
+        if listing_ids:
+            cart_lines = CartItem.objects.filter(
+                vendor_listing_id__in=listing_ids,
+                cart__status=Cart.Status.ACTIVE,
+                custom_design__isnull=True,
+            )
+            if self.request.user.is_authenticated:
+                cart_lines = cart_lines.filter(cart__user=self.request.user)
+            elif self.request.session.session_key:
+                cart_lines = cart_lines.filter(cart__user__isnull=True, cart__session_key=self.request.session.session_key)
+            else:
+                cart_lines = cart_lines.none()
+            cart_listing_data = {
+                f'{row["vendor_listing_id"]}:{row["variant_id"] or 0}': row["quantity"]
+                for row in cart_lines.values("vendor_listing_id", "variant_id").annotate(quantity=Sum("quantity"))
+            }
+        context["cart_listing_data"] = schema_json(cart_listing_data)
         canonical_url = absolute_url(self.request, self.request.path)
         breadcrumbs = [{"name": "فروشگاه", "url": absolute_url(self.request, "/shop/")}, {"name": self.object.category.name, "url": absolute_url(self.request, self.object.category.get_absolute_url())}, {"name": self.object.name, "url": canonical_url}]
         context["breadcrumbs"] = breadcrumbs

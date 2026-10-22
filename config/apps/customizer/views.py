@@ -208,7 +208,22 @@ class DesignerPageView(View):
         product_image = _file_url(request, primary_image.image) if primary_image else None
         first_background = view_data[0]["background"] if view_data else product_image
         designer_ready = bool(view_data and areas)
+        from apps.marketplace.models import Vendor, VendorProduct
+        vendor_listings = list(
+            VendorProduct.objects.filter(
+                product=product,
+                status=VendorProduct.Status.ACTIVE,
+                vendor__status=Vendor.Status.ACTIVE,
+                vendor__user__is_active=True,
+                vendor__supports_custom_printing=True,
+                supports_custom_printing=True,
+            )
+            .select_related("vendor")
+            .prefetch_related("wholesale_tiers")
+            .order_by("retail_price", "id")
+        )
         context = {
+            "vendor_listings": vendor_listings,
             "product": product,
             "product_image_url": product_image,
             "designer_views": views,
@@ -405,10 +420,23 @@ class AddDesignToCartView(View):
             if not isinstance(payload, dict):
                 raise ValidationError("اطلاعات طراحی نامعتبر است.")
             variant_id = payload.pop("variant_id", None)
+            vendor_listing_id = payload.pop("vendor_listing_id", None)
             variant = get_object_or_404(ProductVariant, id=variant_id, product=product, is_active=True) if variant_id else None
+            from apps.marketplace.models import Vendor, VendorProduct
+            eligible_listings = VendorProduct.objects.filter(
+                product=product,
+                status=VendorProduct.Status.ACTIVE,
+                vendor__status=Vendor.Status.ACTIVE,
+                vendor__user__is_active=True,
+                vendor__supports_custom_printing=True,
+                supports_custom_printing=True,
+            )
+            if eligible_listings.exists() and not vendor_listing_id:
+                raise ValidationError("برای چاپ و ارسال این محصول، ابتدا فروشنده را انتخاب کن.")
+            vendor_listing = get_object_or_404(eligible_listings, pk=vendor_listing_id) if vendor_listing_id else None
             from apps.orders.services import add_design_to_cart
             with transaction.atomic():
-                draft = save_design_draft(request=request, product=product, payload=payload, variant=variant)
+                draft = save_design_draft(request=request, product=product, payload=payload, variant=variant, vendor_listing=vendor_listing, base_price_override=vendor_listing.retail_price if vendor_listing else None)
                 update_fields = []
                 if preview_front:
                     draft.temp_preview_front_path = save_design_preview_to_temp(
@@ -427,7 +455,7 @@ class AddDesignToCartView(View):
                 if update_fields:
                     update_fields.append("updated_at")
                     draft.save(update_fields=update_fields)
-                add_design_to_cart(request, design=draft, quantity=1)
+                add_design_to_cart(request, design=draft, quantity=1, vendor_listing=vendor_listing)
                 draft.status = DesignDraft.Status.CART
                 draft.save(update_fields=["status", "updated_at"])
         except (json.JSONDecodeError, UnicodeDecodeError):
