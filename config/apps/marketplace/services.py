@@ -372,7 +372,7 @@ def create_shipping_quote(*, user, cart_item, address, provider):
         "length_cm": listing.package_length_cm,
         "width_cm": listing.package_width_cm,
         "height_cm": listing.package_height_cm,
-        "declared_value": int(listing.retail_price) * cart_item.quantity,
+        "declared_value": int(cart_item.unit_price) * cart_item.quantity,
         "service_level": "standard",
         "quantity": cart_item.quantity,
     }
@@ -410,7 +410,7 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
     if not seller_items:
         if quote_ids:
             raise ValidationError("برای سبدی بدون فروشنده، استعلام حمل نامعتبر است.")
-        return 0
+        return 0, []
     if len(seller_items) != len(items):
         raise ValidationError("برای سفارش چندفروشندگی، همه اقلام باید فروشنده مشخص داشته باشند.")
     normalized_ids = [str(value).strip() for value in quote_ids if str(value).strip()]
@@ -437,6 +437,7 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
             or quote.vendor_listing_id != item.vendor_listing_id
             or quote.quantity != item.quantity
             or quote.address_fingerprint != fingerprint
+            or int((quote.provider_payload.get("request") or {}).get("declared_value", -1)) != int(item.unit_price) * item.quantity
         ):
             raise ValidationError("استعلام ارسال با آدرس، فروشنده یا تعداد فعلی سبد مطابقت ندارد.")
         total += quote.amount
