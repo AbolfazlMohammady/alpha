@@ -86,7 +86,7 @@
 
             <div class="checkout-items">
                 {% for item in items %}
-                <article class="checkout-item" {% if item.vendor_listing_id %}data-cart-item-id="{{ item.id }}" data-vendor-listing-id="{{ item.vendor_listing_id }}" data-requires-shipping="true"{% endif %}>
+                <article class="checkout-item" {% if item.vendor_listing_id %}data-cart-item-id="{{ item.id }}" data-vendor-listing-id="{{ item.vendor_listing_id }}" data-vendor-id="{{ item.vendor_listing.vendor_id }}" data-requires-shipping="true"{% endif %}>
                     <div>
                         <strong>{% if item.custom_design %}طراحی سفارشی{% else %}{{ item.product.name }}{% endif %}</strong>
                         {% if item.custom_design %}<small>{{ item.custom_design.design_code }}</small>{% endif %}
@@ -197,7 +197,14 @@ document.addEventListener("DOMContentLoaded", () => {
             clearQuotes();
             try {
                 const csrf = form.querySelector("input[name='csrfmiddlewaretoken']")?.value || "";
-                const results = await Promise.all(sellerItems.map(async (item) => {
+                const groups = new Map();
+                sellerItems.forEach((item) => {
+                    const vendorId = item.dataset.vendorId;
+                    if (!groups.has(vendorId)) groups.set(vendorId, []);
+                    groups.get(vendorId).push(item);
+                });
+                const results = await Promise.all([...groups.values()].map(async (groupItems) => {
+                    const item = groupItems[0];
                     const response = await fetch("/marketplace/api/shipping/quote/", {
                         method: "POST",
                         credentials: "same-origin",
@@ -210,8 +217,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     });
                     const data = await response.json();
                     if (!response.ok || !data.ok) throw new Error(data.error || "استعلام هزینه ارسال ناموفق بود.");
-                    const status = item.querySelector("[data-shipping-status]");
-                    if (status) status.textContent = money(data.amount) + " تومان · " + (data.provider === "tipax" ? "تیپاکس" : "پست");
+                    const label = money(data.amount) + " تومان · ارسال مشترک از " + (data.provider === "tipax" ? "تیپاکس" : "پست");
+                    groupItems.forEach((groupItem) => {
+                        const status = groupItem.querySelector("[data-shipping-status]");
+                        if (status) status.textContent = label;
+                    });
                     return data;
                 }));
                 const totalShipping = results.reduce((sum, result) => sum + Number(result.amount), 0);
