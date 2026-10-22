@@ -87,7 +87,7 @@ class VendorProduct(models.Model):
             models.CheckConstraint(condition=Q(retail_price__gt=0), name="vendor_listing_price_gt_zero"),
             models.CheckConstraint(condition=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=0), name="vendor_listing_compare_nonnegative"),
         ]
-        indexes = [models.Index(fields=("vendor", "status"), name="market_listing_vendor_status_idx")]
+        indexes = [models.Index(fields=("vendor", "status"), name="market_listing_v_status_idx")]
 
     def clean(self):
         super().clean()
@@ -156,7 +156,7 @@ class VendorOrder(models.Model):
             models.UniqueConstraint(fields=("order", "vendor"), name="unique_vendor_order_per_order"),
             models.CheckConstraint(condition=Q(vendor_payable__gte=0), name="vendor_order_payable_nonnegative"),
         ]
-        indexes = [models.Index(fields=("vendor", "status", "created_at"), name="market_vorder_vendor_status_idx")]
+        indexes = [models.Index(fields=("vendor", "status", "created_at"), name="market_vorder_v_status_idx")]
 
     def save(self, *args, **kwargs):
         if self.pk:
@@ -266,7 +266,7 @@ class Shipment(models.Model):
     class Meta:
         ordering = ("-created_at",)
         indexes = [
-            models.Index(fields=("provider", "status", "created_at"), name="market_ship_provider_status_idx"),
+            models.Index(fields=("provider", "status", "created_at"), name="market_ship_p_status_idx"),
             models.Index(fields=("vendor_order", "status"), name="market_ship_order_status_idx"),
         ]
         constraints = [
@@ -400,7 +400,7 @@ class SettlementBatch(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
-        indexes = [models.Index(fields=("vendor", "status", "created_at"), name="market_settle_vendor_status_idx")]
+        indexes = [models.Index(fields=("vendor", "status", "created_at"), name="market_settle_v_status_idx")]
 
     def clean(self):
         super().clean()
