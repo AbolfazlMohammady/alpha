@@ -132,6 +132,8 @@ class CartItem(models.Model):
 
     @property
     def available_stock(self):
+        if self.vendor_listing_id:
+            return self.vendor_listing.stock_quantity
         return self.variant.stock_quantity if self.variant_id else None
 
     def __str__(self):
