@@ -105,9 +105,9 @@ class JsonCarrierClient:
                 return None
         return value
 
-    def _amount(self, data):
+    def _amount(self, data, *, amount_path_env="QUOTE_AMOUNT_PATH", currency_path_env="QUOTE_CURRENCY_PATH"):
         prefix = self.provider_code.upper()
-        configured_path = os.environ.get(f"{prefix}_QUOTE_AMOUNT_PATH", "")
+        configured_path = os.environ.get(f"{prefix}_{amount_path_env}", "")
         value = self._path_value(data, configured_path) if configured_path else None
         if value is None:
             # Common top-level fields are a fallback only; official response
@@ -122,7 +122,7 @@ class JsonCarrierClient:
         try:
             raw_amount = Decimal(str(value))
             divisor = Decimal(os.environ.get(f"{prefix}_AMOUNT_DIVISOR", "1"))
-            raw_currency = str(data.get("currency", "")).strip().upper()
+            raw_currency = str(self._path_value(data, os.environ.get(f"{prefix}_{currency_path_env}", "currency")) or "").strip().upper()
             if divisor <= 0:
                 raise InvalidOperation
             if raw_currency in {"IRR", "RIAL", "RIALS", "ریال"} and divisor == 1:
@@ -167,12 +167,16 @@ class JsonCarrierClient:
         tracking = tracking or data.get("tracking_number") or data.get("tracking_code") or data.get("barcode") or ""
         shipment_id = shipment_id or data.get("shipment_id") or data.get("id") or data.get("reference") or ""
         label = label or data.get("label_url") or data.get("label") or ""
+        actual_cost = None
+        if os.environ.get(f"{prefix}_SHIPMENT_COST_PATH"):
+            actual_cost = self._amount(data, amount_path_env="SHIPMENT_COST_PATH", currency_path_env="SHIPMENT_CURRENCY_PATH")
         if not tracking and not shipment_id:
             raise CarrierError("مرسوله در پاسخ API شناسه یا کد رهگیری ندارد؛ وضعیت را از پنل شرکت بررسی کنید.")
         return {
             "external_shipment_id": str(shipment_id)[:160],
             "tracking_number": str(tracking)[:160],
             "label_url": str(label)[:1000],
+            "actual_cost": actual_cost,
             "raw": data,
         }
 
@@ -191,7 +195,7 @@ class JsonCarrierClient:
         if cost is not None:
             try:
                 divisor = Decimal(os.environ.get(f"{prefix}_AMOUNT_DIVISOR", "1"))
-                raw_currency = str(data.get("currency", "")).strip().upper()
+                raw_currency = str(self._path_value(data, os.environ.get(f"{prefix}_TRACKING_CURRENCY_PATH", "currency")) or "").strip().upper()
                 if raw_currency in {"IRR", "RIAL", "RIALS", "ریال"} and divisor == 1:
                     raise CarrierError("API مبلغ را به ریال اعلام کرده؛ ضریب تبدیل به واحد پروژه را تنظیم کنید.")
                 normalized_cost = Decimal(str(cost)) / divisor
