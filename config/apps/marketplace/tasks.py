@@ -55,6 +55,11 @@ def refresh_active_shipments_task(self):
         checked += 1
         try:
             response = get_carrier(shipment.provider).track(shipment.tracking_number)
+            safe_response = {
+                key: response.get(key)
+                for key in ("status", "state", "tracking_status", "actual_cost", "shipping_cost", "final_cost", "event_time", "updated_at", "reference")
+                if key in response
+            }
             raw_status = str(response.get("status") or response.get("state") or response.get("tracking_status") or "").strip().lower()
             target = status_map.get(raw_status)
             now = timezone.now()
@@ -62,7 +67,7 @@ def refresh_active_shipments_task(self):
                 # Keep raw response for later mapping review, but don't invent a
                 # delivered state when the provider uses an unknown vocabulary.
                 Shipment.objects.filter(pk=shipment.pk).update(
-                    provider_payload={**shipment.provider_payload, "last_tracking_response": response},
+                    provider_payload={**shipment.provider_payload, "last_tracking_response": safe_response},
                     last_event_at=now,
                     last_error="وضعیت پاسخ API هنوز به وضعیت داخلی نگاشت نشده است.",
                     updated_at=now,
