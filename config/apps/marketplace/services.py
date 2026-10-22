@@ -280,6 +280,7 @@ def create_daily_settlement_batches(*, now=None):
                 SettlementBatch.Status.APPROVED,
                 SettlementBatch.Status.PROCESSING,
                 SettlementBatch.Status.PAID,
+                SettlementBatch.Status.FAILED,
             ])
             .distinct()
             .prefetch_related("shipments")
