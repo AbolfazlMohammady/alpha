@@ -728,18 +728,22 @@ def record_carrier_invoice_payment(*, invoice_reference: str, amount: int, actor
     with transaction.atomic():
         payable = get_system_account("carrier_payable", "بدهی به شرکت حمل‌ونقل", LedgerAccount.Kind.LIABILITY)
         clearing = get_system_account("gateway_clearing", "وجوه دریافتی درگاه", LedgerAccount.Kind.ASSET)
-        available = account_balance(payable)
-        if available < amount:
-            raise ValidationError(f"مبلغ پرداختی از بدهی ثبت‌شده به شرکت حمل بیشتر است؛ مانده ثبت‌شده {available}.")
         reference = str(provider_reference or invoice_reference).strip()[:180]
+        idempotency_key = f"carrier-payment:{invoice_reference}"
+        lines = [
+            {"account": payable, "debit": amount, "credit": 0, "memo": reference},
+            {"account": clearing, "debit": 0, "credit": amount, "memo": reference},
+        ]
+        existing = JournalEntry.objects.filter(idempotency_key=idempotency_key).first()
+        if not existing:
+            available = account_balance(payable)
+            if available < amount:
+                raise ValidationError(f"مبلغ پرداختی از بدهی ثبت‌شده به شرکت حمل بیشتر است؛ مانده ثبت‌شده {available}.")
         entry, created = post_journal(
-            idempotency_key=f"carrier-payment:{invoice_reference}",
+            idempotency_key=idempotency_key,
             kind="carrier_payment",
             description=f"پرداخت صورتحساب حمل {invoice_reference}",
-            lines=[
-                {"account": payable, "debit": amount, "credit": 0, "memo": reference},
-                {"account": clearing, "debit": 0, "credit": amount, "memo": reference},
-            ],
+            lines=lines,
             created_by=actor,
             metadata={"invoice_reference": invoice_reference, "provider_reference": reference},
         )
