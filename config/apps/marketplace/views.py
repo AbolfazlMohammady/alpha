@@ -11,7 +11,7 @@ from django.db.models import Sum
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_GET, require_POST, require_http_methods
 
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
 from apps.orders.models import Cart, CartItem
@@ -379,6 +379,46 @@ def vendor_wholesale_tier_delete_api(request, tier_id):
         return JsonResponse({"ok": True, "deleted": True})
     except PermissionDenied as exc:
         return _error(exc, 403)
+
+
+@login_required
+@require_http_methods(["PATCH", "DELETE"])
+def vendor_wholesale_tier_detail_api(request, tier_id):
+    try:
+        tier = get_object_or_404(
+            WholesalePriceTier.objects.select_related("listing", "listing__vendor"),
+            pk=tier_id,
+            listing__vendor__user=request.user,
+        )
+        listing = tier.listing
+        if request.method == "DELETE":
+            with transaction.atomic():
+                tier.delete()
+                listing = VendorProduct.objects.select_for_update().get(pk=listing.pk)
+                if not listing.wholesale_tiers.exists():
+                    listing.wholesale_enabled = False
+                listing.status = VendorProduct.Status.PENDING
+                listing.save(update_fields=("wholesale_enabled", "status", "updated_at"))
+            return JsonResponse({"ok": True, "message": "پله عمده حذف شد و تغییرات برای بررسی ارسال شد."})
+        payload = _json_body(request)
+        if set(payload) - {"minimum_quantity", "unit_price"}:
+            return _error("فقط حداقل تعداد و قیمت واحد قابل ویرایش است.")
+        if "minimum_quantity" in payload:
+            tier.minimum_quantity = int(payload["minimum_quantity"])
+        if "unit_price" in payload:
+            tier.unit_price = int(payload["unit_price"])
+        tier.full_clean()
+        with transaction.atomic():
+            tier.save()
+            listing = VendorProduct.objects.select_for_update().get(pk=listing.pk)
+            listing.wholesale_enabled = True
+            listing.status = VendorProduct.Status.PENDING
+            listing.save(update_fields=("wholesale_enabled", "status", "updated_at"))
+        return JsonResponse({"ok": True, "message": "پله عمده به‌روزرسانی شد و برای بررسی ارسال شد."})
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    except (ValidationError, TypeError, ValueError) as exc:
+        return _error(exc)
 
 
 @login_required
