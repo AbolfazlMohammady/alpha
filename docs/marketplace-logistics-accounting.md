@@ -12,7 +12,7 @@ All monetary amounts use the repository's integer IRT convention. Keep one unit 
 
 1. Admin creates and approves a Vendor; bank details must be verified before settlement approval.
 2. Seller creates a VendorProduct listing. New listings and seller price changes enter pending review; admin activates them.
-3. Each listing can hold its own inventory, retail price, wholesale quantity tiers, parcel weight/dimensions, and custom-printing capability.
+3. Each listing can hold its own inventory, retail price, wholesale quantity tiers, parcel weight/dimensions, and custom-printing capability. The product page and 3D designer let the buyer choose an active seller; custom designs use the selected seller retail price as their base price plus the existing print-layer charges.
 4. At checkout, the authenticated buyer selects an address. The server obtains a short-lived quote from the chosen carrier using the seller's configured pickup postal code and the saved destination address. The quote is bound to the buyer, cart line, listing, quantity, price, and address fingerprint; it expires after 15 minutes if the provider does not return a shorter validity.
 5. The quote amount becomes part of the order total. Once payment succeeds, each order line retains the exact vendor listing and the system creates one VendorOrder per seller only if every line has an explicit seller. Mixed legacy/seller carts are rejected at quote consumption instead of being partially routed.
 6. Seller accepts, prepares, and marks the seller order ready to ship. Seller requests a final packed-parcel quote, books a shipment, and hands the package to the carrier or carrier pickup service. Booking timeouts are treated as ambiguous; check the carrier portal before retrying.
@@ -85,7 +85,7 @@ Seller dashboard UI is available at /marketplace/vendor/dashboard/. All seller e
 - POST /marketplace/api/admin/accounting/carrier-payment/
 - POST /marketplace/api/admin/accounting/gateway-settlement/
 
-The endpoints are a backend interface; this change does not claim to deliver a finished seller-facing HTML dashboard.
+The seller-facing dashboard is intentionally a functional first version; styling and product catalog workflows can be refined after end-to-end acceptance testing.
 
 ## Accounting safeguards and current scope
 
