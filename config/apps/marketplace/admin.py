@@ -47,6 +47,7 @@ class VendorAdmin(admin.ModelAdmin):
     def verify_bank_details(self, request, queryset):
         from django.utils import timezone
         from django.contrib import messages
+        from django.core.exceptions import ValidationError
         count = 0
         invalid = 0
         for vendor in queryset:
