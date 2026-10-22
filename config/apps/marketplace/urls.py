@@ -7,6 +7,7 @@ app_name = "marketplace"
 urlpatterns = [
     path("api/shipping/quote/", views.cart_shipping_quote_api, name="cart_shipping_quote_api"),
     path("api/vendor/dashboard/", views.vendor_dashboard_api, name="vendor_dashboard_api"),
+    path("api/vendor/orders/", views.vendor_orders_api, name="vendor_orders_api"),
     path("api/vendor/products/", views.vendor_products_api, name="vendor_products_api"),
     path("api/vendor/products/<int:listing_id>/", views.vendor_product_update_api, name="vendor_product_update_api"),
     path("api/vendor/products/<int:listing_id>/wholesale/", views.vendor_wholesale_tier_api, name="vendor_wholesale_tier_api"),
