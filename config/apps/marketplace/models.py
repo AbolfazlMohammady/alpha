@@ -171,6 +171,7 @@ class ShippingQuote(models.Model):
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="marketplace_shipping_quotes")
     cart_item = models.ForeignKey("orders.CartItem", on_delete=models.PROTECT, related_name="shipping_quotes")
+    order = models.ForeignKey("orders.Order", on_delete=models.PROTECT, related_name="shipping_quotes", null=True, blank=True)
     vendor_listing = models.ForeignKey(VendorProduct, on_delete=models.PROTECT, related_name="shipping_quotes")
     provider = models.CharField(max_length=16, choices=[("tipax", "تیپاکس"), ("post", "شرکت ملی پست")])
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.VALID, db_index=True)
