@@ -1,0 +1,68 @@
+{% extends "control_center/base.html" %}
+
+{% block title %}تنظیمات تماس با ما | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head">
+    <div>
+        <span class="cc-eyebrow">STORE / CONTACT</span>
+        <h1>تماس با ما</h1>
+        <p>متن و شماره‌ای که در صفحه عمومی تماس با ما نمایش داده می‌شود را از اینجا مدیریت کن.</p>
+    </div>
+</div>
+
+<form method="post" class="cc-form cc-contact-settings-form">
+    {% csrf_token %}
+
+    <section class="cc-card cc-contact-settings-card">
+        <div class="cc-card-head">
+            <div>
+                <span class="cc-eyebrow">CONTACT CONTENT</span>
+                <h2>محتوای صفحه</h2>
+            </div>
+        </div>
+
+        <div class="cc-form-grid">
+            <div class="cc-field">
+                <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+                {{ form.title }}
+                {% if form.title.errors %}<small class="cc-error">{{ form.title.errors|striptags }}</small>{% endif %}
+            </div>
+
+            <div class="cc-field">
+                <label for="{{ form.phone_label.id_for_label }}">{{ form.phone_label.label }}</label>
+                {{ form.phone_label }}
+                {% if form.phone_label.errors %}<small class="cc-error">{{ form.phone_label.errors|striptags }}</small>{% endif %}
+            </div>
+
+            <div class="cc-field cc-field-full">
+                <label for="{{ form.intro.id_for_label }}">{{ form.intro.label }}</label>
+                {{ form.intro }}
+                {% if form.intro.errors %}<small class="cc-error">{{ form.intro.errors|striptags }}</small>{% endif %}
+                <small class="cc-help">این متن در بخش اصلی صفحه تماس با ما نمایش داده می‌شود.</small>
+            </div>
+
+            <div class="cc-field cc-field-phone">
+                <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+                {{ form.phone }}
+                {% if form.phone.errors %}<small class="cc-error">{{ form.phone.errors|striptags }}</small>{% endif %}
+                <small class="cc-help">مثلاً 0912 123 4567</small>
+            </div>
+        </div>
+    </section>
+
+    <section class="cc-card cc-contact-preview-card">
+        <div>
+            <span class="cc-eyebrow">PUBLIC PAGE</span>
+            <h2>پیش‌نمایش سریع</h2>
+            <p>بعد از ذخیره، همین اطلاعات در صفحه تماس با ما نمایش داده می‌شود.</p>
+        </div>
+        <a class="cc-btn" href="{% url 'shop:contact' %}" target="_blank" rel="noopener">مشاهده صفحه ↗</a>
+    </section>
+
+    <div class="cc-form-actions">
+        <button class="cc-btn primary" type="submit">ذخیره اطلاعات</button>
+        <a class="cc-btn" href="{% url 'control:dashboard' %}">انصراف</a>
+    </div>
+</form>
+{% endblock %}

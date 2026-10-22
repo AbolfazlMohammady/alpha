@@ -1,0 +1,95 @@
+{% extends "users/account_base.html" %}
+{% load static %}
+
+{% block title %}اطلاعات شخصی | BABAEI{% endblock %}
+
+{% block account_content %}
+<header class="account-page-header">
+    <div class="account-page-header__copy">
+        <span class="account-page-header__eyebrow">PROFILE</span>
+        <h1 class="account-page-title">اطلاعات شخصی</h1>
+        <p class="account-page-description">نام، راه ارتباطی و مشخصات فردی‌ات را کامل نگه دار تا سفارش‌ها درست به تو برسد.</p>
+    </div>
+</header>
+
+<article class="ac-card profile-card">
+    <form method="post" action="{% url 'users:profile_update' %}" enctype="multipart/form-data" class="ac-form profile-form">
+        {% csrf_token %}
+
+        <section class="profile-identity">
+            <div class="profile-image profile-image--large">
+                {% if user.image %}<img src="{{ user.image.url }}" alt="تصویر پروفایل">{% else %}<span aria-hidden="true">{{ user.first_name|first|default:"ب" }}</span>{% endif %}
+            </div>
+            <div class="profile-identity__info">
+                <h2>{{ user.get_full_name|default:"کاربر BABAEI" }}</h2>
+            </div>
+            <label class="ac-btn ac-btn--ghost ac-btn--sm profile-file">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h3.2l1.4-2.2h6.8l1.4 2.2H20v10H4z"></path><circle cx="12" cy="13" r="3.2"></circle></svg>
+                <span>تغییر تصویر</span>
+                <input type="file" name="image" accept="image/jpeg,image/png,image/webp">
+            </label>
+        </section>
+
+        <div class="ac-form__grid profile-grid">
+            <div class="ac-field profile-field">
+                <label class="ac-label" for="first-name">نام</label>
+                <input id="first-name" class="ac-input" type="text" name="first_name" value="{{ user.first_name }}" autocomplete="given-name">
+            </div>
+            <div class="ac-field profile-field">
+                <label class="ac-label" for="last-name">نام خانوادگی</label>
+                <input id="last-name" class="ac-input" type="text" name="last_name" value="{{ user.last_name }}" autocomplete="family-name">
+            </div>
+            <div class="ac-field profile-field">
+                <label class="ac-label" for="phone">شماره موبایل</label>
+                <input id="phone" class="ac-input" type="tel" value="{{ user.phone }}" disabled dir="ltr">
+                <span class="ac-hint">شماره موبایل شناسه ورود است و از این فرم تغییر نمی‌کند.</span>
+            </div>
+            <div class="ac-field profile-field">
+                <label class="ac-label" for="email">ایمیل</label>
+                <input id="email" class="ac-input" type="email" name="email" value="{{ user.email|default:'' }}" dir="ltr" autocomplete="email" placeholder="name@example.com">
+            </div>
+            <div class="ac-field jalali-picker-field profile-field profile-field--wide">
+                <label class="ac-label" for="birth-date-display">تاریخ تولد</label>
+                <div class="ac-input-group">
+                    <input id="birth-date-display" class="ac-input jalali-date-input" type="text" value="" placeholder="سال / ماه / روز" readonly autocomplete="off" aria-haspopup="dialog" aria-expanded="false" data-jalali-picker>
+                    <span class="ac-input-group__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 6.5h15v13h-15z"></path><path d="M8 4v4M16 4v4M4.5 11h15"></path></svg></span>
+                </div>
+                <span class="ac-hint">برای انتخاب تاریخ، روی کادر بزن.</span>
+                <input type="hidden" name="birth_date" value="{{ user.birth_date|date:'Y-m-d' }}" data-gregorian-input>
+                <div class="jalali-picker" data-jalali-calendar hidden></div>
+            </div>
+            <div class="ac-field profile-field profile-field--wide">
+                <label class="ac-label" id="gender-label">جنسیت</label>
+                <div class="ac-choice gender-choice" role="radiogroup" aria-labelledby="gender-label">
+                    <label class="ac-choice__option gender-option {% if user.gender == 'male' %}is-selected{% endif %}">
+                        <input type="radio" name="gender" value="male" {% if user.gender == 'male' %}checked{% endif %}>
+                        <span class="ac-choice__icon" aria-hidden="true">♂</span><span>آقا</span>
+                    </label>
+                    <label class="ac-choice__option gender-option {% if user.gender == 'female' %}is-selected{% endif %}">
+                        <input type="radio" name="gender" value="female" {% if user.gender == 'female' %}checked{% endif %}>
+                        <span class="ac-choice__icon" aria-hidden="true">♀</span><span>خانم</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="ac-form__actions profile-actions">
+            <button class="ac-btn ac-btn--primary profile-save" type="submit">ذخیره تغییرات</button>
+        </div>
+    </form>
+</article>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/profile.js' %}?v=8" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.gender-option input').forEach(input => {
+        input.addEventListener('change', () => {
+            document.querySelectorAll('.gender-option').forEach(option => option.classList.remove('is-selected'));
+            input.closest('.gender-option')?.classList.add('is-selected');
+        });
+    });
+});
+</script>
+{% endblock %}

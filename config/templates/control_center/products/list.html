@@ -1,0 +1,89 @@
+{% extends "control_center/base.html" %}
+{% block title %}محصولات | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-page-head cc-list-page-head cc-entity-list-head">
+  <div>
+    <span class="cc-eyebrow">STORE / PRODUCTS</span>
+    <h1>محصولات</h1>
+    <p>محصولات، قیمت، موجودی و وضعیت انتشار را از اینجا مدیریت کن.</p>
+  </div>
+  <div class="cc-list-head-side">
+    <span class="cc-list-count"><b>{{ page_obj.paginator.count }}</b> محصول</span>
+    <a class="cc-btn primary cc-list-add-btn" href="{% url 'control:product_create' %}"><span>+</span> محصول جدید</a>
+  </div>
+</div>
+
+<form class="cc-toolbar cc-list-toolbar cc-entity-list-search" method="get">
+  <div class="cc-search-wrap">
+    <span class="cc-search-icon" aria-hidden="true">⌕</span>
+    <input class="cc-input" name="q" value="{{ request.GET.q }}" placeholder="جستجوی محصول یا اسلاگ...">
+  </div>
+  <button class="cc-btn cc-search-btn" type="submit">جستجو</button>
+</form>
+
+<div class="cc-card cc-list-card cc-entity-list-card">
+  <div class="cc-list-card-head">
+    <div>
+      <strong>لیست محصولات</strong>
+      <small>هر صفحه ۲۵ محصول نمایش داده می‌شود.</small>
+    </div>
+    {% if request.GET.q %}<a class="cc-clear-filter" href="{% url 'control:products' %}">حذف فیلتر ×</a>{% endif %}
+  </div>
+
+  <div class="cc-mobile-entity-list">
+    {% for item in products %}
+      <article class="cc-mobile-entity-card">
+        <div class="cc-mobile-entity-top">
+          <div class="cc-mobile-entity-title">
+            <span class="cc-entity-avatar cc-product-avatar">P</span>
+            <div>
+              <strong>{{ item.name }}</strong>
+              <small>{{ item.slug }}</small>
+            </div>
+          </div>
+          <span class="cc-badge {% if item.is_active %}success{% else %}danger{% endif %}">{% if item.is_active %}فعال{% else %}غیرفعال{% endif %}</span>
+        </div>
+
+        <div class="cc-mobile-entity-grid">
+          <div><span>دسته</span><strong>{{ item.category.name }}</strong></div>
+          <div><span>قیمت</span><strong class="is-gold">{{ item.min_price|default:item.base_price|floatformat:0 }} <small>تومان</small></strong></div>
+          <div><span>موجودی</span><strong>{{ item.stock|default:0 }}</strong></div>
+          <div><span>تنوع</span><strong>{{ item.variant_count }}</strong></div>
+        </div>
+
+        <div class="cc-mobile-entity-actions">
+          <a class="cc-action-btn" href="{% url 'control:product_edit' item.pk %}">ویرایش محصول</a>
+          <a class="cc-action-btn danger-link" href="{% url 'control:product_delete' item.pk %}">حذف</a>
+        </div>
+      </article>
+    {% empty %}
+      <div class="cc-mobile-entity-empty"><strong>محصولی پیدا نشد</strong><span>{% if request.GET.q %}عبارت جستجو را تغییر بده یا فیلتر را پاک کن.{% else %}هنوز محصولی ثبت نشده است.{% endif %}</span></div>
+    {% endfor %}
+  </div>
+
+  <div class="cc-table-wrap cc-list-table-wrap cc-desktop-entity-list">
+    <table class="cc-table cc-table-v2">
+      <thead>
+        <tr><th>محصول</th><th>دسته</th><th>قیمت</th><th>موجودی</th><th>تنوع</th><th>وضعیت</th><th>عملیات</th></tr>
+      </thead>
+      <tbody>
+        {% for item in products %}
+        <tr class="cc-data-row">
+          <td><div class="cc-entity-cell"><span class="cc-entity-avatar cc-product-avatar">P</span><div><strong>{{ item.name }}</strong><small>{{ item.slug }}</small></div></div></td>
+          <td><span class="cc-table-muted">{{ item.category.name }}</span></td>
+          <td><div class="cc-price-cell"><strong>{{ item.min_price|default:item.base_price|floatformat:0 }}</strong><small>تومان</small></div></td>
+          <td><span class="cc-stock-value {% if item.stock|default:0 == 0 %}is-empty{% endif %}">{{ item.stock|default:0 }}</span></td>
+          <td><span class="cc-number-pill">{{ item.variant_count }}</span></td>
+          <td><span class="cc-badge {% if item.is_active %}success{% else %}danger{% endif %}">{% if item.is_active %}فعال{% else %}غیرفعال{% endif %}</span></td>
+          <td><div class="cc-row-actions cc-row-actions-v2"><a class="cc-action-btn" href="{% url 'control:product_edit' item.pk %}">ویرایش</a><a class="cc-action-btn danger-link" href="{% url 'control:product_delete' item.pk %}">حذف</a></div></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="cc-empty cc-list-empty"><span>⌕</span><strong>محصولی پیدا نشد</strong><small>{% if request.GET.q %}عبارت جستجو را تغییر بده یا فیلتر را پاک کن.{% else %}هنوز محصولی ثبت نشده است.{% endif %}</small></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "control_center/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}حساب کاربری | BABAEI{% endblock %}
+{% block body_class %}account-body{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/account.css' %}?v=11">
+{% endblock %}
+{% block site_optional_css %}
+{% endblock %}
+{% block content %}
+{% with ns=request.resolver_match.url_name %}
+<section class="account-page">
+    <div class="account-layout">
+        <aside class="account-sidebar">
+            <div class="account-user">
+                <div class="account-avatar">{% if request.user.image %}<img src="{{ request.user.image.url }}" alt="{{ request.user.get_full_name }}">{% else %}<span aria-hidden="true">{{ request.user.first_name|first|default:"ب" }}</span>{% endif %}</div>
+                <div class="account-user__meta">
+                    <strong class="account-user__name">{{ request.user.get_full_name|default:"کاربر BABAEI" }}</strong>
+                    {% if request.user.phone %}<span class="account-user__phone" dir="ltr">{{ request.user.phone }}</span>{% endif %}
+                    <span class="account-user__tag">عضو BABAEI</span>
+                </div>
+            </div>
+            <nav class="account-nav" aria-label="منوی حساب کاربری">
+                <a href="{% url 'users:profile' %}" class="account-nav__item {% if ns == 'profile' or ns == 'profile_update' %}is-active{% endif %}"{% if ns == 'profile' or ns == 'profile_update' %} aria-current="page"{% endif %}>
+                    <span class="account-nav__index" aria-hidden="true">01</span>
+                    <span class="account-nav__label">اطلاعات شخصی</span>
+                    <span class="account-nav__chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"></path></svg></span>
+                </a>
+                <a href="{% url 'users:addresses' %}" class="account-nav__item {% if ns == 'addresses' or ns == 'address_create' or ns == 'address_update' %}is-active{% endif %}"{% if ns == 'addresses' or ns == 'address_create' or ns == 'address_update' %} aria-current="page"{% endif %}>
+                    <span class="account-nav__index" aria-hidden="true">02</span>
+                    <span class="account-nav__label">آدرس‌ها</span>
+                    <span class="account-nav__chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"></path></svg></span>
+                </a>
+                <a href="{% url 'orders:list' %}" class="account-nav__item {% if ns == 'list' or ns == 'detail' or ns == 'payment' or ns == 'checkout' or ns == 'invoice' %}is-active{% endif %}"{% if ns == 'list' or ns == 'detail' or ns == 'payment' or ns == 'checkout' or ns == 'invoice' %} aria-current="page"{% endif %}>
+                    <span class="account-nav__index" aria-hidden="true">03</span>
+                    <span class="account-nav__label">سفارش‌های من</span>
+                    <span class="account-nav__chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"></path></svg></span>
+                </a>
+                <a href="{% url 'saved:saved' %}" class="account-nav__item {% if ns == 'saved' %}is-active{% endif %}"{% if ns == 'saved' %} aria-current="page"{% endif %}>
+                    <span class="account-nav__index" aria-hidden="true">04</span>
+                    <span class="account-nav__label">علاقه‌مندی‌ها</span>
+                    <span class="account-nav__chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"></path></svg></span>
+                </a>
+            </nav>
+            <form class="account-logout-form" method="post" action="{% url 'users:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="account-logout" aria-label="خروج از حساب">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10"></path><path d="M13 8l4 4-4 4"></path><path d="M9 12h8"></path></svg><span>خروج از حساب</span>
+                </button>
+            </form>
+        </aside>
+        <div class="account-content">{% block account_content %}{% endblock %}</div>
+    </div>
+</section>
+{% comment %}
+The account shell used to carry its own footer here, which meant two footers on
+every account page. The site footer below covers the same ground — the shop, the
+account links and favourites — so this one is gone rather than duplicated.
+{% endcomment %}
+{% endwith %}
+{% endblock %}

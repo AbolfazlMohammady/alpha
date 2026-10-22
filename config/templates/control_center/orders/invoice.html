@@ -1,0 +1,95 @@
+{% extends "control_center/base.html" %}
+{% load shop_tags %}
+{% block title %}فاکتور {{ order.number }} | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-invoice-page">
+  <div class="cc-page-head cc-invoice-head">
+    <div>
+      <div class="cc-breadcrumb"><a href="{% url 'control:order_detail' order.pk %}">سفارش {{ order.number }}</a><span>/</span><span>فاکتور</span></div>
+      <span class="cc-eyebrow">ORDER / INVOICE</span>
+      <h1>فاکتور فروش</h1>
+      <p>سفارش {{ order.number }} · {{ order.created_at|date:"Y/m/d - H:i" }}</p>
+    </div>
+    <div class="cc-invoice-actions">
+      <button class="cc-btn primary" type="button" onclick="window.print()">چاپ / ذخیره PDF</button>
+      <a class="cc-btn" href="{% url 'control:order_detail' order.pk %}">بازگشت</a>
+    </div>
+  </div>
+
+  <article class="cc-card cc-invoice-card">
+    <header class="cc-invoice-card-head">
+      <div>
+        <strong>BABAEI</strong>
+        <span>WEAR YOUR STORY</span>
+      </div>
+      <div class="cc-invoice-order-meta">
+        <b dir="ltr">{{ order.number }}</b>
+        <small>{{ order.created_at|date:"Y/m/d - H:i" }}</small>
+      </div>
+    </header>
+
+    <div class="cc-invoice-meta-grid">
+      <section>
+        <span>خریدار</span>
+        <strong>{{ order.shipping_recipient|default:"مشتری BABAEI" }}</strong>
+        <small dir="ltr">{{ order.shipping_phone }}</small>
+      </section>
+      <section>
+        <span>تحویل</span>
+        <strong>{{ order.shipping_title|default:"آدرس تحویل" }}</strong>
+        <small>{{ order.shipping_province }}، {{ order.shipping_city }}</small>
+      </section>
+      <section>
+        <span>پرداخت</span>
+        <strong>{{ order.get_payment_status_display }}</strong>
+        <small dir="ltr">{{ order.payment_reference|default:"—" }}</small>
+      </section>
+    </div>
+
+    <div class="cc-invoice-address">
+      <span>نشانی کامل</span>
+      <strong>{{ order.shipping_address|default:"—" }}</strong>
+      <small dir="ltr">کد پستی: {{ order.shipping_postal_code|default:"—" }}</small>
+    </div>
+
+    <div class="cc-invoice-table-wrap">
+      <table class="cc-invoice-table">
+        <thead>
+          <tr>
+            <th>محصول</th><th>مشخصات</th><th>تعداد</th><th>قیمت واحد</th><th>جمع</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in order.items.all %}
+          <tr>
+            <td>
+              <strong>{% if item.custom_design %}{{ item.product.name }}{% else %}{{ item.product_name }}{% endif %}</strong>
+              {% if item.custom_design_code %}<small dir="ltr">طراحی: {{ item.custom_design_code }}</small>{% endif %}
+            </td>
+            <td>
+              <span>{{ item.color_name|default:"—" }}{% if item.color_name and item.size_name %} / {% endif %}{{ item.size_name|default:"" }}</span>
+              {% if item.variant_sku %}<small dir="ltr">{{ item.variant_sku }}</small>{% endif %}
+            </td>
+            <td>{{ item.quantity }}</td>
+            <td dir="ltr">{{ item.unit_price|price }}</td>
+            <td dir="ltr">{{ item.line_total|price }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cc-invoice-total-box">
+      <div><span>جمع کالاها</span><strong>{{ order.subtotal|price }} تومان</strong></div>
+      <div><span>تخفیف</span><strong>{{ order.discount_amount|price }} تومان</strong></div>
+      <div><span>هزینه ارسال</span><strong>{% if order.shipping_amount %}{{ order.shipping_amount|price }} تومان{% else %}رایگان{% endif %}</strong></div>
+      <div class="grand"><span>مبلغ نهایی</span><strong>{{ order.total_amount|price }} تومان</strong></div>
+    </div>
+
+    <footer class="cc-invoice-footer">
+      <span>این فاکتور از داخل مرکز کنترل BABAEI صادر شده است.</span>
+      <span dir="ltr">{{ order.number }}</span>
+    </footer>
+  </article>
+</div>
+{% endblock %}

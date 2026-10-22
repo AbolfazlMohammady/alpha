@@ -1,0 +1,3 @@
+{% extends "control_center/base.html" %}
+{% block title %}تأیید حذف | BABAEI{% endblock %}
+{% block content %}<div class="cc-card cc-confirm"><span class="cc-eyebrow">CONFIRM</span><h1>حذف این مورد؟</h1><p>این عملیات قابل بازگشت نیست. اگر مطمئن هستی ادامه بده.</p><form method="post">{% csrf_token %}<button class="cc-btn danger" type="submit">حذف</button><a class="cc-btn" href="javascript:history.back()">انصراف</a></form></div>{% endblock %}

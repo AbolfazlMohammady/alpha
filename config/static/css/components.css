@@ -1,0 +1,1019 @@
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+.btn,
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 46px;
+    padding-inline: 22px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background-color 180ms ease, color 180ms ease, border-color 180ms ease, opacity 180ms ease, transform 180ms ease;
+}
+
+.btn-primary,
+.button--dark { background: #111; color: #fff; }
+.button--light { background: #fff; color: #111; border: 1px solid #fff; }
+
+/* =========================================================
+   FORMS
+========================================================= */
+
+.form-group { display: flex; flex-direction: column; gap: 8px; }
+.form-label { font-size: 13px; font-weight: 600; }
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    background: #fff;
+    outline: none;
+    transition: border-color 180ms ease;
+}
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus { border-color: #111; }
+.form-textarea { min-height: 120px; resize: vertical; }
+
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+
+/* =========================================================
+   SITE HEADER
+========================================================= */
+
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    width: 100%;
+    background: rgba(255,255,255,.96);
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color 250ms ease, border-color 250ms ease, box-shadow 250ms ease;
+}
+
+.site-header__inner {
+    width: min(calc(100% - 64px), var(--container));
+    min-height: 68px;
+    margin-inline: auto;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 24px;
+    direction: ltr;
+}
+
+.site-logo {
+    justify-self: start;
+    font-family: Arial, sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 5px;
+    line-height: 1;
+}
+
+.site-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    direction: rtl;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.site-nav a {
+    position: relative;
+    padding-block: 7px;
+    transition: opacity 180ms ease;
+}
+
+.site-nav a::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 250ms ease;
+}
+
+/* =========================================================
+   HEADER ACTIONS
+========================================================= */
+
+.site-actions {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    direction: ltr;
+}
+
+.header-icon {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    color: currentColor;
+}
+
+.header-icon svg {
+    width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.35;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.header-cart__badge {
+    position: absolute;
+    top: 1px;
+    right: 0;
+    min-width: 14px;
+    height: 14px;
+    padding-inline: 3px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #111;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    font-size: 8px;
+    line-height: 1;
+}
+
+.header-menu-button { display: none; }
+
+/* =========================================================
+   HOME HEADER
+========================================================= */
+
+.home-page .site-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: transparent;
+    border-bottom-color: rgba(255,255,255,.18);
+    color: #fff;
+}
+
+.home-page .site-header.is-scrolled {
+    background: rgba(15,15,15,.88);
+    border-bottom-color: rgba(255,255,255,.10);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.home-page .site-logo,
+.home-page .site-nav,
+.home-page .site-actions { color: #fff; }
+
+/* =========================================================
+   MOBILE MENU
+========================================================= */
+
+.mobile-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    visibility: hidden;
+    pointer-events: none;
+}
+.mobile-menu.is-open { visibility: visible; pointer-events: auto; }
+.mobile-menu__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.45); opacity: 0; transition: opacity 300ms ease; }
+.mobile-menu.is-open .mobile-menu__backdrop { opacity: 1; }
+.mobile-menu__panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    width: min(86vw,390px);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    background: #fff;
+    color: #111;
+    transform: translateX(100%);
+    transition: transform 450ms cubic-bezier(.22,.61,.36,1);
+    box-shadow: -15px 0 45px rgba(0,0,0,.12);
+}
+.mobile-menu.is-open .mobile-menu__panel { transform: translateX(0); }
+.mobile-menu__header { min-height: 46px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e7e7e4; }
+.mobile-menu__logo { font-family: Arial,sans-serif; font-size: 18px; font-weight: 700; letter-spacing: 4px; }
+.mobile-menu__close { width: 40px; height: 40px; display: grid; place-items: center; background: transparent; color: #111; }
+.mobile-menu__close svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.mobile-menu__nav { display: flex; flex-direction: column; margin-top: 20px; }
+.mobile-menu__nav a { min-height: 62px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e7e7e4; font-size: 16px; }
+.mobile-menu__nav a span:last-child { color: #999; font-family: Arial,sans-serif; font-size: 10px; }
+.mobile-menu__footer { margin-top: auto; padding-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+.mobile-menu__footer a { min-height: 44px; display: flex; align-items: center; padding-inline: 14px; border: 1px solid #e2e2df; border-radius: 5px; font-size: 12px; }
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.site-footer__stage {
+    /* The curtain. This is the spacer the page scrolls past: 100dvh of normal
+       flow at the end of the document, clipping what it holds. The footer
+       inside it is fixed to the viewport, so it waits at the bottom of the
+       window and is revealed as this box rises — and because the box is the
+       clipping rectangle, the footer is never visible a moment before or
+       after. */
+    position: relative;
+    z-index: 0;
+    height: 100dvh;
+    margin-top: clamp(36px, 5vw, 56px);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+
+/* The content has to be opaque and stacked over the pinned footer, or the
+   footer shows through it. `background: inherit` keeps whatever the page's
+   own body colour is, rather than guessing one here. */
+body:not(.customizer-page) main {
+    position: relative;
+    z-index: 1;
+    background: inherit;
+}
+
+.site-footer {
+    /* Self-contained: this sheet loads on every page, so the footer declares
+       its own tokens instead of borrowing the shop shell's. --sh-* are used
+       with fallbacks, since fonts.css is the only sheet that always defines
+       them. */
+    --ft-bg: #0a1a13;
+    --ft-ink: var(--sh-cream, #f4f1ea);
+    --ft-muted: rgba(244, 241, 234, .62);
+    --ft-line: rgba(143, 174, 156, .28);
+    --ft-glow: rgba(29, 107, 78, .44);
+    --ft-gold: var(--sh-gold, #d8a85f);
+    --ft-ease: cubic-bezier(.22, .61, .36, 1);
+    --ft-p: 1;
+
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: 0;
+    isolation: isolate;
+    overflow: hidden;
+    height: 100dvh;
+    padding-block: clamp(76px, 10.5vw, 116px) clamp(22px, 2.6vw, 32px);
+    z-index: 0;
+    background: var(--ft-bg);
+    color: var(--ft-ink);
+    font-size: 13px;
+    line-height: 1.9;
+}
+
+.site-footer a { color: inherit; text-decoration: none; }
+
+.container.site-footer__inner,
+.container.site-footer__bottom {
+    width: min(1180px, 100% - 36px);
+    margin-inline: auto;
+}
+
+/* --- ambient light, grid, giant brand text ------------------------------ */
+
+.site-footer__aurora {
+    position: absolute;
+    inset-inline-start: 50%;
+    inset-block-start: 42%;
+    width: min(1150px, 130vw);
+    height: min(760px, 90vw);
+    transform: translate(-50%, -50%);
+    z-index: -1;
+    background: radial-gradient(circle at 50% 50%, var(--ft-glow) 0%, rgba(20, 82, 60, .10) 44%, transparent 72%);
+    pointer-events: none;
+    animation: ft-breathe 9s ease-in-out infinite alternate;
+}
+
+.site-footer__mesh {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image:
+        linear-gradient(to right, rgba(143, 174, 156, .12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(143, 174, 156, .12) 1px, transparent 1px);
+    background-size: 62px 62px;
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28%, #000 74%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 28%, #000 74%, transparent);
+    pointer-events: none;
+}
+
+.site-footer__giant {
+    position: absolute;
+    inset-block-end: -1%;
+    inset-inline-start: 50%;
+    z-index: -1;
+    font-size: clamp(84px, 21vw, 286px);
+    line-height: .78;
+    font-weight: 900;
+    letter-spacing: -.045em;
+    white-space: nowrap;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(143, 174, 156, .17);
+    pointer-events: none;
+    user-select: none;
+    /* Scroll-driven: js/components.js writes --ft-p (0 … 1). No script, no
+       motion, and the text simply sits at its finished state. */
+    opacity: calc(.32 + var(--ft-p) * .68);
+    transform: translateX(-50%) translateY(calc((1 - var(--ft-p)) * 5vh)) scale(calc(.9 + var(--ft-p) * .1));
+}
+
+/* --- tilted marquee band ------------------------------------------------ */
+
+.site-footer__band {
+    position: absolute;
+    inset-inline: -6%;
+    inset-block-start: clamp(16px, 2.6vw, 32px);
+    z-index: 1;
+    padding-block: 9px;
+    overflow: hidden;
+    border-block: 1px solid var(--ft-line);
+    background: rgba(12, 32, 23, .72);
+    rotate: -1.6deg;
+}
+
+.site-footer__track {
+    display: flex;
+    width: max-content;
+    animation: ft-marquee 44s linear infinite;
+}
+
+.site-footer__reel {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    padding-inline: 13px;
+    color: var(--ft-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    white-space: nowrap;
+}
+
+.site-footer__reel i { font-style: normal; color: var(--ft-gold); opacity: .8; }
+
+/* --- the centre --------------------------------------------------------- */
+
+.site-footer__inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(10px, 1.4vw, 16px);
+    text-align: center;
+}
+
+.site-footer__eyebrow {
+    margin: 0;
+    color: var(--ft-muted);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .22em;
+}
+
+.site-footer__headline {
+    margin: 0;
+    color: var(--ft-ink);
+    font-size: clamp(33px, 9.6vw, 62px);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+}
+
+/* The metallic fade, only where the clip is actually supported — otherwise a
+   transparent-filled heading would simply vanish. */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+    .site-footer__headline {
+        background: linear-gradient(180deg, var(--ft-ink) 0%, rgba(244, 241, 234, .52) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+    }
+}
+
+.site-footer__lede {
+    max-width: 54ch;
+    margin: 0;
+    color: var(--ft-muted);
+    font-size: clamp(12.5px, 1.4vw, 14px);
+}
+
+.site-footer__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    margin-top: clamp(8px, 1.4vw, 16px);
+}
+
+.site-footer__actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+}
+
+/* --- glass pills -------------------------------------------------------- */
+
+.footer-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 44px;
+    padding-inline: 20px;
+    border: 1px solid var(--ft-line);
+    border-radius: 999px;
+    background: linear-gradient(145deg, rgba(244, 241, 234, .07) 0%, rgba(244, 241, 234, .02) 100%);
+    color: var(--ft-muted);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-align: center;
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 14px 32px -20px rgba(0, 0, 0, .9), inset 0 1px 0 rgba(244, 241, 234, .10);
+    transition: color .32s var(--ft-ease), border-color .32s var(--ft-ease),
+                background .32s var(--ft-ease), transform .32s var(--ft-ease);
+}
+
+.footer-pill--lead {
+    min-height: 48px;
+    padding-inline: 24px;
+    color: var(--ft-ink);
+    font-size: 13.5px;
+}
+
+.footer-pill--static { cursor: default; }
+
+.footer-pill svg {
+    flex: 0 0 auto;
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.footer-heart {
+    display: inline-block;
+    font-style: normal;
+    color: var(--ft-gold);
+    animation: ft-beat 2s cubic-bezier(.25, 1, .5, 1) infinite;
+}
+
+/* --- link columns ------------------------------------------------------- */
+
+.site-footer__copy {
+    color: var(--ft-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+/* --- reveal, motion, hover --------------------------------------------- */
+
+/* The hidden state only exists once the script has armed it: `.is-animated` is
+   added by js/components.js. Without JavaScript, or if that script never runs,
+   the blocks are simply there instead of waiting for an observer that will
+   never fire. */
+.site-footer.is-animated [data-ft-reveal] {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity .62s var(--ft-ease) var(--ft-d, 0ms),
+                transform .62s var(--ft-ease) var(--ft-d, 0ms);
+}
+
+.site-footer.is-animated [data-ft-reveal].is-revealed {
+    opacity: 1;
+    transform: none;
+}
+
+@keyframes ft-breathe {
+    0% { opacity: .62; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1.09); }
+}
+
+/* Six reels in the track, shifted by exactly one of them: landing on an
+   identical copy is what makes the loop seamless, and five of the six copies
+   stay on screen at any width the track covers. -50% (two of four) ran out of
+   words at 1920px and left a gap before starting over. */
+@keyframes ft-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(calc(-100% / 6)); }
+}
+
+@keyframes ft-beat {
+    0%, 100% { transform: scale(1); }
+    12%, 36% { transform: scale(1.22); }
+    24% { transform: scale(1); }
+}
+
+/* Every hover rule behind the pointer guard, same rule as the product page:
+   a touch pointer cannot leave a hover state. */
+@media (hover: hover) and (pointer: fine) {
+    /* Moved here from the top of the file: these are the header, the menu and
+       the buttons, and they had the same problem the footer did — a touch
+       pointer cannot leave a hover state, so a tapped control stayed looking
+       pressed. Restricting when they apply changes nothing on a desktop. */
+    .btn-primary:hover,
+    .button--dark:hover { opacity: .85; }
+
+    .button--light:hover { background: transparent; color: #fff; }
+
+    .site-nav a:hover { opacity: .55; }
+
+    .site-nav a:hover::after { transform: scaleX(1); }
+
+    .header-icon:hover { opacity: .55; }
+
+    .footer-pill:hover {
+        color: var(--ft-ink);
+        border-color: rgba(143, 174, 156, .46);
+        background: linear-gradient(145deg, rgba(244, 241, 234, .13) 0%, rgba(244, 241, 234, .04) 100%);
+    }
+
+    .footer-pill:hover svg { color: var(--ft-gold); }
+}
+
+
+@media (max-width:1000px) {
+    .site-header__inner { width: calc(100% - 40px); }
+    .site-nav { gap: 20px; }
+}
+
+@media (max-width:900px) {
+    .site-header__inner { width: calc(100% - 24px); min-height: 62px; grid-template-columns: 1fr auto 1fr; }
+    .site-nav { display: none; }
+    .header-menu-button { display: grid; justify-self: start; }
+    .site-logo { justify-self: center; font-size: 17px; letter-spacing: 4px; }
+    .site-actions { justify-self: end; }
+    .site-actions .header-cart { display: none; }
+    .header-icon { width: 36px; height: 36px; }
+    .header-icon svg { width: 19px; height: 19px; }
+}
+
+@media (max-width:600px) {
+    .site-header__inner { width: calc(100% - 22px); min-height: 60px; }
+    .site-logo { font-size: 15px; letter-spacing: 3.5px; }
+}
+
+/* --- footer, where there is room to breathe, and where there is not ----- */
+
+/* The dock is fixed to the bottom of the viewport below 941px, so the credits
+   row has to clear it or the dock sits on top of the copyright. */
+@media (max-width: 940px) {
+    .site-footer {
+        /* Clears the fixed dock (64px tall, 12px off the bottom) without a
+           screenful of slack underneath it. */
+        padding-block-end: calc(clamp(22px, 2.6vw, 32px) + var(--dock-h, 64px) + 10px);
+        /* The footer fills most of a phone screen, so the same glow that reads
+           as a hint of green on a desktop reads as a green page here. Toning
+           the wash and the hairlines down on a phone keeps the colour where it
+           was asked for and stops it taking the screen. */
+        --ft-glow: rgba(29, 107, 78, .26);
+        --ft-line: rgba(143, 174, 156, .22);
+    }
+
+    /* Same tilt and same marquee density as desktop: the band scrolls, so
+       there is nothing to gain by shrinking it on a narrow screen. */
+}
+
+/* The credits row stacks on a phone: the badge takes its own line, then the
+   copyright and the arrow sit together, centred. Side by side at 320px it read
+   as three unrelated fragments. */
+@media (max-width: 560px) {
+    .site-footer__bottom {
+        justify-content: center;
+        text-align: center;
+    }
+
+    /* Line order is what decides the wrap, and the markup order is copyright,
+       badge, arrow. Without this the badge's full-width line lands in the
+       middle and the arrow is pushed onto a third line. */
+    .footer-pill--static {
+        order: 1;
+        flex: 1 0 100%;
+        justify-content: center;
+    }
+
+    .site-footer__copy { order: 2; }
+
+    /* The copyright sits beside the arrow on the second line. `min-width: 0`
+       lets it shrink and wrap inside its own box instead of pushing the arrow
+       onto a third line. */
+    .site-footer__copy {
+        /* `flex-basis: 0` matters here: flex line breaking uses an item's
+           hypothetical size, so a copyright with an intrinsic basis of ~240px
+           pushes the arrow onto a third line no matter how far it can shrink
+           afterwards. From a zero basis it always joins the line and then
+           wraps its own text. */
+        flex: 1 1 0;
+        min-width: 0;
+        font-size: 10.5px;
+    }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .site-footer__aurora,
+    .site-footer__track,
+    .footer-heart {
+        animation: none;
+    }
+
+    .site-footer.is-animated [data-ft-reveal] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .site-footer__giant { transform: translateX(-50%); }
+}
+
+/* A fixed 100dvh footer clips its own content on a short viewport, so below
+   this height the curtain is dropped and the footer sits in the flow, where
+   everything is reachable however the window is sized. */
+@media (max-height: 660px) {
+    .site-footer__stage {
+        height: auto;
+        clip-path: none;
+    }
+
+    .site-footer {
+        /* `relative`, not `static`: the footer has to stay the containing block
+           for its own absolutely positioned glow, band and giant text, or they
+           escape it and the document overflows sideways. */
+        position: relative;
+        height: auto;
+    }
+}
+
+
+/* ==========================================================================
+   BABAEI FOOTER REFINEMENT
+   Compact storefront-aligned green/black treatment.
+   ========================================================================== */
+
+.site-footer {
+    --ft-bg: #0d2119;
+    --ft-ink: #f3f5ef;
+    --ft-muted: rgba(225, 236, 228, .68);
+    --ft-line: rgba(118, 171, 143, .24);
+    --ft-glow: rgba(35, 126, 88, .38);
+    --ft-gold: #c9a56a;
+    height: min(68dvh, 680px);
+    min-height: 500px;
+    padding-block: 72px 24px;
+    background:
+        radial-gradient(circle at 50% 38%, rgba(35, 126, 88, .18), transparent 52%),
+        linear-gradient(155deg, #10291f 0%, #0b1c15 55%, #08140f 100%);
+    border-top: 1px solid rgba(143, 174, 156, .16);
+}
+
+.site-footer__aurora {
+    width: min(900px, 110vw);
+    height: min(560px, 70vw);
+    filter: blur(68px);
+    opacity: .9;
+}
+
+.site-footer__mesh {
+    background-image:
+        linear-gradient(to right, rgba(143, 174, 156, .07) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(143, 174, 156, .07) 1px, transparent 1px);
+    background-size: 54px 54px;
+}
+
+.site-footer__giant {
+    font-size: clamp(78px, 17vw, 230px);
+    -webkit-text-stroke: 1px rgba(143, 174, 156, .12);
+    opacity: calc(.18 + var(--ft-p) * .5);
+}
+
+.site-footer__band {
+    inset-block-start: 18px;
+    padding-block: 7px;
+    background: rgba(7, 26, 18, .72);
+    border-color: rgba(118, 171, 143, .18);
+}
+
+.site-footer__reel {
+    gap: 22px;
+    color: rgba(225, 236, 228, .56);
+    font-size: 10px;
+}
+
+.site-footer__inner {
+    gap: 8px;
+}
+
+.site-footer__eyebrow {
+    font-size: 10px;
+    color: rgba(201, 165, 106, .82);
+    letter-spacing: .18em;
+}
+
+.site-footer__headline {
+    font-size: clamp(31px, 6vw, 54px);
+    margin-top: 2px;
+}
+
+.site-footer__lede {
+    max-width: 46ch;
+    font-size: 12.5px;
+    line-height: 1.9;
+    color: rgba(225, 236, 228, .58);
+}
+
+.site-footer__actions {
+    margin-top: 10px;
+    gap: 0;
+}
+
+.site-footer__actions-row--main {
+    gap: 8px;
+}
+
+.footer-pill {
+    min-height: 40px;
+    padding-inline: 17px;
+    gap: 8px;
+    border-color: rgba(118, 171, 143, .22);
+    background: linear-gradient(145deg, rgba(226, 239, 229, .08), rgba(226, 239, 229, .025));
+    color: rgba(225, 236, 228, .76);
+    box-shadow: 0 12px 28px -22px rgba(0,0,0,.9), inset 0 1px 0 rgba(226,239,229,.08);
+}
+
+.footer-pill--lead {
+    min-height: 43px;
+    padding-inline: 19px;
+    color: #edf4ed;
+    font-size: 12.5px;
+}
+
+.footer-pill svg {
+    width: 17px;
+    height: 17px;
+}
+
+.site-footer__bottom {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(118, 171, 143, .13);
+}
+
+.site-footer__copy {
+    font-size: 10px;
+    color: rgba(225, 236, 228, .48);
+}
+
+.footer-pill--static {
+    min-height: 34px;
+    padding-inline: 13px;
+    font-size: 10px;
+}
+
+@media (max-width: 700px) {
+    .site-footer {
+        height: auto;
+        min-height: 540px;
+        padding-block: 68px 88px;
+    }
+
+    .site-footer__inner {
+        width: min(100% - 28px, 520px);
+    }
+
+    .site-footer__headline {
+        font-size: clamp(29px, 10vw, 44px);
+    }
+
+    .site-footer__lede {
+        max-width: 34ch;
+        font-size: 12px;
+    }
+
+    .site-footer__actions-row--main {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        max-width: 330px;
+    }
+
+    .footer-pill--lead {
+        justify-content: center;
+        width: 100%;
+    }
+
+    .site-footer__bottom {
+        width: min(100% - 28px, 520px);
+        margin-top: 16px;
+        gap: 8px;
+    }
+
+    .footer-pill--static {
+        flex: none;
+    }
+}
+
+@media (max-width: 560px) {
+    .site-footer {
+        min-height: 560px;
+        padding-block-end: calc(74px + var(--dock-h, 64px));
+    }
+
+    .site-footer__bottom {
+        flex-direction: column;
+    }
+
+    .footer-pill--static {
+        order: 0;
+    }
+
+    .site-footer__copy {
+        order: 1;
+        text-align: center;
+    }
+}
+
+
+/* ==========================================================================
+   FOOTER VISUAL TUNING — neutral charcoal / warm cream
+   ========================================================================== */
+
+.site-footer {
+    --ft-bg: #151816;
+    --ft-ink: #f4f1ea;
+    --ft-muted: rgba(244, 241, 234, .62);
+    --ft-line: rgba(244, 241, 234, .13);
+    --ft-glow: rgba(20, 82, 60, .18);
+    --ft-gold: #c9a56a;
+
+    min-height: 430px;
+    height: min(58dvh, 590px);
+    padding-block: 68px 34px;
+    background:
+        radial-gradient(circle at 50% 36%, rgba(29, 107, 78, .10), transparent 48%),
+        linear-gradient(160deg, #191b19 0%, #141715 58%, #111311 100%);
+}
+
+.site-footer__aurora {
+    opacity: .55;
+    filter: blur(82px);
+}
+
+.site-footer__mesh {
+    background-image:
+        linear-gradient(to right, rgba(244, 241, 234, .035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(244, 241, 234, .035) 1px, transparent 1px);
+    background-size: 58px 58px;
+}
+
+.site-footer__giant {
+    font-size: clamp(76px, 16vw, 220px);
+    -webkit-text-stroke: 1px rgba(244, 241, 234, .075);
+    opacity: calc(.14 + var(--ft-p) * .34);
+}
+
+.site-footer__band {
+    background: rgba(17, 19, 17, .78);
+    border-color: rgba(244, 241, 234, .10);
+}
+
+.site-footer__reel {
+    color: rgba(244, 241, 234, .48);
+}
+
+.site-footer__headline {
+    font-size: clamp(30px, 5.8vw, 52px);
+}
+
+.site-footer__lede {
+    color: rgba(244, 241, 234, .54);
+}
+
+.footer-pill {
+    border-color: rgba(244, 241, 234, .13);
+    background: linear-gradient(
+        145deg,
+        rgba(244, 241, 234, .075),
+        rgba(244, 241, 234, .025)
+    );
+    color: rgba(244, 241, 234, .72);
+    box-shadow:
+        0 12px 28px -22px rgba(0,0,0,.9),
+        inset 0 1px 0 rgba(244,241,234,.08);
+}
+
+.footer-pill--lead {
+    color: #f4f1ea;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .footer-pill:hover {
+        color: #f4f1ea;
+        border-color: rgba(201, 165, 106, .34);
+        background: linear-gradient(
+            145deg,
+            rgba(244, 241, 234, .11),
+            rgba(244, 241, 234, .035)
+        );
+    }
+
+    .footer-pill:hover svg {
+        color: #c9a56a;
+    }
+}
+
+@media (max-width: 700px) {
+    .site-footer {
+        min-height: 480px;
+        height: auto;
+        padding-block: 64px 74px;
+    }
+}
+
+
+/* ==========================================================================
+   FOOTER CURTAIN / MOBILE POLISH
+   ========================================================================== */
+
+.site-footer__stage {
+    margin-top: 0;
+}
+
+.site-footer.is-animated [data-ft-reveal] {
+    opacity: 0;
+    transform: translateY(28px) scale(.985);
+    will-change: opacity, transform;
+}
+
+.site-footer.is-animated.is-visible [data-ft-reveal] {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.site-footer__giant {
+    will-change: transform, opacity;
+}
+
+@media (max-width: 700px) {
+    .site-footer__stage {
+        height: 480px;
+        min-height: 480px;
+        margin-top: 0;
+    }
+
+    .site-footer {
+        min-height: 480px;
+        height: 480px;
+        padding-block: 64px 74px;
+    }
+}
+
+@media (max-width: 560px) {
+    .site-footer__stage {
+        height: 480px;
+        min-height: 480px;
+    }
+
+    .site-footer {
+        min-height: 480px;
+        height: 480px;
+        padding-block-end: 74px;
+    }
+}
+
+
+/* FOOTER PERFORMANCE GUARD */
+.site-footer:not(.is-visible) .site-footer__aurora,
+.site-footer:not(.is-visible) .site-footer__track { animation-play-state: paused; }
+.site-footer__aurora { filter: none; background: radial-gradient(circle at 50% 50%, rgba(29,107,78,.14) 0%, rgba(29,107,78,.06) 38%, transparent 72%); }
+.site-footer__band { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.site-footer__track { will-change: transform; }
+@media (prefers-reduced-motion: reduce) {
+  .site-footer__aurora,
+  .site-footer__track { animation: none !important; }
+}

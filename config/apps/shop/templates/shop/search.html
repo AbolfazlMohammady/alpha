@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if search_has_query %}جستجو: {{ search_query }} | BABAEI{% else %}جستجوی محصولات | BABAEI{% endif %}{% endblock %}
+{% block meta_description %}جستجوی دقیق محصولات BABAEI بر اساس نام، دسته‌بندی، رنگ، سایز و SKU.{% endblock %}
+{% block body_class %}shop-page shop-search-page{% endblock %}
+{% block site_optional_css %}
+<link rel="stylesheet" href="{% static 'css/storefront.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/pages/shop-search.css' %}?v=2">
+{% endblock %}
+
+{% block content %}
+<div class="shop-search">
+    <section class="shop-search__hero" aria-labelledby="search-title">
+        <span class="shop-search__eyebrow">BABAEI / SEARCH</span>
+        <h1 id="search-title">جستجوی محصولات</h1>
+        <p>اسم محصول، تیشرت، رنگ، سایز یا کد SKU را وارد کن.</p>
+
+        <form class="shop-search__form" action="{% url 'shop:search' %}" method="get" role="search">
+            <label class="shop-search__input">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+                <input type="search" name="q" value="{{ search_query }}" placeholder="مثلاً: تیشرت مشکی L" autocomplete="off" autofocus>
+            </label>
+            <button type="submit">جستجو <span aria-hidden="true">←</span></button>
+        </form>
+
+        {% if search_has_query %}
+            <div class="shop-search__result-line">
+                <strong>{{ paginator.count }}</strong>
+                <span>نتیجه برای</span>
+                <b>«{{ search_query }}»</b>
+            </div>
+        {% else %}
+            <div class="shop-search__empty-prompt">
+                <span>جستجو آماده است</span>
+                <small>تا وقتی جستجو را ارسال نکنی، هیچ Query محصولی اجرا نمی‌شود.</small>
+            </div>
+        {% endif %}
+    </section>
+
+    {% if search_has_query %}
+        {% if products %}
+        <section class="shop-search__results" aria-labelledby="search-results-title">
+            <div class="shop-search__results-head">
+                <div>
+                    <span class="shop-search__kicker">CATALOG MATCHES</span>
+                    <h2 id="search-results-title">نتایج پیدا شده</h2>
+                </div>
+                <a href="{% url 'shop:index' %}">مشاهده فروشگاه <span aria-hidden="true">←</span></a>
+            </div>
+
+            <div class="shop-reference__products shop-search__grid">
+                {% for product in products %}
+                    {% include "shop/includes/_catalog_card.html" with product=product %}
+                {% endfor %}
+            </div>
+
+            {% if is_paginated %}
+            <nav class="shop-search__pagination" aria-label="صفحات نتایج">
+                {% if page_obj.has_previous %}<a href="?q={{ search_query|urlencode }}&page={{ page_obj.previous_page_number }}">قبلی</a>{% endif %}
+                <span>صفحه {{ page_obj.number }} از {{ paginator.num_pages }}</span>
+                {% if page_obj.has_next %}<a href="?q={{ search_query|urlencode }}&page={{ page_obj.next_page_number }}">بعدی</a>{% endif %}
+            </nav>
+            {% endif %}
+        </section>
+        {% else %}
+        <section class="shop-search__no-results" aria-label="نتیجه‌ای پیدا نشد">
+            <span class="shop-search__no-results-icon">⌕</span>
+            <h2>چیزی با این مشخصات پیدا نشد.</h2>
+            <p>املای محصول، رنگ، سایز یا SKU را کمی متفاوت امتحان کن.</p>
+            <a href="{% url 'shop:index' %}">برگشت به فروشگاه <span aria-hidden="true">←</span></a>
+        </section>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

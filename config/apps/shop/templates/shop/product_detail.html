@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+{% load static shop_tags saved_tags %}
+{% block title %}{{ product.seo_title|default:product.name }} | BABAEI{% endblock %}
+{% block meta_description %}{{ product.seo_description|default:product.short_description|default:product.name|truncatechars:160 }}{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ canonical_url }}">{% endblock %}
+{% block common_page_css %}{% endblock %}
+{% block body_class %}shop-page product-detail-page{% endblock %}
+{% block og_type %}product{% endblock %}
+{% block og_title %}{{ product.seo_title|default:product.name }} | BABAEI{% endblock %}
+{% block og_description %}{{ product.seo_description|default:product.short_description|default:product.name }}{% endblock %}
+{% block og_image %}{% if og_image_url %}<meta property="og:image" content="{{ og_image_url }}">{% endif %}{% endblock %}
+{% block extra_head %}<script type="application/ld+json">{{ product_schema }}</script><script type="application/ld+json">{{ breadcrumb_schema }}</script>{% endblock %}
+
+{% comment %}
+Page CSS. shop-product.css is the only product-page stylesheet: the four
+per-section files (pages/shop.css, pages/product-quantity.css,
+pages/shop-designer-cta.css, pages/product-saved.css) were folded into it and
+their legacy rules deleted.
+
+storefront.css stays because shared rules depend on it ([data-reveal] reveal,
+the shop-page surface). quick-actions.css is dropped the same way the shop
+index drops it: base.html suppresses the floating ring markup for the shop
+namespace, so the sheet had nothing left to style on this page.
+
+The page's own class names are prefixed `pd-` on purpose. storefront.css still
+carries a retired "Product detail" block written against the old `.product-*`
+layout; those selectors keep matching anything they can name, so the redesign
+kept its own namespace instead of stacking another layer on top of them.
+The three names JavaScript binds by class are kept: `.color-option`,
+`.size-option` and `[data-*]`/`#id` hooks (see js/pages/shop-product.js and
+js/storefront.js). Nothing on this page needs !important.
+{% endcomment %}
+{% block extra_css %}{% endblock %}
+{% block site_optional_css %}
+<link rel="stylesheet" href="{% static 'css/storefront.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/pages/shop-product.css' %}?v=13">
+{% endblock %}
+
+{% block content %}
+<div class="pd">
+    <div class="pd-inner">
+        <nav class="pd-crumbs" aria-label="مسیر صفحه">{% for item in breadcrumbs %}{% if not forloop.last %}<a href="{{ item.url }}">{{ item.name }}</a><span aria-hidden="true">/</span>{% else %}<span aria-current="page">{{ item.name }}</span>{% endif %}{% endfor %}</nav>
+
+        {% comment %}
+        Composition: a 4/5 frame and the buy column, both standing on the page's
+        own dark surface — no card, no second card inside it, no shadow. The
+        thumbnail rail sits under the frame on the same surface instead of in a
+        bar that belonged to a card.
+
+        No data-reveal on these two columns: the gallery shot is the LCP element
+        and has to paint on the first frame instead of waiting for the reveal
+        observer. The frame also carries its own max-height, so the tablet range
+        can no longer scale it past the viewport.
+        {% endcomment %}
+        <div class="pd-stage">
+            <section class="pd-media" aria-label="تصاویر {{ product.name }}" data-product-gallery>
+                <div class="pd-media__frame" id="product-gallery-panel" role="tabpanel" aria-label="تصویر انتخاب‌شده" data-product-tilt>
+                    {% with image=product.gallery_images.0 %}
+                        {% if image %}
+                            {% image_variants image as v %}
+                            <picture>
+                                {% if v.avif %}<source type="image/avif" data-format="avif" srcset="{{ v.avif }}" sizes="(max-width: 759px) calc(100vw - 44px), (max-width: 1200px) 46vw, 520px">{% endif %}
+                                {% if v.webp %}<source type="image/webp" data-format="webp" srcset="{{ v.webp }}" sizes="(max-width: 759px) calc(100vw - 44px), (max-width: 1200px) 46vw, 520px">{% endif %}
+                                <img id="product-gallery-main" src="{{ v.src|default:image.image.url }}" alt="{{ image.alt_text|default:product.name }}"{% if v.width %} width="{{ v.width }}" height="{{ v.height }}"{% endif %} fetchpriority="high" decoding="async">
+                            </picture>
+                        {% else %}
+                            <img id="product-gallery-main" src="{% static 'images/home/Tshirt.png' %}" alt="{{ product.name }}" fetchpriority="high" decoding="async">
+                        {% endif %}
+                    {% endwith %}
+                    {% comment %}
+                    The two option labels live on the photo now, as glass pills
+                    that fade in once a choice is made (`:empty` hides them
+                    until then). Same ids, so shop-product.js keeps filling
+                    them. Nothing is duplicated from the column beside it: the
+                    title already sits there, so the photo carries only what the
+                    column cannot show at a glance.
+                    {% endcomment %}
+                    <div class="pd-media__picks">
+                        <span id="selected-color-label" class="pd-glass" aria-live="polite"></span>
+                        <span id="selected-size-label" class="pd-glass" aria-live="polite"></span>
+                    </div>
+                </div>
+
+                <div class="pd-thumbs" role="tablist" aria-label="انتخاب تصویر">
+                    {% for image in product.gallery_images %}
+                        {% image_variants image as v %}
+                        <button type="button" class="pd-thumb{% if forloop.first %} is-active{% endif %}" data-gallery-thumb data-image="{{ image.image.url }}" data-alt="{{ image.alt_text|default:product.name }}" data-avif="{{ v.avif }}" data-webp="{{ v.webp }}" role="tab" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="product-gallery-panel" aria-label="تصویر {{ forloop.counter }}">
+                            <picture>
+                                {% if v.avif %}<source type="image/avif" data-format="avif" srcset="{{ v.avif }}" sizes="76px">{% endif %}
+                                {% if v.webp %}<source type="image/webp" data-format="webp" srcset="{{ v.webp }}" sizes="76px">{% endif %}
+                                <img src="{{ v.src|default:image.image.url }}" alt="" loading="lazy" decoding="async">
+                            </picture>
+                        </button>
+                    {% empty %}
+                        <button type="button" class="pd-thumb is-active" data-gallery-thumb data-image="{% static 'images/home/Tshirt.png' %}" data-alt="{{ product.name }}" role="tab" aria-selected="true" aria-controls="product-gallery-panel" aria-label="تصویر محصول"><img src="{% static 'images/home/Tshirt.png' %}" alt="" loading="lazy" decoding="async"></button>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <article class="pd-info">
+                {% comment %}
+                The eyebrow is now the category the product actually sits in,
+                linked back to it — the old "BABAEI / PRODUCT" label carried no
+                information. The old 01 / 04 position counter is gone with it:
+                the rail is visible on every width, so the count was decoration.
+                {% endcomment %}
+                {% if product.category %}<p class="pd-kicker"><a href="{{ product.category.get_absolute_url }}">{{ product.category.name }}</a></p>{% endif %}
+
+                <div class="pd-head">
+                    <h1>{{ product.name }}</h1>
+                    {% saved_status request.user product as saved_state %}
+                    {% comment %}
+                    One save control, not two. The bookmark (saved:toggle_saved)
+                    was removed: this heart on saved:toggle_favorite already keeps
+                    the product, so two buttons were spending a row of the column
+                    on one idea. The POST form, its csrf token and the `next`
+                    field are the load-bearing parts; the glyph is inline SVG so
+                    the control does not depend on an emoji font being installed.
+                    {% endcomment %}
+                    <div class="pd-save">
+                        <form method="post" action="{% url 'saved:toggle_favorite' product.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button type="submit" class="product-save-button{% if saved_state.favorite %} is-active{% endif %}" aria-label="{% if saved_state.favorite %}حذف از علاقه‌مندی‌ها{% else %}افزودن به علاقه‌مندی‌ها{% endif %}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.4c-1.1-.7-7.4-4.8-7.4-9.8a4.2 4.2 0 0 1 7.4-2.7 4.2 4.2 0 0 1 7.4 2.7c0 5-6.3 9.1-7.4 9.8Z"></path></svg></button></form>
+                    </div>
+                </div>
+
+                {% if product.short_description %}<p class="pd-lede">{{ product.short_description }}</p>{% endif %}
+                <a class="pd-product-rating" href="#comments" aria-label="مشاهده نظرات و امتیاز محصول">
+                    <span class="pd-product-rating__stars" aria-hidden="true">★★★★★</span>
+                    <strong>{{ comment_average|default:"0"|floatformat:1 }}</strong>
+                    <span>{{ comment_count|default:0 }} نظر</span>
+                </a>
+
+                {% comment %}
+                One band, two lines, nothing else competing for the eye. The
+                price, the struck-through compare-at and the percentage share the
+                first line; one availability line follows. The old markup stacked
+                four rows here — price, "prices are in toman", compare-at +
+                percentage, then total stock — and that stack is what read as
+                clutter. #product-discount must stay inside #product-old-price-row:
+                the script hides that row alone when the chosen variant has no
+                discount, so a chip left outside it would never go away.
+                {% endcomment %}
+                <div class="pd-price" aria-live="polite">
+                    <div class="pd-price__row">
+                        <strong id="product-price" class="pd-price__value">{{ product.display_price|price }}</strong>
+                        <span class="pd-price__unit">تومان</span>
+                        <span id="product-old-price-row" class="pd-price__meta{% if not product.has_discount %} is-hidden{% endif %}"><del id="product-old-price">{{ product.display_compare_price|price }}</del><span id="product-discount" class="pd-discount">{{ product.discount_percent|discount_percent }}</span></span>
+                    </div>
+                    {% if product.active_variants %}
+                        <span id="variant-status" class="pd-status" aria-live="polite"></span>
+                    {% else %}
+                        <span class="pd-status">موجود</span>
+                    {% endif %}
+                </div>
+
+                {% if product.active_variants %}
+                    {% comment %}
+                    Colour and size are one control group: the same geometry, the
+                    same accent for the selected option in both rows, and one line
+                    each — the price band above already closes the section off.
+                    {% endcomment %}
+                    <section class="pd-options" aria-label="انتخاب رنگ و سایز">
+                        <div class="pd-option">
+                            <div class="pd-option__head"><h2>رنگ</h2></div>
+                            <div class="color-options" role="radiogroup" aria-label="رنگ محصول">{% for color in colors %}<button type="button" class="color-option" data-color-id="{{ color.id }}" aria-label="{{ color.name }}" title="{{ color.name }}"><span class="color-swatch" style="--swatch: {{ color.hex_code }}"></span><span class="color-option__name">{{ color.name }}</span></button>{% endfor %}</div>
+                        </div>
+                        <div class="pd-option">
+                            <div class="pd-option__head"><h2>سایز</h2></div>
+                            <div class="size-options" role="radiogroup" aria-label="سایز محصول">{% for size in sizes %}<button type="button" class="size-option" data-size-id="{{ size.id }}">{{ size.name }}</button>{% endfor %}</div>
+                        </div>
+                    </section>
+                {% endif %}
+
+                {% comment %}
+                One column at every width. The row no longer sticks above the fixed
+                dock: two stacked sticky layers on a phone was the worst thing on
+                this page, and the buy column is one short scroll away regardless.
+                {% endcomment %}
+                <form method="post" action="{% url 'orders:cart_add' %}" class="pd-buy" id="add-to-cart-form">
+                    {% csrf_token %}<input type="hidden" name="product_id" value="{{ product.id }}"><input type="hidden" name="variant_id" id="cart-variant-id" value="">
+                    <div class="pd-qty" data-product-quantity-wrap>
+                        <div class="pd-qty__head"><label for="cart-quantity">تعداد</label></div>
+                        <div class="pd-qty__control"><button type="button" data-product-quantity-button="-1" aria-label="کاهش تعداد">-</button><input id="cart-quantity" name="quantity" type="number" min="1" value="1" inputmode="numeric" aria-label="تعداد محصول"><button type="button" data-product-quantity-button="1" aria-label="افزایش تعداد">+</button></div>
+                    </div>
+                    <button id="add-to-cart-button" class="pd-buy__button" type="submit"{% if product.active_variants %} disabled{% endif %}>افزودن به سبد خرید</button>
+                    <a id="product-in-cart" class="pd-incart" href="{% url 'orders:cart' %}" hidden><span>این مدل در سبد خرید است</span><strong data-product-in-cart-quantity></strong><small>مشاهده سبد خرید ←</small></a>
+                </form>
+
+            </article>
+        </div>
+
+        <section class="pd-perks" data-reveal aria-label="مزیت‌های خرید">
+            <div class="pd-perk"><span class="pd-perk__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.2 19 6v6c0 4.2-2.9 7.6-7 8.8-4.1-1.2-7-4.6-7-8.8V6l7-2.8Z"></path><path d="m9 12.1 2.2 2.2 4.3-4.4"></path></svg></span><span><strong>کیفیت قابل لمس</strong><small>انتخاب‌شده برای استفاده‌ی روزمره</small></span></div>
+            <div class="pd-perk"><span class="pd-perk__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.2 7.4h9.3v9.2H3.2z"></path><path d="M12.5 10.4h3.9l3.4 3.5v2.7h-7.3z"></path><path d="M6.6 19.6a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2Z"></path><path d="M16.6 19.6a1.6 1.6 0 1 0 0-3.2 1.6 1.6 0 0 0 0 3.2Z"></path></svg></span><span><strong>ارسال مطمئن</strong><small>بسته‌بندی تمیز و قابل پیگیری</small></span></div>
+            <div class="pd-perk"><span class="pd-perk__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 20 3.4-.8L19 7.6a2.3 2.3 0 0 0-3.3-3.3L4.1 16.6 4 20Z"></path><path d="m13.4 6.9 3.3 3.3"></path></svg></span><span><strong>ساخته‌شده برای تو</strong><small>امکان شخصی‌سازی در استودیو طراحی</small></span></div>
+        </section>
+
+        {% if product.description %}<section class="pd-story" data-reveal><h2>توضیحات محصول</h2><div class="pd-story__body">{{ product.description|linebreaks }}</div></section>{% endif %}
+
+        <section class="pd-special-grid" aria-label="تجربه محصول و طراحی">
+            <button type="button" class="pd-special-card pd-special-card--comments" data-comment-toggle aria-controls="comments" aria-expanded="false">
+                <span class="pd-special-card__edge" aria-hidden="true"></span>
+                <span class="pd-special-card__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M5 5.5h14v10H9l-4 3v-13Z"></path><path d="M8.2 9.4h7.6"></path><path d="M8.2 12.5h5.1"></path></svg>
+                </span>
+                <span class="pd-special-card__copy">
+                    <span class="pd-special-card__eyebrow">REAL EXPERIENCES</span>
+                    <strong>نظرات مشتریان</strong>
+                    <small>{{ comment_count|default:0 }} نظر{% if comment_count %} · امتیاز {{ comment_average|default:"0"|floatformat:1 }} از ۵{% endif %}</small>
+                </span>
+                <span class="pd-special-card__arrow" aria-hidden="true">←</span>
+            </button>
+
+            <a class="pd-special-card pd-special-card--studio" href="{% url 'customizer:designer' product.uuid %}">
+                <span class="pd-special-card__edge" aria-hidden="true"></span>
+                <span class="pd-special-card__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="m4 20 3.4-.8L19 7.6a2.3 2.3 0 0 0-3.3-3.3L4.1 16.6 4 20Z"></path><path d="m13.4 6.9 3.3 3.3"></path></svg>
+                </span>
+                <span class="pd-special-card__copy">
+                    <span class="pd-special-card__eyebrow">BABAEI DESIGN STUDIO</span>
+                    <strong>لیبلت را روی لباس قرار بده</strong>
+                    <small>جای لیبل، اندازه و زاویه را همان لحظه تنظیم کن.</small>
+                </span>
+                <span class="pd-special-card__arrow" aria-hidden="true">←</span>
+            </a>
+        </section>
+
+        <section class="pd-comments pd-comments--compact" id="comments" hidden data-reveal>
+            <div class="pd-comments__content">
+                    <div class="pd-comments__toolbar">
+                        <div><span class="pd-comments__eyebrow">بازخورد مشتری‌ها</span><h2>نظرهایی که تجربه خرید را واقعی می‌کنند.</h2></div>
+                        <button type="button" class="pd-comments__write" data-comment-write><span>نوشتن نظر</span><b aria-hidden="true">←</b></button>
+                    </div>
+                    {% if featured_comments %}
+                        <div class="pd-comments__list">
+                            {% for comment in featured_comments %}
+                                <article class="pd-comment">
+                                    <div class="pd-comment__top">
+                                        <div class="pd-comment__user">
+                                            {% if comment.user.image %}<img class="pd-comment__avatar pd-comment__avatar--image" src="{{ comment.user.image.url }}" alt="تصویر {{ comment.display_name }}" loading="lazy">{% else %}<span class="pd-comment__avatar" aria-hidden="true">{{ comment.display_name|first }}</span>{% endif %}
+                                            <div class="pd-comment__identity"><strong>{{ comment.display_name }}</strong>{% if comment.verified_purchase %}<small><span aria-hidden="true">✓</span> خرید تأییدشده</small>{% endif %}</div>
+                                        </div>
+                                        {% if comment.rating %}<span class="pd-stars pd-stars--small" aria-label="{{ comment.rating }} از ۵">{% if comment.rating >= 1 %}★{% endif %}{% if comment.rating >= 2 %}★{% endif %}{% if comment.rating >= 3 %}★{% endif %}{% if comment.rating >= 4 %}★{% endif %}{% if comment.rating >= 5 %}★{% endif %}</span>{% endif %}
+                                    </div>
+                                    <p>{{ comment.body }}</p><time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:'j F Y' }}</time>
+                                </article>
+                            {% endfor %}
+                        </div>
+                        {% if comment_count %}<a class="pd-comments__all" href="{% url 'shop:product_comments' product.slug %}"><span>مشاهده همه {{ comment_count }} نظر</span><b aria-hidden="true">←</b></a>{% endif %}
+                    {% else %}
+                        <div class="pd-comments__empty"><strong>هنوز نظری برای این محصول ثبت نشده.</strong><span>اولین نفری باش که تجربه‌اش را ثبت می‌کند.</span></div>
+                    {% endif %}
+                    <div class="pd-comment-form__drawer" data-comment-drawer hidden>
+                        <div class="pd-comment-form">
+                            <div class="pd-comment-form__head"><div><span class="pd-comment-form__eyebrow">ثبت تجربه</span><h3>نظرت را درباره این محصول بنویس</h3><p>امتیاز و تجربه‌ات را ثبت کن؛ نظر پس از بررسی نمایش داده می‌شود.</p></div></div>
+                            {% if request.user.is_authenticated %}
+                                <form method="post" action="{% url 'shop:product_comment_add' product.slug %}" class="pd-comment-form__form" data-comment-form>
+                                    {% csrf_token %}
+                                    <div class="pd-comment-form__rating"><div class="pd-comment-form__label-row"><label>امتیاز محصول</label><span data-rating-label>انتخاب نشده</span></div><div class="pd-rating-stars" role="radiogroup" aria-label="انتخاب امتیاز از ۱ تا ۵">
+                                        <input type="radio" id="comment-rating-1" name="rating" value="1"><label for="comment-rating-1" title="۱ ستاره" aria-label="۱ ستاره">★</label>
+                                        <input type="radio" id="comment-rating-2" name="rating" value="2"><label for="comment-rating-2" title="۲ ستاره" aria-label="۲ ستاره">★</label>
+                                        <input type="radio" id="comment-rating-3" name="rating" value="3"><label for="comment-rating-3" title="۳ ستاره" aria-label="۳ ستاره">★</label>
+                                        <input type="radio" id="comment-rating-4" name="rating" value="4"><label for="comment-rating-4" title="۴ ستاره" aria-label="۴ ستاره">★</label>
+                                        <input type="radio" id="comment-rating-5" name="rating" value="5"><label for="comment-rating-5" title="۵ ستاره" aria-label="۵ ستاره">★</label>
+                                    </div></div>
+                                    <div class="pd-comment-form__body"><div class="pd-comment-form__label-row"><label for="product-comment-body">متن نظر</label><span><b data-comment-count>0</b> / ۲۰۰۰</span></div><textarea id="product-comment-body" name="body" maxlength="2000" rows="5" required placeholder="از کیفیت، جنس، اندازه یا تجربه استفاده‌ات بنویس..."></textarea></div>
+                                    <div class="pd-comment-form__footer"><span>نظر شما بعد از بررسی منتشر می‌شود.</span><button type="submit" class="pd-comment-form__submit"><span>ثبت نظر</span><b aria-hidden="true">←</b></button></div>
+                                </form>
+                            {% else %}
+                                <div class="pd-comment-form__login"><div><strong>برای ثبت نظر وارد حساب کاربری شو</strong><span>بعد از ورود می‌توانی امتیاز و تجربه‌ات را ثبت کنی.</span></div><a href="{% url 'users:login' %}?next={{ request.path|urlencode }}">ورود به حساب <span aria-hidden="true">←</span></a></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+        </section>
+
+
+
+        {% if similar_products %}
+        <section class="pd-related" aria-labelledby="related-products-title" data-reveal>
+            <div class="pd-related__head">
+                <div>
+                    <span class="pd-kicker">BABAEI PICKS</span>
+                    <h2 id="related-products-title">شاید اینا هم به سلیقه‌ات بخوره</h2>
+                </div>
+                <a href="{% url 'shop:index' %}">مشاهده فروشگاه <span aria-hidden="true">←</span></a>
+            </div>
+            <div class="pd-related__viewport" data-related-scroll>
+                <div class="pd-related__track" dir="rtl">
+                    {% for related in similar_products %}
+                        {% include "shop/includes/_catalog_card.html" with product=related %}
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+window.BabaeiProduct={variants:{{ variant_data }},cartVariants:{{ cart_variant_data }},initialProductPrice:{{ product.display_price|default:0 }},initialComparePrice:{{ product.display_compare_price|default:0 }}};
+document.addEventListener("DOMContentLoaded",function(){
+    const comments=document.querySelector("#comments");
+    const commentToggle=document.querySelector("[data-comment-toggle]");
+    const drawer=document.querySelector("[data-comment-drawer]");
+    const writeButton=document.querySelector("[data-comment-write]");
+
+    if(comments && commentToggle){
+        commentToggle.addEventListener("click",function(){
+            const isOpen=!comments.hidden;
+            comments.hidden=isOpen;
+            commentToggle.setAttribute("aria-expanded",String(!isOpen));
+            if(!isOpen){
+                requestAnimationFrame(function(){
+                    comments.scrollIntoView({behavior:"smooth",block:"start"});
+                });
+            }
+        });
+    }
+
+    const relatedTrack=document.querySelector("[data-related-scroll] .pd-related__track");
+    if(relatedTrack){
+        let dragging=false;
+        let lastX=0;
+        let moved=false;
+
+        // Desktop wheel -> horizontal shelf.
+        relatedTrack.addEventListener("wheel",function(event){
+            if(Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+            event.preventDefault();
+            relatedTrack.scrollBy({left:-event.deltaY,behavior:"auto"});
+        },{passive:false});
+
+        // Desktop mouse drag. Mobile touch is intentionally untouched so
+        // the browser handles native horizontal swipe scrolling.
+        relatedTrack.addEventListener("mousedown",function(event){
+            if(event.button !== 0) return;
+            dragging=true;
+            moved=false;
+            lastX=event.clientX;
+            relatedTrack.classList.add("is-dragging");
+            event.preventDefault();
+        });
+
+        window.addEventListener("mousemove",function(event){
+            if(!dragging) return;
+            const delta=event.clientX-lastX;
+            if(Math.abs(delta)>2) moved=true;
+            if(delta !== 0){
+                relatedTrack.scrollBy({left:-delta,behavior:"auto"});
+                lastX=event.clientX;
+            }
+        });
+
+        window.addEventListener("mouseup",function(){
+            if(!dragging) return;
+            dragging=false;
+            relatedTrack.classList.remove("is-dragging");
+        });
+
+        relatedTrack.addEventListener("mouseleave",function(){
+            // Do not stop here: window mousemove keeps the drag alive
+            // while the pointer temporarily leaves the shelf.
+        });
+
+        relatedTrack.addEventListener("click",function(event){
+            if(!moved) return;
+            event.preventDefault();
+            event.stopPropagation();
+            moved=false;
+        },true);
+    }
+
+    if(comments && drawer && writeButton){
+        writeButton.addEventListener("click",function(){
+            drawer.hidden=false;
+            writeButton.setAttribute("aria-expanded","true");
+            requestAnimationFrame(function(){
+                drawer.scrollIntoView({behavior:"smooth",block:"nearest"});
+            });
+        });
+    }
+
+    const form=document.querySelector("[data-comment-form]");
+    if(!form) return;
+    const ratingLabel=form.querySelector("[data-rating-label]");
+    const ratingNames={1:"ضعیف",2:"قابل قبول",3:"خوب",4:"خیلی خوب",5:"عالی"};
+    form.querySelectorAll('input[name="rating"]').forEach(function(input){
+        input.addEventListener("change",function(){
+            ratingLabel.textContent=this.value+" ستاره — "+ratingNames[this.value];
+        });
+    });
+    const textarea=form.querySelector("textarea[name='body']");
+    const counter=form.querySelector("[data-comment-count]");
+    if(textarea && counter){
+        textarea.addEventListener("input",function(){ counter.textContent=this.value.length.toLocaleString("fa-IR"); });
+    }
+});
+</script>
+<script src="{% static 'js/pages/shop-product.js' %}?v=4" defer></script>
+<script src="{% static 'js/pages/product-media-tilt.js' %}?v=3" defer></script>
+{% endblock %}

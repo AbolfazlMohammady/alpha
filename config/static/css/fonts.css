@@ -1,0 +1,86 @@
+/* ==========================================================================
+   BABAEI — Typography & shared design tokens
+   --------------------------------------------------------------------------
+   Persian/UI: El Messiri
+   Latin/English: Runtime
+   ========================================================================== */
+
+@font-face {
+    font-family: "BABAEI-Persian";
+    src: url("../fonts/el-messiri-font/ElmessiriRegular-MVYOr.otf") format("opentype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "BABAEI-Persian";
+    src: url("../fonts/el-messiri-font/ElmessiriMedium-K7BOp.otf") format("opentype");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "BABAEI-Persian";
+    src: url("../fonts/el-messiri-font/ElmessiriSemibold-2O74K.otf") format("opentype");
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "BABAEI-Persian";
+    src: url("../fonts/el-messiri-font/ElMessiriBold-vm3ZO.otf") format("opentype");
+    font-weight: 700 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "BABAEI-Latin";
+    src: url("../fonts/runtime-font/RuntimeRegular-m2Odx.otf") format("opentype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --sh-font: "BABAEI-Persian", "El Messiri", Tahoma, Arial, sans-serif;
+    --sh-font-latin: "BABAEI-Latin", "Helvetica Neue", Arial, sans-serif;
+
+    /* Keep older site tokens pointed at the same type system. */
+    --font-sans: var(--sh-font);
+    --font-display: var(--sh-font);
+    --ba-font: var(--sh-font);
+    --ba-display: var(--sh-font);
+    --ba-latin: var(--sh-font-latin);
+
+    --sh-forest: #14523c;
+    --sh-forest-deep: #0e3d2d;
+    --sh-forest-soft: #1d6b4e;
+    --sh-moss: #8fae9c;
+    --sh-gold: #d8a85f;
+    --sh-cream: #f4f1ea;
+    --sh-cream-2: #fbfaf7;
+    --sh-paper: #f8f5ee;
+    --sh-sand: #e7e1d5;
+    --sh-ink: #14161a;
+    --sh-ink-2: #2b3035;
+    --sh-muted: #6d7278;
+    --sh-line: rgba(20, 22, 26, .10);
+    --sh-line-strong: rgba(20, 22, 26, .18);
+    --sh-radius-sm: 12px;
+    --sh-radius: 18px;
+    --sh-shadow: 0 18px 44px rgba(9, 28, 20, .10);
+    --sh-ease: cubic-bezier(.22, .61, .36, 1);
+    --sh-dur-fast: 180ms;
+    --sh-dur: 320ms;
+    --sh-fast: var(--sh-dur-fast) var(--sh-ease);
+    --sh-slow: var(--sh-dur) var(--sh-ease);
+}
+
+/* Latin-facing brand labels, codes and explicit LTR content use Runtime. */
+:where([dir="ltr"], [lang="en"], .sh-brand__name, .sh-brand__tagline, .orders-eyebrow, .order-card__eyebrow, .cart-products__eyebrow, .invoice__brand) {
+    font-family: var(--sh-font-latin);
+}

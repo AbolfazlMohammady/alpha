@@ -1,0 +1,109 @@
+{% extends "control_center/base.html" %}
+{% block title %}{% if object %}ویرایش رنگ{% else %}افزودن رنگ{% endif %} | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-page-head cc-catalog-form-head">
+  <div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:catalog' %}">رنگ‌ها و سایزها</a>
+      <span>/</span>
+      <span>رنگ‌ها</span>
+    </div>
+    <h1>{% if object %}ویرایش رنگ{% else %}افزودن رنگ جدید{% endif %}</h1>
+    <p>{% if object %}اطلاعات این رنگ را برای استفاده در محصولات به‌روزرسانی کن.{% else %}یک رنگ پایه تعریف کن تا در تنوع محصولات قابل انتخاب باشد.{% endif %}</p>
+  </div>
+  <a class="cc-btn cc-back-btn" href="{% url 'control:catalog' %}">بازگشت به کاتالوگ</a>
+</div>
+
+<form method="post" class="cc-card cc-catalog-form cc-catalog-form-v2">
+  {% csrf_token %}
+
+  <div class="cc-catalog-form-top">
+    <div class="cc-form-section-title">
+      <span class="cc-section-icon">●</span>
+      <div>
+        <h2>اطلاعات رنگ</h2>
+        <p>نام، رنگ نمایشی و شناسه داخلی را مشخص کن.</p>
+      </div>
+    </div>
+    {% if object %}
+      <span class="cc-form-state {% if object.is_active %}is-active{% endif %}">
+        {% if object.is_active %}فعال{% else %}غیرفعال{% endif %}
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="cc-catalog-form-grid cc-catalog-form-grid-v2">
+    <div class="cc-catalog-field">
+      <label for="{{ form.name.id_for_label }}">نام رنگ</label>
+      {{ form.name }}
+      <small>مثلاً آبی، مشکی، سفید یا زرشکی</small>
+      {% if form.name.errors %}<span class="cc-error">{{ form.name.errors|striptags }}</span>{% endif %}
+    </div>
+
+    <div class="cc-catalog-field">
+      <label for="{{ form.slug.id_for_label }}">شناسه فنی رنگ</label>
+      {{ form.slug }}
+      <small>برای استفاده داخلی سیستم؛ می‌تواند با نام رنگ یکی باشد.</small>
+      {% if form.slug.errors %}<span class="cc-error">{{ form.slug.errors|striptags }}</span>{% endif %}
+    </div>
+
+    <div class="cc-catalog-field cc-catalog-field-color">
+      <label for="{{ form.hex_code.id_for_label }}">کد رنگ</label>
+      <div class="cc-color-code-field cc-color-code-field-v2">
+        <label class="cc-color-picker-tile" for="{{ form.hex_code.id_for_label }}" title="انتخاب رنگ">
+          {{ form.hex_code }}
+          <span></span>
+        </label>
+        <div class="cc-color-readout">
+          <span>HEX</span>
+          <strong id="color-hex-readout">{{ form.hex_code.value|default:"#D2AD5F" }}</strong>
+        </div>
+      </div>
+      <small>رنگ دقیق نمایش داده‌شده در فروشگاه را انتخاب کن.</small>
+      {% if form.hex_code.errors %}<span class="cc-error">{{ form.hex_code.errors|striptags }}</span>{% endif %}
+    </div>
+
+    <div class="cc-catalog-field cc-catalog-check">
+      <label>وضعیت</label>
+      <label class="cc-catalog-toggle cc-catalog-toggle-v2">
+        {{ form.is_active }}
+        <span class="cc-switch-ui" aria-hidden="true"><i></i></span>
+        <span class="cc-toggle-copy">
+          <strong>رنگ فعال باشد</strong>
+          <small>در انتخاب رنگ محصولات نمایش داده شود.</small>
+        </span>
+      </label>
+      {% if form.is_active.errors %}<span class="cc-error">{{ form.is_active.errors|striptags }}</span>{% endif %}
+    </div>
+  </div>
+
+  <div class="cc-catalog-form-actions cc-catalog-form-actions-v2">
+    <a class="cc-btn" href="{% url 'control:catalog' %}">انصراف</a>
+    <button class="cc-btn primary cc-save-btn" type="submit">
+      {% if object %}ذخیره تغییرات{% else %}افزودن رنگ{% endif %}
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const input = document.getElementById("{{ form.hex_code.id_for_label }}");
+  const readout = document.getElementById("color-hex-readout");
+  const swatch = document.querySelector(".cc-color-picker-tile > span");
+  if (!input || !readout) return;
+
+  const sync = () => {
+    const value = (input.value || "").toUpperCase();
+    if (value) {
+      readout.textContent = value;
+      if (swatch) swatch.style.backgroundColor = value;
+    }
+  };
+  input.addEventListener("input", sync);
+  input.addEventListener("change", sync);
+  sync();
+})();
+</script>
+{% endblock %}

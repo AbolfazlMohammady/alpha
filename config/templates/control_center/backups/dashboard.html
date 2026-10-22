@@ -1,0 +1,146 @@
+{% extends "control_center/base.html" %}
+{% block title %}پشتیبان‌گیری | BABAEI{% endblock %}
+{% block content %}
+
+<div class="cc-backup-head">
+  <div class="cc-backup-title">
+    <span class="cc-eyebrow">BABAEI / BACKUP CENTER</span>
+    <h1>پشتیبان‌گیری</h1>
+    <p>کنترل وضعیت بکاپ، زمان‌بندی و نسخه‌های قابل بازیابی پروژه.</p>
+  </div>
+  <div class="cc-backup-head-actions">
+    <a class="cc-btn" href="{% url 'control:backup_settings' %}"><span>⚙</span> تنظیمات</a>
+    <form method="post" action="{% url 'control:backup_create' %}" onsubmit="return confirm('یک بکاپ کامل جدید ساخته شود؟');">
+      {% csrf_token %}
+      <button class="cc-btn primary cc-backup-create" type="submit" {% if running %}disabled{% endif %}>
+        <span>＋</span> {% if running %}بکاپ در حال اجراست{% else %}ایجاد بکاپ الآن{% endif %}
+      </button>
+    </form>
+  </div>
+</div>
+
+<section class="cc-backup-hero">
+  <div class="cc-backup-health">
+    <div class="cc-backup-health-icon {% if last_success %}is-ok{% else %}is-warning{% endif %}">
+      {% if last_success %}✓{% else %}!{% endif %}
+    </div>
+    <div>
+      <span class="cc-backup-label">وضعیت سیستم بکاپ</span>
+      <strong>{% if running %}یک بکاپ در حال اجراست{% elif last_success %}پشتیبان‌گیری فعال و آماده است{% else %}هنوز بکاپ موفقی ثبت نشده{% endif %}</strong>
+      <small>
+        {% if last_success %}
+          آخرین نسخه موفق در {{ last_success.finished_at|date:"Y/m/d - H:i" }} ثبت شده است.
+        {% else %}
+          برای شروع، اولین بکاپ کامل را ایجاد کنید.
+        {% endif %}
+      </small>
+    </div>
+  </div>
+  <div class="cc-backup-next">
+    <span>زمان‌بندی فعلی</span>
+    <strong>{{ backup_settings.get_frequency_display }}</strong>
+    <small>ساعت {{ backup_settings.run_time|time:"H:i" }} · نگهداری ۵ نسخه</small>
+  </div>
+</section>
+
+<div class="cc-backup-stats">
+  <div class="cc-backup-stat">
+    <span class="cc-backup-stat-icon">✓</span>
+    <div><small>بکاپ‌های موفق</small><strong>{{ successful_count }}</strong></div>
+  </div>
+  <div class="cc-backup-stat">
+    <span class="cc-backup-stat-icon">◷</span>
+    <div><small>آخرین نسخه</small><strong>{% if last_success %}{{ last_success.finished_at|date:"H:i" }}{% else %}—{% endif %}</strong><em>{% if last_success %}{{ last_success.finished_at|date:"Y/m/d" }}{% else %}ثبت نشده{% endif %}</em></div>
+  </div>
+  <div class="cc-backup-stat">
+    <span class="cc-backup-stat-icon">↻</span>
+    <div><small>دوره اجرا</small><strong>{{ backup_settings.get_frequency_display }}</strong><em>ساعت {{ backup_settings.run_time|time:"H:i" }}</em></div>
+  </div>
+  <div class="cc-backup-stat">
+    <span class="cc-backup-stat-icon">▤</span>
+    <div><small>ظرفیت نگهداری</small><strong>۵ نسخه</strong><em>نسخه ششم، قدیمی‌ترین را جایگزین می‌کند</em></div>
+  </div>
+</div>
+
+<section class="cc-backup-retention cc-card">
+  <div class="cc-backup-section-head">
+    <div>
+      <span class="cc-eyebrow">RETENTION</span>
+      <h2>فضای نگهداری نسخه‌ها</h2>
+      <p>۵ نسل آخر بکاپ به‌صورت خودکار نگهداری می‌شوند.</p>
+    </div>
+    <span class="cc-backup-retention-count">{{ successful_count|default:0 }} موفق</span>
+  </div>
+
+  <div class="cc-backup-slots">
+    {% for backup in retention_backups %}
+      <div class="cc-backup-slot is-filled">
+        <span class="cc-backup-slot-check">✓</span>
+        <strong>نسخه {{ forloop.counter }}</strong>
+        <small>{{ backup.finished_at|date:"m/d - H:i" }}</small>
+      </div>
+    {% empty %}
+      <div class="cc-backup-slot is-empty"><span>＋</span><strong>اولین نسخه</strong><small>هنوز بکاپی نداریم</small></div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="cc-card cc-backup-history">
+  <div class="cc-backup-section-head">
+    <div>
+      <span class="cc-eyebrow">BACKUP HISTORY</span>
+      <h2>تاریخچه پشتیبان‌گیری</h2>
+      <p>تمام اجراهای اخیر، شامل بکاپ‌های دستی و خودکار.</p>
+    </div>
+  </div>
+
+  <div class="cc-backup-list">
+    {% for backup in backups %}
+    <article class="cc-backup-row">
+      <div class="cc-backup-file">
+        <span class="cc-backup-file-icon">{% if backup.encrypted %}🔒{% else %}▣{% endif %}</span>
+        <div>
+          <strong>{{ backup.filename }}</strong>
+          <small>{% if backup.encrypted %}رمزنگاری‌شده{% else %}آرشیو عادی{% endif %} · {{ backup.size_bytes|filesizeformat }}</small>
+        </div>
+      </div>
+      <div class="cc-backup-meta">
+        <span>زمان</span>
+        <strong>{{ backup.created_at|date:"Y/m/d H:i" }}</strong>
+      </div>
+      <div class="cc-backup-meta">
+        <span>نوع اجرا</span>
+        <strong>{{ backup.get_trigger_display }}</strong>
+      </div>
+      <div class="cc-backup-meta">
+        <span>ذخیره‌سازی</span>
+        <strong>{{ backup.storage_backend|upper }}</strong>
+      </div>
+      <div class="cc-backup-actions">
+        <span class="cc-backup-status {{ backup.status }}">{{ backup.get_status_display }}</span>
+        {% if backup.status == "success" and backup.storage_backend == "local" %}
+          <a class="cc-btn" href="{% url 'control:backup_download' backup.pk %}" title="دانلود بکاپ">
+            دانلود
+          </a>
+        {% endif %}
+      </div>
+    </article>
+    {% empty %}
+    <div class="cc-backup-empty">
+      <span>▧</span>
+      <strong>هنوز بکاپی ساخته نشده</strong>
+      <small>اولین بکاپ کامل پروژه را ایجاد کنید تا تاریخچه اینجا نمایش داده شود.</small>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if is_paginated %}
+  <div class="cc-pagination">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">قبلی</a>{% endif %}
+    <span>صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">بعدی</a>{% endif %}
+  </div>
+  {% endif %}
+</section>
+
+{% endblock %}

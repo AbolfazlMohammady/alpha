@@ -1,0 +1,9 @@
+# Test / development dependencies
+pytest
+pytest-django
+pytest-cov
+factory-boy
+model-bakery
+freezegun
+responses
+coverage==7.3.2

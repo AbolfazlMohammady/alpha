@@ -1,0 +1,148 @@
+{% extends "control_center/base.html" %}
+{% block title %}رنگ‌ها و سایزها | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-page-head cc-catalog-page-head">
+  <div>
+    <span class="cc-eyebrow">STORE / CATALOG</span>
+    <h1>رنگ‌ها و سایزها</h1>
+    <p>گزینه‌های پایه‌ای که در همه محصولات فروشگاه قابل انتخاب هستند.</p>
+  </div>
+  <div class="cc-catalog-head-stats">
+    <span><b>{{ colors_page.paginator.count }}</b> رنگ</span>
+    <span><b>{{ sizes_page.paginator.count }}</b> سایز</span>
+  </div>
+</div>
+
+<div class="cc-catalog-grid cc-catalog-grid-v2">
+  <section class="cc-card cc-catalog-card cc-catalog-card-v2">
+    <div class="cc-card-head cc-catalog-card-head-v2">
+      <div class="cc-catalog-title-block">
+        <span class="cc-catalog-icon cc-catalog-icon-color">●</span>
+        <div>
+          <span class="cc-eyebrow">COLORS</span>
+          <h2>رنگ‌ها <small class="cc-catalog-count">{{ colors_page.paginator.count }}</small></h2>
+        </div>
+      </div>
+      <a class="cc-btn primary cc-catalog-add-btn" href="{% url 'control:color_create' %}">
+        <span>+</span> افزودن رنگ
+      </a>
+    </div>
+
+    <div class="cc-catalog-list cc-catalog-list-v2">
+      {% for item in colors %}
+      <article class="cc-catalog-item cc-catalog-item-v2">
+        <span class="cc-catalog-swatch-lg cc-catalog-swatch-v2" style="--picked-color:{{ item.hex_code }}" aria-hidden="true"></span>
+
+        <div class="cc-catalog-main">
+          <div class="cc-catalog-name-row">
+            <strong>{{ item.name }}</strong>
+            {% if item.is_active %}
+              <span class="cc-catalog-status is-active">فعال</span>
+            {% else %}
+              <span class="cc-catalog-status">غیرفعال</span>
+            {% endif %}
+          </div>
+          <div class="cc-catalog-meta cc-catalog-meta-v2">
+            <span class="cc-catalog-code">{{ item.hex_code }}</span>
+            <span>HEX</span>
+          </div>
+        </div>
+
+        <div class="cc-row-actions cc-row-actions-v2">
+          <a class="cc-action-btn" href="{% url 'control:color_edit' item.pk %}">ویرایش</a>
+          <a class="cc-action-btn danger-link" href="{% url 'control:color_delete' item.pk %}">حذف</a>
+        </div>
+      </article>
+      {% empty %}
+      <div class="cc-catalog-empty cc-catalog-empty-v2">
+        <span class="cc-empty-icon">●</span>
+        <strong>هنوز رنگی ثبت نشده</strong>
+        <small>اولین رنگ کاتالوگ را اضافه کن.</small>
+        <a class="cc-btn primary" href="{% url 'control:color_create' %}">افزودن رنگ</a>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if colors_page.has_other_pages %}
+    <nav class="cc-pagination cc-pagination-v2 cc-catalog-pagination" aria-label="صفحه‌بندی رنگ‌ها">
+      <div class="cc-pagination-summary">
+        <span>نمایش</span>
+        <b>{{ colors_page.start_index }}–{{ colors_page.end_index }}</b>
+        <span>از</span>
+        <b>{{ colors_page.paginator.count }}</b>
+      </div>
+      <div class="cc-pagination-pages">
+        {% if colors_page.has_previous %}<a class="cc-page-btn cc-page-prev" href="?color_page={{ colors_page.previous_page_number }}&size_page={{ sizes_page.number }}">→</a>{% else %}<span class="cc-page-btn is-disabled">→</span>{% endif %}
+        <span class="cc-page-btn is-current">{{ colors_page.number }} / {{ colors_page.paginator.num_pages }}</span>
+        {% if colors_page.has_next %}<a class="cc-page-btn cc-page-next" href="?color_page={{ colors_page.next_page_number }}&size_page={{ sizes_page.number }}">←</a>{% else %}<span class="cc-page-btn is-disabled">←</span>{% endif %}
+      </div>
+    </nav>
+    {% endif %}  </section>
+
+  <section class="cc-card cc-catalog-card cc-catalog-card-v2">
+    <div class="cc-card-head cc-catalog-card-head-v2">
+      <div class="cc-catalog-title-block">
+        <span class="cc-catalog-icon cc-catalog-icon-size">S</span>
+        <div>
+          <span class="cc-eyebrow">SIZES</span>
+          <h2>سایزها <small class="cc-catalog-count">{{ sizes_page.paginator.count }}</small></h2>
+        </div>
+      </div>
+      <a class="cc-btn primary cc-catalog-add-btn" href="{% url 'control:size_create' %}">
+        <span>+</span> افزودن سایز
+      </a>
+    </div>
+
+    <div class="cc-catalog-list cc-catalog-list-v2">
+      {% for item in sizes %}
+      <article class="cc-catalog-item cc-catalog-item-v2 cc-size-catalog-item-v2">
+        <span class="cc-size-preview cc-size-preview-v2">{{ item.name }}</span>
+
+        <div class="cc-catalog-main">
+          <div class="cc-catalog-name-row">
+            <strong>{{ item.name }}</strong>
+            {% if item.is_active %}
+              <span class="cc-catalog-status is-active">فعال</span>
+            {% else %}
+              <span class="cc-catalog-status">غیرفعال</span>
+            {% endif %}
+          </div>
+          <div class="cc-catalog-meta cc-catalog-meta-v2">
+            <span class="cc-catalog-code">{{ item.slug }}</span>
+            <span>شناسه فنی</span>
+            <span>ترتیب {{ item.sort_order }}</span>
+          </div>
+        </div>
+
+        <div class="cc-row-actions cc-row-actions-v2">
+          <a class="cc-action-btn" href="{% url 'control:size_edit' item.pk %}">ویرایش</a>
+          <a class="cc-action-btn danger-link" href="{% url 'control:size_delete' item.pk %}">حذف</a>
+        </div>
+      </article>
+      {% empty %}
+      <div class="cc-catalog-empty cc-catalog-empty-v2">
+        <span class="cc-empty-icon">S</span>
+        <strong>هنوز سایزی ثبت نشده</strong>
+        <small>اولین سایز کاتالوگ را اضافه کن.</small>
+        <a class="cc-btn primary" href="{% url 'control:size_create' %}">افزودن سایز</a>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if sizes_page.has_other_pages %}
+    <nav class="cc-pagination cc-pagination-v2 cc-catalog-pagination" aria-label="صفحه‌بندی سایزها">
+      <div class="cc-pagination-summary">
+        <span>نمایش</span>
+        <b>{{ sizes_page.start_index }}–{{ sizes_page.end_index }}</b>
+        <span>از</span>
+        <b>{{ sizes_page.paginator.count }}</b>
+      </div>
+      <div class="cc-pagination-pages">
+        {% if sizes_page.has_previous %}<a class="cc-page-btn cc-page-prev" href="?color_page={{ colors_page.number }}&size_page={{ sizes_page.previous_page_number }}">→</a>{% else %}<span class="cc-page-btn is-disabled">→</span>{% endif %}
+        <span class="cc-page-btn is-current">{{ sizes_page.number }} / {{ sizes_page.paginator.num_pages }}</span>
+        {% if sizes_page.has_next %}<a class="cc-page-btn cc-page-next" href="?color_page={{ colors_page.number }}&size_page={{ sizes_page.next_page_number }}">←</a>{% else %}<span class="cc-page-btn is-disabled">←</span>{% endif %}
+      </div>
+    </nav>
+    {% endif %}  </section>
+</div>
+{% endblock %}

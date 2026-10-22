@@ -1,0 +1,232 @@
+{% extends "control_center/base.html" %}
+{% load shop_tags %}
+{% block title %}{{ order.number }} | سفارش | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-page-head cc-order-detail-head">
+  <div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:orders' %}">سفارش‌ها</a>
+      <span>/</span>
+      <span dir="ltr">{{ order.number }}</span>
+    </div>
+    <div class="cc-order-detail-title-row">
+      <div>
+        <span class="cc-eyebrow">ORDER / {{ order.number }}</span>
+        <h1>سفارش {{ order.number }}</h1>
+        <p>{{ order.created_at|date:"Y/m/d - H:i" }} · {{ order.items.all|length }} آیتم</p>
+      </div>
+      <div class="cc-order-detail-badges">
+        <span class="cc-order-badge cc-order-payment cc-order-payment-{{ order.payment_status }}">{{ order.get_payment_status_display }}</span>
+        <span class="cc-order-badge cc-order-status cc-order-status-{{ order.status }}">{{ order.get_status_display }}</span>
+      </div>
+    </div>
+  </div>
+  <div class="cc-order-detail-readonly-badge cc-order-workflow-badge">پرداخت فقط از مسیر واقعی پرداخت</div>
+  <div class="cc-order-detail-head-actions">
+    <a class="cc-btn cc-back-btn" href="{% url 'control:orders' %}">بازگشت به سفارش‌ها</a>
+    {% if order.payment_status == "paid" %}
+      <a class="cc-btn primary" href="{% url 'control:order_invoice' order.pk %}" target="_blank">فاکتور ↗</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="cc-order-detail-grid">
+  <main class="cc-order-detail-main">
+
+    <section class="cc-card cc-order-detail-card">
+      <div class="cc-dashboard-card-head">
+        <div>
+          <span class="cc-eyebrow">ITEMS</span>
+          <h2>اقلام سفارش</h2>
+          <p>{{ order.items.all|length }} آیتم · مبلغ {{ order.total_amount|price }} تومان</p>
+        </div>
+      </div>
+
+      <div class="cc-order-items">
+        {% for item in order.items.all %}
+        <article class="cc-order-item">
+          <div class="cc-order-item-media">
+            {% if item.custom_design and item.custom_design.preview_front %}
+              <img src="{{ item.custom_design.preview_front.url }}" alt="" loading="lazy">
+            {% elif item.primary_image_url %}
+              <img src="{{ item.primary_image_url }}" alt="" loading="lazy">
+            {% else %}
+              <span>P</span>
+            {% endif %}
+          </div>
+          <div class="cc-order-item-main">
+            <div class="cc-order-item-title">
+              {% if item.custom_design %}
+                <strong dir="ltr">{{ item.custom_design.design_code }}</strong>
+                <span class="cc-order-custom-design-name">{{ item.product.name }}</span>
+                <span>{{ item.quantity }} عدد</span>
+                <span>طراحی سه‌بعدی</span>
+              {% else %}
+                <strong>{{ item.product_name }}</strong>
+                <span>{{ item.quantity }} عدد</span>
+              {% endif %}
+            </div>
+            <div class="cc-order-item-meta">
+              {% if item.color_name %}<span>رنگ: {{ item.color_name }}</span>{% endif %}
+              {% if item.size_name %}<span>سایز: {{ item.size_name }}</span>{% endif %}
+              {% if item.variant_sku %}<span dir="ltr">SKU: {{ item.variant_sku }}</span>{% endif %}
+              {% if item.custom_design_code %}<span dir="ltr">شناسه طراحی: <a class="cc-order-design-code-link" href="{% if order.payment_status == "paid" %}{% url 'control:design_detail' item.custom_design.uuid %}{% else %}#{% endif %}">{{ item.custom_design_code }}</a></span>{% endif %}
+            </div>
+            {% if item.custom_design and order.payment_status == "paid" %}
+              <a class="cc-order-item-design-link" href="{% url 'control:design_detail' item.custom_design.uuid %}">مشاهده جلو، پشت و لیبل‌های طراحی ↗</a>
+            {% endif %}
+          </div>
+          <div class="cc-order-item-price">
+            <strong>{{ item.line_total|price }}</strong>
+            <small>{{ item.unit_price|price }} × {{ item.quantity }}</small>
+            <span>تومان</span>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+
+      <div class="cc-order-totals">
+        <div><span>جمع اقلام</span><strong>{{ order.subtotal|price }} تومان</strong></div>
+        <div><span>تخفیف</span><strong>{{ order.discount_amount|price }} تومان</strong></div>
+        <div><span>هزینه ارسال</span><strong>{{ order.shipping_amount|price }} تومان</strong></div>
+        <div class="is-total"><span>مبلغ نهایی</span><strong>{{ order.total_amount|price }} تومان</strong></div>
+      </div>
+    </section>
+
+    <section class="cc-card cc-order-detail-card">
+      <div class="cc-dashboard-card-head">
+        <div>
+          <span class="cc-eyebrow">DELIVERY</span>
+          <h2>اطلاعات گیرنده و ارسال</h2>
+          <p>این اطلاعات Snapshot سفارش است و با پروفایل مشتری تغییر نمی‌کند.</p>
+        </div>
+        <span class="cc-order-badge cc-order-shipping cc-order-shipping-{{ order.shipping_status }}">{{ order.get_shipping_status_display }}</span>
+      </div>
+      <div class="cc-order-recipient-readonly">
+        <span>گیرنده</span>
+        <strong{% if not order.shipping_recipient %} class="is-missing"{% endif %}>
+          {{ order.shipping_recipient|default:"نام گیرنده ثبت نشده" }}
+        </strong>
+        {% if order.shipping_recipient %}
+          <small>نام گیرنده در زمان ثبت سفارش ذخیره شده است.</small>
+        {% endif %}
+      </div>
+      <div class="cc-order-address-grid">
+        <div><span>موبایل</span><strong dir="ltr">{{ order.shipping_phone|default:"—" }}</strong></div>
+        <div><span>استان</span><strong>{{ order.shipping_province|default:"—" }}</strong></div>
+        <div><span>شهر</span><strong>{{ order.shipping_city|default:"—" }}</strong></div>
+        <div><span>کد پستی</span><strong dir="ltr">{{ order.shipping_postal_code|default:"—" }}</strong></div>
+        <div class="wide"><span>نشانی</span><strong>{{ order.shipping_address|default:"—" }}</strong></div>
+      </div>
+    </section>
+
+    {% if order.customer_note %}
+    <section class="cc-card cc-order-note-card">
+      <div class="cc-dashboard-card-head"><div><span class="cc-eyebrow">CUSTOMER NOTE</span><h2>یادداشت مشتری</h2></div></div>
+      <p>{{ order.customer_note|linebreaksbr }}</p>
+    </section>
+    {% endif %}
+
+{% if order.admin_note %}
+    <section class="cc-card cc-order-note-card">
+      <div class="cc-dashboard-card-head">
+        <div><span class="cc-eyebrow">INTERNAL NOTE</span><h2>یادداشت داخلی</h2><p>فقط جهت مشاهده تیم مدیریت.</p></div>
+      </div>
+      <p>{{ order.admin_note|linebreaksbr }}</p>
+    </section>
+    {% endif %}
+  </main>
+
+  <aside class="cc-order-detail-side">
+    <section class="cc-card cc-order-action-card cc-order-workflow-card">
+      <div class="cc-dashboard-card-head">
+        <div>
+          <span class="cc-eyebrow">WORKFLOW</span>
+          <h2>مدیریت مراحل سفارش</h2>
+          <p>پرداخت فقط از مسیر واقعی پرداخت انجام می‌شود؛ مراحل عملیاتی سفارش بعد از ثبت فقط رو به جلو حرکت می‌کنند.</p>
+        </div>
+      </div>
+
+      {% if order.payment_status != "paid" %}
+        <div class="cc-order-readonly-notice is-warning">
+          <span>!</span>
+          <div>
+            <strong>منتظر پرداخت مشتری</strong>
+            <small>بعد از پرداخت موفق، گزینه «آماده‌سازی برای ارسال» فعال می‌شود.</small>
+          </div>
+        </div>
+      {% elif order.status == "paid" %}
+        <div class="cc-order-action-group">
+          <strong>مرحله بعد</strong>
+          <form method="post" action="{% url 'control:order_workflow' order.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="preparing">
+            <button class="cc-order-action is-gold" type="submit">آماده‌سازی برای ارسال</button>
+          </form>
+        </div>
+      {% elif order.status == "processing" %}
+        <div class="cc-order-action-group">
+          <strong>در حال آماده‌سازی</strong>
+          <div class="cc-order-complete">سفارش در حال آماده‌سازی برای ارسال است.</div>
+          <form method="post" action="{% url 'control:order_workflow' order.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="shipped">
+            <button class="cc-order-action is-blue" type="submit">ثبت ارسال</button>
+          </form>
+        </div>
+      {% elif order.status == "shipped" %}
+        <div class="cc-order-action-group">
+          <strong>ارسال‌شده</strong>
+          <div class="cc-order-complete">سفارش ارسال شده و آماده ثبت تحویل است.</div>
+          <form method="post" action="{% url 'control:order_workflow' order.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delivered">
+            <button class="cc-order-action is-success" type="submit">ثبت تحویل سفارش</button>
+          </form>
+        </div>
+      {% elif order.status == "delivered" %}
+        <div class="cc-order-action-group">
+          <strong>تحویل‌شده</strong>
+          <div class="cc-order-complete">سفارش تحویل مشتری شده است و مرحله بعدی ندارد.</div>
+        </div>
+      {% elif order.status == "cancelled" %}
+        <div class="cc-order-complete is-danger">این سفارش لغو شده و قابل ادامه گردش نیست.</div>
+      {% elif order.status == "refunded" %}
+        <div class="cc-order-complete is-danger">این سفارش مرجوع شده است.</div>
+      {% endif %}
+    </section>
+
+    <section class="cc-card cc-order-meta-card">
+      <div class="cc-dashboard-card-head"><div><span class="cc-eyebrow">PAYMENT</span><h2>اطلاعات پرداخت</h2></div></div>
+      <div class="cc-order-meta-list">
+        <div><span>وضعیت پرداخت</span><b>{{ order.get_payment_status_display }}</b></div>
+        <div><span>مرجع پرداخت</span><b dir="ltr">{{ order.payment_reference|default:"—" }}</b></div>
+        <div><span>زمان پرداخت</span><b>{{ order.paid_at|date:"Y/m/d - H:i"|default:"—" }}</b></div>
+      </div>
+    </section>
+
+    <section class="cc-card cc-order-meta-card">
+      <div class="cc-dashboard-card-head"><div><span class="cc-eyebrow">TIMELINE</span><h2>تاریخچه وضعیت</h2></div></div>
+      <div class="cc-order-timeline">
+        <div class="{% if order.paid_at %}is-done{% endif %}"><i></i><span>پرداخت موفق</span><small>{{ order.paid_at|date:"Y/m/d - H:i"|default:"—" }}</small></div>
+        <div class="{% if order.status == "processing" or order.shipped_at or order.delivered_at %}is-done{% endif %}"><i></i><span>آماده‌سازی</span><small>{% if order.status == "processing" or order.shipped_at or order.delivered_at %}انجام شد{% else %}در انتظار{% endif %}</small></div>
+        <div class="{% if order.shipped_at %}is-done{% endif %}"><i></i><span>ارسال</span><small>{{ order.shipped_at|date:"Y/m/d - H:i"|default:"—" }}</small></div>
+        <div class="{% if order.delivered_at %}is-done{% endif %}"><i></i><span>تحویل</span><small>{{ order.delivered_at|date:"Y/m/d - H:i"|default:"—" }}</small></div>
+        {% if order.cancelled_at %}<div class="is-danger"><i></i><span>لغو</span><small>{{ order.cancelled_at|date:"Y/m/d - H:i" }}</small></div>{% endif %}
+      </div>
+    </section>
+
+    <section class="cc-card cc-order-customer-card">
+      <div class="cc-dashboard-card-head">
+        <div><span class="cc-eyebrow">ORDER OWNER</span><h2>ثبت‌کننده سفارش</h2><p>برای پیگیری تلفنی می‌توانی مستقیماً با این شماره تماس بگیری.</p></div>
+      </div>
+      <strong class="cc-order-customer-name">{{ order.user.get_full_name|default:"بدون نام" }}</strong>
+      <a class="cc-order-customer-phone cc-order-phone-link" href="tel:{{ order.user.phone }}" dir="ltr">{{ order.user.phone }}</a>
+      <div class="cc-order-contact-actions">
+        <a class="cc-btn primary" href="tel:{{ order.user.phone }}">تماس با مشتری</a>
+        <a class="cc-btn" href="{% url 'control:user_edit' order.user.pk %}">پروفایل مشتری</a>
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

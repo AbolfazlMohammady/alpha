@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load static shop_tags %}
+
+{% block title %}فاکتور {{ order.number }} | BABAEI{% endblock %}
+{% block body_class %}orders-page invoice-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/orders.css' %}?v=13">
+{% endblock %}
+
+{% block content %}
+<section class="invoice-shell">
+    <div class="invoice-toolbar">
+        <a class="orders-back" href="{% url 'orders:detail' order.uuid %}">بازگشت به سفارش</a>
+        <button type="button" class="order-btn order-btn--primary" onclick="window.print()">چاپ / ذخیره PDF</button>
+    </div>
+
+    <article class="invoice">
+        <header class="invoice__head">
+            <div>
+                <span class="orders-eyebrow">BABAEI / INVOICE</span>
+                <h1>فاکتور فروش</h1>
+                <p>فاکتور سفارش <strong dir="ltr">{{ order.number }}</strong></p>
+            </div>
+            <div class="invoice__brand">
+                <strong>BABAEI</strong>
+                <span>WEAR YOUR STORY</span>
+            </div>
+        </header>
+
+        <div class="invoice__meta">
+            <div><span>تاریخ</span><strong>{{ order.created_at|date:"Y/m/d - H:i" }}</strong></div>
+            <div><span>وضعیت پرداخت</span><strong>{{ order.get_payment_status_display }}</strong></div>
+            <div><span>مرجع پرداخت</span><strong dir="ltr">{{ order.payment_reference|default:"—" }}</strong></div>
+        </div>
+
+        <div class="invoice__grid">
+            <section>
+                <span class="invoice__section-title">خریدار</span>
+                <strong>{{ order.shipping_recipient|default:"مشتری BABAEI" }}</strong>
+                <span dir="ltr">{{ order.shipping_phone }}</span>
+            </section>
+            <section>
+                <span class="invoice__section-title">تحویل</span>
+                <strong>{{ order.shipping_title|default:"آدرس تحویل" }}</strong>
+                <span>{{ order.shipping_province }}، {{ order.shipping_city }}</span>
+                <span>{{ order.shipping_address }}</span>
+                <span dir="ltr">کد پستی: {{ order.shipping_postal_code }}</span>
+            </section>
+        </div>
+
+        <div class="invoice__table-wrap">
+            <table class="invoice__table">
+                <thead>
+                    <tr>
+                        <th>محصول</th>
+                        <th>مشخصات</th>
+                        <th>تعداد</th>
+                        <th>قیمت واحد</th>
+                        <th>جمع</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items.all %}
+                    <tr>
+                        <td data-label="محصول"><strong>{{ item.product_name }}</strong></td>
+                        <td data-label="مشخصات">{{ item.color_name }}{% if item.color_name and item.size_name %} / {% endif %}{{ item.size_name }}{% if item.variant_sku %}<small dir="ltr">{{ item.variant_sku }}</small>{% endif %}</td>
+                        <td data-label="تعداد">{{ item.quantity }}</td>
+                        <td data-label="قیمت واحد">{{ item.unit_price|price }}</td>
+                        <td data-label="جمع">{{ item.line_total|price }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="invoice__totals">
+            <div><span>جمع کالاها</span><strong>{{ order.subtotal|price }} تومان</strong></div>
+            <div><span>تخفیف</span><strong>{{ order.discount_amount|price }} تومان</strong></div>
+            <div><span>هزینه ارسال</span><strong>{% if order.shipping_amount %}{{ order.shipping_amount|price }} تومان{% else %}رایگان{% endif %}</strong></div>
+            <div class="invoice__grand-total"><span>مبلغ پرداخت‌شده</span><strong>{{ order.total_amount|price }} تومان</strong></div>
+        </div>
+
+        <footer class="invoice__foot">
+            <span>از خرید شما از BABAEI ممنونیم.</span>
+            <span dir="ltr">{{ order.number }}</span>
+        </footer>
+    </article>
+</section>
+{% endblock %}

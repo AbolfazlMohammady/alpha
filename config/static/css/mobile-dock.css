@@ -1,0 +1,217 @@
+/* ==========================================================================
+   BABAEI — Mobile dock
+   --------------------------------------------------------------------------
+   The floating glass capsule from the reference clip (design 03, "Glass Capsule
+   Dock"), in the shop's forest green instead of the reference blue.
+
+   Self-contained: it declares its own --dock-* tokens rather than borrowing
+   --sh-*, because base.html loads this on every page except the home page and
+   shop-shell.css only loads inside the shop namespace.
+
+   One backdrop-filter, on one element. The old stylesheets used 142 of them
+   across the chip set; a single fixed bar is affordable, and it is what makes
+   the surface read as glass.
+   ========================================================================== */
+
+:root {
+    --dock-forest: #14523c;
+    --dock-forest-soft: #1d6b4e;
+    --dock-cream: #fbfaf7;
+    --dock-ink: #2b3035;
+    --dock-muted: #6d7278;
+    --dock-line: rgba(20, 22, 26, .10);
+    --dock-size: 52px;
+    --dock-h: 64px;
+    --dock-ease: cubic-bezier(.34, 1.35, .42, 1);
+}
+
+.sh-dock {
+    display: none;
+}
+
+@media (max-width: 940px) {
+    .sh-dock {
+        position: fixed;
+        inset-inline: 0;
+        bottom: max(12px, env(safe-area-inset-bottom, 0px));
+        z-index: 90;
+
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        justify-content: space-evenly;
+
+        inline-size: min(390px, calc(100% - 12px));
+        block-size: var(--dock-h);
+        margin-inline: auto;
+        padding: 4px 6px;
+
+        border: 1px solid rgba(255, 255, 255, .55);
+        border-radius: 999px;
+        background: rgba(251, 250, 247, .78);
+        -webkit-backdrop-filter: blur(14px) saturate(180%);
+        backdrop-filter: blur(14px) saturate(180%);
+        box-shadow:
+            0 10px 30px rgba(9, 28, 20, .18),
+            0 2px 8px rgba(9, 28, 20, .10);
+    }
+
+    /* The moving indicator: one green capsule that slides under the active row. */
+    /* Design 03's distinguishing move: the active item is a filled CIRCLE, not a
+       sliding pill, and it lifts clear of the capsule's top edge. Square
+       dimensions plus border-radius: 50% is what makes it a circle — the first
+       attempt sized it to the item's width, which produced a wide lozenge. */
+    .sh-dock__pill {
+        position: absolute;
+        inset-block-start: 50%;
+        inset-inline-start: 6px;
+        z-index: 0;
+        translate: 0 calc(-50% - 8px);
+
+        inline-size: var(--dock-size);
+        block-size: var(--dock-size);
+        border-radius: 50%;
+        background: linear-gradient(150deg, var(--dock-forest-soft), var(--dock-forest));
+        box-shadow:
+            0 8px 20px rgba(20, 82, 60, .38),
+            0 2px 6px rgba(9, 28, 20, .22);
+    }
+
+    /* Only animate once the first measurement has landed, so the pill does not
+       fly in from the first item on load. */
+    .sh-dock[data-ready] .sh-dock__pill {
+        transition:
+            inset-inline-start .38s var(--dock-ease),
+            inline-size .38s var(--dock-ease);
+    }
+
+    .sh-dock__item {
+        position: relative;
+        z-index: 1;
+
+        display: grid;
+        grid-template-rows: auto auto;
+        place-items: center;
+        align-content: center;
+        row-gap: 1px;
+        flex: 0 0 auto;
+
+        inline-size: var(--dock-size);
+        block-size: var(--dock-size);
+
+        border-radius: 50%;
+        color: var(--dock-muted);
+        text-decoration: none;
+        -webkit-tap-highlight-color: transparent;
+        transition: color .28s var(--dock-ease);
+    }
+
+    /* The active row rides up with the circle, so the icon and label stay
+       concentric with it and the whole thing clears the capsule's top edge.
+       Only the indicator moves; the other rows stay put. */
+    .sh-dock__item[aria-current="page"] {
+        color: var(--dock-cream);
+        translate: 0 -8px;
+    }
+
+    .sh-dock__icon {
+        display: grid;
+        place-items: center;
+    }
+
+    .sh-dock__icon svg {
+        inline-size: 21px;
+        block-size: 21px;
+    }
+
+    /* Every row shows its label, as in the reference — only the active one is
+       cream on the green circle, the rest muted on the glass. */
+    .sh-dock__label {
+        font-size: 9px;
+        font-weight: 600;
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    .sh-dock__badge {
+        position: absolute;
+        inset-block-start: 4px;
+        inset-inline-start: 8px;
+
+        min-inline-size: 16px;
+        padding: 0 4px;
+
+        border-radius: 999px;
+        background: var(--dock-forest);
+        color: var(--dock-cream);
+
+        font-size: 9.5px;
+        font-weight: 700;
+        line-height: 16px;
+        text-align: center;
+    }
+
+    .sh-dock__item[aria-current="page"] .sh-dock__badge {
+        background: var(--dock-cream);
+        color: var(--dock-forest);
+        inset-block-start: 0;
+    }
+
+    /* Keep the last row of every page reachable above the dock. */
+    body {
+        padding-block-end: calc(var(--dock-h) + 22px);
+    }
+
+    .sh-dock__item:focus-visible {
+        outline: 2px solid var(--dock-forest);
+        outline-offset: 2px;
+    }
+}
+
+/* Anyone who asked the system for less transparency gets a solid capsule. */
+@media (prefers-reduced-transparency: reduce) {
+    .sh-dock {
+        background: var(--dock-cream);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sh-dock[data-ready] .sh-dock__pill {
+        transition: none;
+    }
+}
+
+
+/* Five destinations now fit comfortably without turning the dock into a cramped row. */
+@media (max-width: 940px) {
+    .sh-dock {
+        --dock-size: 46px;
+        --dock-h: 60px;
+        gap: 1px;
+        padding-inline: 5px;
+    }
+    .sh-dock__icon svg {
+        inline-size: 19px;
+        block-size: 19px;
+    }
+    .sh-dock__label {
+        font-size: 8.5px;
+    }
+}
+
+@media (max-width: 360px) {
+    .sh-dock {
+        --dock-size: 43px;
+        --dock-h: 58px;
+        inline-size: calc(100% - 8px);
+    }
+    .sh-dock__icon svg {
+        inline-size: 18px;
+        block-size: 18px;
+    }
+    .sh-dock__label {
+        font-size: 8px;
+    }
+}

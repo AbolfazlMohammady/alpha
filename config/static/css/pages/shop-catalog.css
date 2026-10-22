@@ -1,0 +1,1103 @@
+/* ==========================================================================
+   BABAEI — Shop catalog
+   --------------------------------------------------------------------------
+   Single source of truth for the product grid and the filter rail.
+
+   WHY THIS FILE EXISTS
+   The card and filter rules had been rewritten at least six times inside
+   shop-reference.css, every layer using !important to beat the layer below:
+   209 rules and 327 !important for the card + filter alone, plus 37 more rules
+   in storefront.css. The list-view layout was defined twice with contradictory
+   values, and .shop-reference__sidebar was set to position:sticky, then
+   position:static, then position:sticky again.
+
+   All of those rules are gone. This file defines the catalog once, with zero
+   !important, reading the same --sh-* palette as the header and hero.
+
+   Class names are unchanged on purpose: js/pages/shop-cards.js and
+   js/pages/shop-reference.js hook [data-product-card], [data-card-slide],
+   [data-favorite-button], [data-shop-*] and the .shop-reference__* classes, so
+   keeping the names means the JavaScript keeps working untouched.
+
+   The saved "list view" is dropped: it had been neutralised to display:none on
+   the toggle while its layout rules kept fighting each other, so it was
+   unreachable dead weight.
+   ========================================================================== */
+
+/* ==========================================================================
+   01 — CATALOG SHELL
+   ========================================================================== */
+
+.shop-reference__catalog {
+    display: grid;
+    grid-template-columns: 262px minmax(0, 1fr);
+    gap: 22px;
+    width: min(1240px, 100% - (var(--sh-gutter) * 2));
+    margin: 22px auto 0;
+    padding: 20px;
+    border: 1px solid var(--sh-line);
+    border-radius: 26px;
+    background: var(--sh-cream-2);
+    box-shadow: var(--sh-shadow-2);
+}
+
+.shop-reference__sidebar,
+.shop-reference__results {
+    min-width: 0;
+}
+
+/* The mobile "filter and sort" launcher. Hidden from 941px up, where the rail
+   is always on screen. */
+.shop-reference__mobile-filter {
+    display: none;
+}
+
+/* ==========================================================================
+   02 — FILTER RAIL
+   ========================================================================== */
+
+.shop-reference__sidebar {
+    /* Stays in view while the grid scrolls, and scrolls internally once it is
+       taller than the viewport. The legacy file declared this sticky, then
+       static, then sticky again across three layers. */
+    position: sticky;
+    top: calc(var(--sh-nav-h) + 16px);
+    align-self: start;
+    max-height: calc(100vh - var(--sh-nav-h) - 32px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding: 16px 15px 18px;
+    border: 1px solid var(--sh-line);
+    border-radius: var(--sh-radius);
+    background: var(--sh-paper);
+}
+
+.shop-reference__sidebar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 3px 13px;
+    border-bottom: 1px solid var(--sh-line);
+}
+
+.shop-reference__sidebar-head strong {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.shop-reference__sidebar-close {
+    display: none;
+}
+
+/* Groups are <section role="group" aria-labelledby>. The heading inside the
+   rail is an h3 so the document outline stays h1 > h2 (products) > h3. */
+.shop-reference__filter-section {
+    padding: 15px 0;
+    border-bottom: 1px solid var(--sh-line);
+}
+
+.shop-reference__filter-section:last-of-type {
+    border-bottom: 0;
+}
+
+.shop-reference__filter-section h3 {
+    margin: 0 0 11px;
+    color: var(--sh-ink);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .01em;
+}
+
+/* --- categories --------------------------------------------------------- */
+
+.shop-reference__category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.shop-reference__category-list a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 38px;
+    padding: 0 11px;
+    border-radius: 10px;
+    color: var(--sh-ink-2);
+    font-size: 12px;
+    text-decoration: none;
+    transition: background var(--sh-fast), color var(--sh-fast);
+}
+
+.shop-reference__category-list a:hover {
+    background: var(--sh-sand);
+    color: var(--sh-ink);
+}
+
+.shop-reference__category-list a.is-active {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    font-weight: 800;
+}
+
+.shop-reference__category-list small {
+    color: var(--sh-muted);
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.shop-reference__category-list a.is-active small {
+    color: rgba(251, 250, 247, .72);
+}
+
+/* --- price range -------------------------------------------------------- */
+
+.shop-reference__price-labels {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--sh-muted);
+    font-size: 10.5px;
+}
+
+.shop-reference__price-labels small {
+    color: var(--sh-muted);
+    font-size: 9.5px;
+}
+
+.shop-reference__price-labels b {
+    color: var(--sh-ink);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.shop-reference__range {
+    position: relative;
+    height: 30px;
+    /* Set by js/pages/shop-reference.js so the filled segment matches the
+       handles. Falls back to a neutral empty track without JavaScript. */
+    --sh-range-lower: 0%;
+    --sh-range-upper: 100%;
+}
+
+.shop-reference__range-track {
+    position: absolute;
+    top: 13px;
+    inset-inline: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--sh-sand);
+}
+
+.shop-reference__range-fill {
+    position: absolute;
+    top: 13px;
+    inset-inline-start: var(--sh-range-lower);
+    inset-inline-end: calc(100% - var(--sh-range-upper));
+    height: 4px;
+    border-radius: 999px;
+    background: var(--sh-forest);
+    pointer-events: none;
+}
+
+.shop-reference__range input[type="range"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 30px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    appearance: none;
+    pointer-events: none;
+}
+
+.shop-reference__range input[type="range"]::-webkit-slider-thumb {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--sh-cream-2);
+    border-radius: 50%;
+    background: var(--sh-forest);
+    box-shadow: 0 1px 5px rgba(11, 48, 37, .28);
+    appearance: none;
+    pointer-events: auto;
+    cursor: grab;
+}
+
+.shop-reference__range input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--sh-cream-2);
+    border-radius: 50%;
+    background: var(--sh-forest);
+    box-shadow: 0 1px 5px rgba(11, 48, 37, .28);
+    pointer-events: auto;
+    cursor: grab;
+}
+
+.shop-reference__range input[type="range"]:focus-visible::-webkit-slider-thumb {
+    outline: 3px solid var(--sh-moss);
+    outline-offset: 2px;
+}
+
+/* --- sizes -------------------------------------------------------------- */
+
+.shop-reference__sizes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.shop-reference__sizes label {
+    cursor: pointer;
+}
+
+.shop-reference__sizes input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.shop-reference__sizes label span {
+    display: grid;
+    place-items: center;
+    min-width: 44px;
+    min-height: 38px;
+    padding: 0 8px;
+    border: 1px solid var(--sh-line-strong);
+    border-radius: 10px;
+    background: var(--sh-cream-2);
+    color: var(--sh-ink-2);
+    font-size: 11px;
+    font-weight: 700;
+    transition: background var(--sh-fast), color var(--sh-fast),
+                border-color var(--sh-fast);
+}
+
+.shop-reference__sizes label:hover span {
+    border-color: var(--sh-moss);
+}
+
+.shop-reference__sizes label.is-active span {
+    border-color: var(--sh-forest);
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.shop-reference__sizes input:focus-visible + span {
+    outline: 3px solid var(--sh-forest);
+    outline-offset: 2px;
+}
+
+/* --- discount checkbox -------------------------------------------------- */
+
+.shop-reference__filter-section--checks {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.shop-reference__discount-check {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 38px;
+    color: var(--sh-ink-2);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.shop-reference__discount-check input {
+    width: 17px;
+    height: 17px;
+    accent-color: var(--sh-forest);
+}
+
+/* --- actions ------------------------------------------------------------ */
+
+.shop-reference__apply {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 46px;
+    margin-top: 14px;
+    padding: 0 15px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background var(--sh-fast);
+}
+
+.shop-reference__apply:hover {
+    background: var(--sh-forest-soft);
+}
+
+.shop-reference__apply span {
+    font-size: 16px;
+}
+
+.shop-reference__clear {
+    display: block;
+    margin-top: 11px;
+    color: var(--sh-muted);
+    font-size: 10.5px;
+    text-align: center;
+    text-decoration: none;
+}
+
+.shop-reference__clear:hover {
+    color: var(--sh-forest);
+}
+
+/* ==========================================================================
+   03 — TOOLBAR
+   Adds the result count and the active-filter chips with individual remove
+   links; previously the toolbar held only the sort control.
+   ========================================================================== */
+
+.shop-reference__toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.shop-reference__toolbar-title {
+    min-width: 0;
+}
+
+.shop-reference__toolbar-label {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--sh-muted);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .2em;
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.shop-reference__toolbar h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.shop-reference__count {
+    margin: 5px 0 0;
+    color: var(--sh-muted);
+    font-size: 12px;
+}
+
+.shop-reference__count b {
+    color: var(--sh-ink);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.shop-reference__chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+    margin-top: 11px;
+}
+
+.shop-reference__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 0 7px 0 12px;
+    border: 1px solid var(--sh-line-strong);
+    border-radius: 999px;
+    background: var(--sh-cream-2);
+    color: var(--sh-ink-2);
+    font-size: 11.5px;
+    text-decoration: none;
+    transition: border-color var(--sh-fast), color var(--sh-fast);
+}
+
+.shop-reference__chip:hover {
+    border-color: var(--sh-forest);
+    color: var(--sh-forest);
+}
+
+.shop-reference__chip b {
+    font-weight: 700;
+}
+
+.shop-reference__chip i {
+    display: grid;
+    place-items: center;
+    width: 19px;
+    height: 19px;
+    border-radius: 50%;
+    background: var(--sh-sand);
+    color: var(--sh-ink);
+    font-size: 12px;
+    font-style: normal;
+    line-height: 1;
+}
+
+.shop-reference__chip:hover i {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.shop-reference__chip--clear {
+    padding-inline: 13px;
+    border-style: dashed;
+}
+
+.shop-reference__sort-section {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.shop-reference__sort-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 13px;
+    border: 1px solid var(--sh-line-strong);
+    border-radius: 12px;
+    background: var(--sh-cream-2);
+    color: var(--sh-muted);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    transition: border-color var(--sh-fast);
+}
+
+.shop-reference__sort-trigger:hover {
+    border-color: var(--sh-moss);
+}
+
+.shop-reference__sort-trigger strong {
+    color: var(--sh-ink);
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.shop-reference__sort-chevron {
+    color: var(--sh-muted);
+    font-size: 13px;
+    transition: transform var(--sh-fast);
+}
+
+.shop-reference__sort-section.is-open .shop-reference__sort-chevron {
+    transform: rotate(180deg);
+}
+
+.shop-reference__sort-menu {
+    position: absolute;
+    inset-inline-end: 0;
+    top: calc(100% + 8px);
+    z-index: 30;
+    display: none;
+    min-width: 190px;
+    padding: 7px;
+    border: 1px solid var(--sh-line);
+    border-radius: 14px;
+    background: var(--sh-cream-2);
+    box-shadow: var(--sh-shadow-2);
+}
+
+.shop-reference__sort-section.is-open .shop-reference__sort-menu {
+    display: grid;
+    gap: 3px;
+}
+
+.shop-reference__sort-menu button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 40px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--sh-ink-2);
+    font: inherit;
+    font-size: 12px;
+    text-align: start;
+    cursor: pointer;
+    transition: background var(--sh-fast), color var(--sh-fast);
+}
+
+.shop-reference__sort-menu button:hover {
+    background: var(--sh-paper);
+    color: var(--sh-ink);
+}
+
+.shop-reference__sort-menu button.is-active {
+    color: var(--sh-forest);
+    font-weight: 800;
+}
+
+.shop-reference__sort-menu button b {
+    color: var(--sh-forest);
+}
+
+/* ==========================================================================
+   04 — PRODUCT GRID AND CARD
+   ========================================================================== */
+
+.shop-reference__products {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+    /* Stretch each card to the tallest card in its row so product tiles have
+       one consistent outer height even when titles/prices use fewer lines. */
+    align-items: stretch;
+}
+
+.shop-reference__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+    border: 1px solid var(--sh-line);
+    border-radius: 18px;
+    background: var(--sh-cream-2);
+    transition: transform var(--sh-fast), box-shadow var(--sh-fast),
+                border-color var(--sh-fast);
+}
+
+.shop-reference__card:hover {
+    border-color: var(--sh-line-strong);
+    box-shadow: 0 18px 34px -22px rgba(11, 48, 37, .38);
+    transform: translateY(-4px);
+}
+
+.shop-reference__card:focus-within {
+    border-color: var(--sh-forest);
+}
+
+/* The 4:5 box is what removes layout shift: the media area has a definite
+   height before any image loads, and covers whatever the upload's own ratio
+   is, so the grid stays uniform. */
+.shop-reference__media {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    background: var(--sh-paper);
+}
+
+.shop-reference__media-link,
+.shop-reference__media .product-card__slides,
+.shop-reference__media .product-card__slide {
+    position: absolute;
+    inset: 0;
+    display: block;
+}
+
+.shop-reference__media .product-card__slide {
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(1.02);
+    transition: opacity 350ms var(--sh-ease), transform 550ms var(--sh-ease);
+}
+
+.shop-reference__media .product-card__slide.is-active {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1);
+}
+
+.shop-reference__media .product-card__slide img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+/* --- badges ------------------------------------------------------------- */
+
+.shop-reference__badge {
+    position: absolute;
+    z-index: 3;
+    top: 10px;
+    inset-inline-start: 10px;
+    min-width: 38px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    font-size: 9.5px;
+    font-weight: 800;
+    text-align: center;
+    line-height: 1;
+}
+
+.shop-reference__badge--new {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.shop-reference__badge--discount {
+    background: var(--sh-ink);
+    color: var(--sh-cream-2);
+}
+
+.shop-reference__badge--new + .shop-reference__badge--discount {
+    top: 40px;
+}
+
+/* --- favourite ---------------------------------------------------------- */
+
+.shop-reference__favorite-form {
+    position: absolute;
+    z-index: 4;
+    top: 10px;
+    inset-inline-end: 10px;
+    margin: 0;
+}
+
+/* No backdrop-filter here: 18 blurred buttons cost a lot on a phone GPU for
+   no readable gain over a nearly opaque surface. */
+.shop-reference__favorite {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid var(--sh-line);
+    border-radius: 50%;
+    background: rgba(251, 250, 247, .94);
+    color: var(--sh-ink-2);
+    cursor: pointer;
+    transition: background var(--sh-fast), color var(--sh-fast),
+                transform var(--sh-fast);
+}
+
+.shop-reference__favorite:hover {
+    transform: scale(1.06);
+}
+
+.shop-reference__favorite.is-active {
+    background: var(--sh-forest);
+    border-color: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.shop-reference__favorite svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.shop-reference__favorite.is-active svg {
+    fill: currentColor;
+}
+
+.shop-reference__favorite.is-popping {
+    animation: sh-fav-pop 420ms var(--sh-ease);
+}
+
+@keyframes sh-fav-pop {
+    50% { transform: scale(1.24); }
+}
+
+/* --- body --------------------------------------------------------------- */
+
+.shop-reference__card-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 40px;
+    align-items: end;
+    gap: 10px;
+    flex: 1;
+    padding: 12px 13px 13px;
+}
+
+.shop-reference__card-info {
+    min-width: 0;
+    color: inherit;
+    text-decoration: none;
+}
+
+.shop-reference__card-info h3 {
+    display: -webkit-box;
+    min-height: 40px;
+    margin: 0 0 7px;
+    overflow: hidden;
+    color: var(--sh-ink);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.55;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.shop-reference__price-row {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-width: 0;
+}
+
+.shop-reference__price-row strong {
+    color: var(--sh-ink);
+    font-size: 13px;
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+}
+
+.shop-reference__price-row span {
+    color: var(--sh-muted);
+    font-size: 9.5px;
+}
+
+.shop-reference__price-row del {
+    color: var(--sh-muted);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+}
+
+.shop-reference__cart-form {
+    margin: 0;
+}
+
+.shop-reference__cart {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background var(--sh-fast), transform var(--sh-fast);
+}
+
+.shop-reference__cart:hover {
+    background: var(--sh-forest-soft);
+    transform: scale(1.06);
+}
+
+.shop-reference__cart svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.shop-reference__favorite:focus-visible,
+.shop-reference__cart:focus-visible,
+.shop-reference__apply:focus-visible,
+.shop-reference__sort-trigger:focus-visible,
+.shop-reference__category-list a:focus-visible,
+.shop-reference__chip:focus-visible,
+.shop-reference__pagination a:focus-visible {
+    outline: 3px solid var(--sh-forest);
+    outline-offset: 2px;
+}
+
+.shop-reference__empty {
+    grid-column: 1 / -1;
+    padding: 54px 20px;
+    border: 1px dashed var(--sh-line-strong);
+    border-radius: 18px;
+    color: var(--sh-muted);
+    text-align: center;
+}
+
+/* ==========================================================================
+   05 — PAGINATION AND LOADING STATES
+   ========================================================================== */
+
+.shop-reference__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 26px;
+}
+
+.shop-reference__pagination a,
+.shop-reference__pagination span {
+    display: grid;
+    place-items: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 10px;
+    border: 1px solid var(--sh-line);
+    border-radius: 11px;
+    color: var(--sh-ink-2);
+    font-size: 12.5px;
+    font-weight: 700;
+    text-decoration: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.shop-reference__pagination a:hover {
+    border-color: var(--sh-forest);
+    color: var(--sh-forest);
+}
+
+.shop-reference__pagination .is-current {
+    border-color: var(--sh-forest);
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.shop-reference__infinite-sentinel {
+    height: 1px;
+}
+
+.shop-reference__infinite-sentinel.is-done {
+    display: none;
+}
+
+/* Loading more used to be silent: the grid dimmed and cards appeared with no
+   indication anything was happening, which reads as "scrolling does nothing".
+   The sentinel is the element the observer watches, so the spinner lives there
+   and inherits its is-done state for free. */
+.shop-reference.is-loading-more .shop-reference__infinite-sentinel::after {
+    content: "";
+    display: block;
+    width: 24px;
+    height: 24px;
+    margin: 20px auto 4px;
+    border: 2px solid var(--sh-sand);
+    border-top-color: var(--sh-forest);
+    border-radius: 50%;
+    animation: sh-spin .7s linear infinite;
+}
+
+@keyframes sh-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shop-reference.is-loading-more .shop-reference__infinite-sentinel::after {
+        animation-duration: 1.8s;
+    }
+}
+
+/* The results dim while shop-reference.js swaps the catalog in. */
+.shop-reference.is-filter-loading .shop-reference__results,
+.shop-reference.is-loading-more .shop-reference__products {
+    opacity: .5;
+    transition: opacity var(--sh-fast);
+}
+
+/* ==========================================================================
+   06 — RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+    .shop-reference__catalog {
+        grid-template-columns: 236px minmax(0, 1fr);
+    }
+
+    .shop-reference__products {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 940px) {
+    .shop-reference__catalog {
+        display: block;
+        padding: 14px;
+        border-radius: 20px;
+    }
+
+    .shop-reference__mobile-filter {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        width: 100%;
+        min-height: 46px;
+        margin-bottom: 14px;
+        border: 1px solid var(--sh-line-strong);
+        border-radius: 12px;
+        background: var(--sh-cream-2);
+        color: var(--sh-ink);
+        font: inherit;
+        font-size: 12px;
+        font-weight: 800;
+        cursor: pointer;
+    }
+
+    .shop-reference__mobile-filter-icon svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+    }
+
+    .shop-reference__mobile-filter [data-filter-count] {
+        display: none;
+        place-items: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: var(--sh-forest);
+        color: var(--sh-cream-2);
+        font-size: 10px;
+    }
+
+    .shop-reference__mobile-filter [data-filter-count]:not(:empty) {
+        display: grid;
+    }
+
+    /* On phones the rail becomes a full-screen sheet rather than a panel that
+       pushes the grid down. No scrim element is needed because the sheet is
+       opaque and covers the viewport. */
+    .shop-reference__sidebar {
+        position: fixed;
+        inset: 0;
+        z-index: 220;
+        display: none;
+        /* Explicit viewport units instead of relying on top:0/bottom:0 alone,
+           which resolved ~15px short of the viewport. dvh also keeps the sheet
+           correct as a mobile browser hides its URL bar. */
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+        max-height: none;
+        padding: 18px clamp(16px, 5vw, 26px) 28px;
+        border: 0;
+        border-radius: 0;
+        background: var(--sh-cream-2);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .shop-reference__sidebar.is-open {
+        display: block;
+    }
+
+    .shop-reference__sidebar-close {
+        display: grid;
+        place-items: center;
+        width: 38px;
+        height: 38px;
+        border: 1px solid var(--sh-line);
+        border-radius: 11px;
+        background: transparent;
+        color: var(--sh-ink-2);
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .shop-reference__apply {
+        position: sticky;
+        bottom: 0;
+        margin-top: 18px;
+        box-shadow: 0 -14px 24px -18px rgba(11, 48, 37, .5);
+    }
+
+    .shop-reference__products {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 11px;
+    }
+
+    .shop-reference__toolbar {
+        align-items: center;
+    }
+
+    .shop-reference__toolbar h2 {
+        font-size: 19px;
+    }
+}
+
+@media (max-width: 480px) {
+    .shop-reference__card-body {
+        grid-template-columns: minmax(0, 1fr) 36px;
+        gap: 8px;
+        padding: 10px;
+    }
+
+    .shop-reference__card-info h3 {
+        min-height: 36px;
+        font-size: 12px;
+    }
+
+    .shop-reference__cart {
+        width: 36px;
+        height: 36px;
+    }
+
+    .shop-reference__favorite {
+        width: 31px;
+        height: 31px;
+    }
+
+    .shop-reference__badge {
+        top: 8px;
+        inset-inline-start: 8px;
+        min-width: 34px;
+        padding: 4px 7px;
+        font-size: 9px;
+    }
+
+    .shop-reference__badge--new + .shop-reference__badge--discount {
+        top: 36px;
+    }
+}
+
+/* ==========================================================================
+   07 — MOTION PREFERENCE
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .shop-reference__card,
+    .shop-reference__card:hover,
+    .shop-reference__media .product-card__slide,
+    .shop-reference__cart:hover,
+    .shop-reference__favorite:hover {
+        transform: none;
+    }
+
+    .shop-reference__card,
+    .shop-reference__card-info,
+    .shop-reference__filter-section,
+    .shop-reference__category-list a,
+    .shop-reference__sizes label span,
+    .shop-reference__chip {
+        transition-duration: 1ms;
+    }
+
+    .shop-reference__favorite.is-popping {
+        animation: none;
+    }
+}

@@ -1,0 +1,320 @@
+/* ==========================================================================
+   BABAEI — Location picker (province / city)
+   --------------------------------------------------------------------------
+   The custom listbox used by the address form. It reads the same --sh-* tokens
+   and the same --ac-* primitives as the rest of the account area
+   (pages/account.css is loaded before this file), so a picker trigger is
+   indistinguishable from a text field until it is opened.
+
+   js: the picker script lives inline in users/account/address_form.html and
+   drives this markup through .location-picker.is-open, the `hidden` attribute
+   and aria-selected. Those four hooks are the whole contract.
+
+   Zero !important declarations.
+   ========================================================================== */
+
+.location-picker {
+    position: relative;
+    display: block;
+    min-width: 0;
+}
+
+/* --- trigger: a field ------------------------------------------------ */
+
+.location-picker__trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    width: 100%;
+    min-height: var(--ac-field-h, 54px);
+    padding: 14px 15px;
+
+    border: 1px solid var(--ac-line-2, rgba(20, 22, 26, .16));
+    border-radius: var(--ac-radius-sm, 14px);
+    background: var(--ac-field-bg, #fff);
+    color: var(--sh-ink);
+
+    font: inherit;
+    font-size: 14.5px;
+    text-align: start;
+    cursor: pointer;
+
+    transition: border-color var(--sh-fast), box-shadow var(--sh-fast),
+                background-color var(--sh-fast);
+}
+
+.location-picker__trigger:hover:not(:disabled) {
+    border-color: var(--ac-line-3, rgba(20, 22, 26, .26));
+}
+
+.location-picker__trigger:focus-visible {
+    border-color: var(--sh-forest);
+    outline: none;
+    box-shadow: var(--ac-ring, 0 0 0 3px rgba(20, 82, 60, .16));
+}
+
+.location-picker.is-open .location-picker__trigger {
+    border-color: var(--sh-forest);
+    box-shadow: var(--ac-ring, 0 0 0 3px rgba(20, 82, 60, .16));
+}
+
+.location-picker__trigger:disabled {
+    border-color: var(--ac-line, rgba(20, 22, 26, .10));
+    background: var(--sh-cream);
+    color: var(--sh-muted);
+    cursor: not-allowed;
+}
+
+.location-picker__value {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.location-picker__trigger:disabled .location-picker__value {
+    color: var(--sh-muted);
+}
+
+.location-picker__trigger svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+
+    fill: none;
+    stroke: var(--sh-forest);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+
+    transition: rotate var(--sh-fast);
+}
+
+.location-picker.is-open .location-picker__trigger svg {
+    rotate: 180deg;
+}
+
+.location-picker__trigger:disabled svg {
+    stroke: var(--sh-muted);
+}
+
+/* --- menu: a popover ------------------------------------------------- */
+
+.location-picker__menu {
+    position: absolute;
+    z-index: 60;
+    inset-block-start: calc(100% + 8px);
+    inset-inline: 0;
+
+    overflow: hidden;
+    max-width: 100%;
+
+    border: 1px solid var(--ac-line-2, rgba(20, 22, 26, .16));
+    border-radius: var(--ac-radius, 18px);
+    background: var(--ac-surface, #fbfaf7);
+    box-shadow: 0 26px 60px -32px rgba(9, 28, 20, .55);
+}
+
+.location-picker__menu[hidden] {
+    display: none;
+}
+
+.location-picker.is-open .location-picker__menu {
+    animation: location-menu-in 160ms var(--sh-ease) both;
+}
+
+@keyframes location-menu-in {
+    from { opacity: 0; translate: 0 -6px; }
+    to { opacity: 1; translate: 0 0; }
+}
+
+.location-picker__search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    padding: 10px 12px;
+    border-block-end: 1px solid var(--ac-line, rgba(20, 22, 26, .10));
+}
+
+.location-picker__search-wrap:focus-within svg {
+    stroke: var(--sh-forest);
+}
+
+.location-picker__search-wrap svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: var(--sh-muted);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.location-picker__search {
+    width: 100%;
+    min-width: 0;
+    padding: 6px 2px;
+
+    border: 0;
+    background: transparent;
+    color: var(--sh-ink);
+
+    font: inherit;
+    font-size: 13.5px;
+}
+
+.location-picker__search::placeholder {
+    color: #9aa0a6;
+}
+
+/* The wrapper shows the focus; the global currentColor ring would double it. */
+.location-picker__search:focus,
+.location-picker__search:focus-visible {
+    outline: none;
+}
+
+.location-picker__options {
+    max-height: 264px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 6px;
+
+    scrollbar-width: thin;
+}
+
+.location-picker__options::-webkit-scrollbar {
+    width: 6px;
+}
+
+.location-picker__options::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: var(--ac-sunken, #e7e1d5);
+}
+
+.location-picker__option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    width: 100%;
+    min-height: 44px;
+    padding-block: 10px;
+    padding-inline: 12px;
+
+    border: 0;
+    border-radius: var(--ac-radius-xs, 12px);
+    background: transparent;
+    color: var(--sh-ink-2);
+
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    text-align: start;
+    cursor: pointer;
+
+    transition: background-color var(--sh-fast), color var(--sh-fast);
+}
+
+/* The script filters the list by toggling `hidden` on each option. */
+.location-picker__option[hidden] {
+    display: none;
+}
+
+.location-picker__option:hover:not([aria-selected="true"]) {
+    background: var(--sh-cream);
+    color: var(--sh-forest);
+}
+
+.location-picker__option[aria-selected="true"] {
+    background: rgba(20, 82, 60, .08);
+    color: var(--sh-forest);
+    font-weight: 800;
+}
+
+/* The tick sits at the inline-end, opposite the label. */
+
+.location-picker__option svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: var(--sh-forest);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+}
+
+.location-picker__option[aria-selected="true"] svg {
+    opacity: 1;
+}
+
+.location-picker__option:focus-visible {
+    outline: 2px solid var(--sh-forest);
+    outline-offset: -2px;
+}
+
+.location-picker__empty {
+    padding: 14px 12px;
+    color: var(--sh-muted);
+    font-size: 12.5px;
+    text-align: center;
+}
+
+.location-picker__empty[hidden] {
+    display: none;
+}
+
+/* --- address form specifics ------------------------------------------ */
+
+.address-form .ac-fieldset + .ac-fieldset {
+    margin-block-start: 2px;
+}
+
+.address-form__actions {
+    margin-block-start: 2px;
+}
+
+@media (max-width: 560px) {
+    .location-picker__menu {
+        inset-inline: 0;
+        max-height: 60vh;
+    }
+
+    .location-picker__options {
+        max-height: 46vh;
+    }
+
+    .address-form__actions .ac-btn {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .location-picker__trigger,
+    .location-picker__trigger svg,
+    .location-picker.is-open .location-picker__menu {
+        animation: none;
+        transition: none;
+        rotate: none;
+    }
+}
+
+/* --- recipient mode ----------------------------------------------- */
+.address-recipient-toggle{display:grid;gap:11px}
+.address-recipient-toggle__row{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid var(--ac-line-2,rgba(20,22,26,.16));border-radius:var(--ac-radius-sm,14px);background:var(--ac-field-bg,#fff);cursor:pointer}
+.address-recipient-toggle__row>input{position:absolute;opacity:0;pointer-events:none}
+.address-recipient-toggle__switch{position:relative;flex:0 0 42px;width:42px;height:24px;border:1px solid #b9bdc2;border-radius:99px;background:#e9eaec;transition:.16s}
+.address-recipient-toggle__switch i{position:absolute;top:3px;right:3px;width:16px;height:16px;border-radius:50%;background:#8a9097;transition:.16s}
+.address-recipient-toggle__row>input:checked~.address-recipient-toggle__switch{border-color:var(--sh-forest);background:rgba(20,82,60,.16)}
+.address-recipient-toggle__row>input:checked~.address-recipient-toggle__switch i{right:21px;background:var(--sh-forest)}
+.address-recipient-toggle__copy{display:grid;gap:2px}
+.address-recipient-toggle__copy strong{color:var(--sh-ink-2);font-size:13px}
+.address-recipient-toggle__copy small{color:var(--sh-muted);font-size:11px}
+.address-recipient-name[hidden]{display:none}

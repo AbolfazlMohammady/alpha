@@ -1,0 +1,54 @@
+{% extends "users/account_base.html" %}
+{% load static shop_tags %}
+
+{% block title %}سفارش‌های من | BABAEI{% endblock %}
+{% block body_class %}account-body orders-page{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/pages/orders.css' %}?v=13">
+{% endblock %}
+
+{% block account_content %}
+<section class="orders-shell">
+    <header class="orders-hero">
+        <div>
+            <span class="orders-eyebrow">BABAEI / ORDERS</span>
+            <h1>سفارش‌های من</h1>
+            <p>تاریخچه سفارش‌ها، وضعیت پرداخت و فاکتورهای تو.</p>
+        </div>
+        <a class="orders-back" href="{% url 'shop:index' %}">ادامه خرید</a>
+    </header>
+
+    <div class="orders-list">
+        {% for order in orders %}
+        <a class="order-row" href="{% url 'orders:detail' order.uuid %}">
+            <div class="order-row__number">
+                <span>شماره سفارش</span>
+                <strong dir="ltr">{{ order.number }}</strong>
+            </div>
+            <div class="order-row__items">
+                <span>{{ order.item_count }} آیتم</span>
+                <small>{{ order.created_at|date:"Y/m/d - H:i" }}</small>
+            </div>
+            <div class="order-row__status">
+                <span class="order-status order-status--{{ order.payment_status }}">{{ order.get_payment_status_display }}</span>
+                <small>{{ order.get_status_display }}</small>
+            </div>
+            <div class="order-row__total">
+                <strong>{{ order.total_amount|price }}</strong>
+                <small>تومان</small>
+            </div>
+            <span class="order-row__arrow">←</span>
+        </a>
+        {% empty %}
+        <div class="order-empty order-empty--large">
+            <span class="orders-eyebrow">NO ORDERS YET</span>
+            <h2>هنوز سفارشی ثبت نکرده‌ای</h2>
+            <p>بعد از اولین خرید، سفارش‌ها و فاکتورهای تو اینجا نمایش داده می‌شوند.</p>
+            <a href="{% url 'shop:index' %}" class="order-btn order-btn--primary">رفتن به فروشگاه</a>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

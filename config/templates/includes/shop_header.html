@@ -1,0 +1,219 @@
+{% comment %}
+=============================================================================
+ BABAEI — Shop navigation
+-----------------------------------------------------------------------------
+ Scope: rendered only on shop-namespace pages (see includes/header.html).
+
+ One navigation system, mobile and desktop:
+   .sh-nav      desktop link row + the action cluster
+   .sh-drawer   the phone drawer, driven by data-sh-burger / data-sh-drawer
+
+ Link honesty:
+   `customizer:designer` is product-bound — there is no generic designer landing
+   page. The design entry is therefore rendered only when a product is in
+   context, and points at that product without exposing its name in the URL. No `href="#"` placeholders remain.
+
+ Categories:
+   Real `shop:category` links. Those pages ship their own canonical,
+   CollectionPage schema and sitemap entry but were previously unreachable
+   from any markup.
+=============================================================================
+{% endcomment %}
+{% load static %}
+
+<a class="sh-skip" href="#products">رفتن به محصولات</a>
+
+<header class="sh-nav{% if has_dark_hero %} is-top{% endif %}" data-sh-nav>
+    <div class="sh-nav__inner">
+
+        <a class="sh-brand" href="{% url 'home:index' %}" aria-label="BABAEI — صفحه اصلی">
+            <span class="sh-brand__mark" aria-hidden="true">B</span>
+            <span>
+                <span class="sh-brand__name">BABAEI</span>
+                <span class="sh-brand__tagline">WEAR YOUR STORY</span>
+            </span>
+        </a>
+
+        <nav class="sh-nav__links" aria-label="منوی اصلی">
+            <a class="sh-nav__link" href="{% url 'home:index' %}">خانه</a>
+            <a class="sh-nav__link"
+               href="{% url 'shop:index' %}"
+               {% if request.resolver_match.url_name == 'index' %}aria-current="page"{% endif %}>فروشگاه</a>
+            {% if designer_product %}
+                <a class="sh-nav__link sh-nav__link--design"
+                   href="{% url 'customizer:designer' designer_product.uuid %}"
+                   {% if request.resolver_match.namespace == 'customizer' %}aria-current="page"{% endif %}>
+                    <svg class="sh-nav__design-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m7.5 4.5 4.5-2 4.5 2 4 4v7l-4 4-4.5 2-4.5-2-4-4v-7l4-4Z"></path>
+                        <path d="m7.5 4.5 4.5 2 4.5-2"></path>
+                        <path d="M12 6.5v5.5"></path>
+                        <path d="m12 12 4.2 2.1"></path>
+                    </svg>
+                    <span>طراحی سه‌بعدی</span>
+                </a>
+            {% endif %}
+            <a class="sh-nav__link" href="{% url 'shop:contact' %}" {% if request.resolver_match.url_name == 'contact' %}aria-current="page"{% endif %}>تماس با ما</a>
+        </nav>
+
+        <span class="sh-nav__spacer"></span>
+
+        <div class="sh-nav__actions">
+            {% if request.user.is_authenticated and request.user.is_active %}
+            {% if request.user.is_staff or request.user.role != 'customer' %}
+            <a class="sh-admin-entry" href="{% url 'control:dashboard' %}" aria-label="ورود به پنل مدیریتی">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z"></path>
+                    <path d="M8 7.5h8M8 11.5h8M8 15.5h5"></path>
+                </svg>
+                <span>پنل مدیریتی</span>
+            </a>
+            {% endif %}
+            {% endif %}
+            <button type="button" class="sh-icon sh-search-trigger" data-sh-search-open aria-controls="sh-search-panel" aria-expanded="false" aria-label="جستجوی محصولات">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+            </button>
+            <a class="sh-icon" href="{% url 'users:profile' %}" aria-label="حساب کاربری">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.4"></circle><path d="M5 20.5c.9-3.6 3.1-5.4 7-5.4s6.1 1.8 7 5.4"></path></svg>
+            </a>
+
+            <a class="sh-icon" href="{% url 'orders:cart' %}" aria-label="سبد خرید{% if cart_item_count %} — {{ cart_item_count }} کالا{% endif %}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2l1.5 9.2a2 2 0 0 0 2 1.8h7.2a2 2 0 0 0 1.9-1.5L20 9H7"></path><path d="M9 19.5h.01M18 19.5h.01"></path></svg>
+                {% if cart_item_count %}<span class="sh-icon__badge">{{ cart_item_count }}</span>{% endif %}
+            </a>
+
+            <button type="button"
+                    class="sh-icon sh-burger"
+                    data-sh-burger
+                    aria-expanded="false"
+                    aria-controls="sh-drawer"
+                    aria-label="باز کردن منو">
+                <span class="sh-burger__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+            </button>
+        </div>
+
+    </div>
+</header>
+
+<div class="sh-drawer" id="sh-drawer" data-sh-drawer aria-hidden="true">
+    <button type="button" class="sh-drawer__scrim" data-sh-drawer-close tabindex="-1" aria-label="بستن منو"></button>
+
+    <aside class="sh-drawer__panel" role="dialog" aria-modal="true" aria-label="منوی فروشگاه">
+
+        <div class="sh-drawer__head">
+            <a class="sh-brand" href="{% url 'home:index' %}">
+                <span class="sh-brand__mark" aria-hidden="true">B</span>
+                <span>
+                    <span class="sh-brand__name">BABAEI</span>
+                    <span class="sh-brand__tagline">WEAR YOUR STORY</span>
+                </span>
+            </a>
+            <button type="button" class="sh-icon sh-drawer__close" data-sh-drawer-close aria-label="بستن منو">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+            </button>
+        </div>
+
+        <div class="sh-drawer__search">
+            <button type="button" data-sh-search-open aria-controls="sh-search-panel" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+                <span>جستجوی محصولات</span>
+                <b aria-hidden="true">جستجو</b>
+            </button>
+        </div>
+
+        <nav class="sh-drawer__group" aria-label="منوی اصلی موبایل">
+            <span class="sh-drawer__label">منو</span>
+            <a class="sh-drawer__link" href="{% url 'shop:index' %}">
+                <span>همه محصولات</span>
+                <span class="sh-drawer__num">۰۱</span>
+            </a>
+            {% if designer_product %}
+                <a class="sh-drawer__link sh-drawer__link--design" href="{% url 'customizer:designer' designer_product.uuid %}">
+                    <span class="sh-drawer__link-main">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="m7.5 4.5 4.5-2 4.5 2 4 4v7l-4 4-4.5 2-4.5-2-4-4v-7l4-4Z"></path>
+                            <path d="m7.5 4.5 4.5 2 4.5-2"></path>
+                            <path d="M12 6.5v5.5"></path>
+                            <path d="m12 12 4.2 2.1"></path>
+                        </svg>
+                        <b>طراحی سه‌بعدی</b>
+                    </span>
+                    <span class="sh-drawer__num">۰۲</span>
+                </a>
+            {% endif %}
+            <a class="sh-drawer__link" href="{% url 'home:index' %}">
+                <span>صفحه اصلی</span>
+                <span class="sh-drawer__num">۰۳</span>
+            </a>
+            <a class="sh-drawer__link" href="{% url 'shop:contact' %}">
+                <span>تماس با ما</span>
+                <span class="sh-drawer__num">۰۴</span>
+            </a>
+        </nav>
+
+        {% if categories %}
+            <nav class="sh-drawer__group" aria-label="دسته‌بندی محصولات">
+                <span class="sh-drawer__label">دسته‌بندی‌ها</span>
+                {% for category in categories %}
+                    <a class="sh-drawer__link" href="{% url 'shop:category' category.slug %}">
+                        <span>{{ category.name }}</span>
+                        <span class="sh-drawer__count">{{ category.product_count|default:0 }}</span>
+                    </a>
+                {% endfor %}
+            </nav>
+        {% endif %}
+
+        <div class="sh-drawer__foot">
+            {% if request.user.is_authenticated and request.user.is_active %}
+            {% if request.user.is_staff or request.user.role != 'customer' %}
+            <a class="sh-drawer__cta sh-drawer__cta--manager" href="{% url 'control:dashboard' %}">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z"></path>
+                    <path d="M8 7.5h8M8 11.5h8M8 15.5h5"></path>
+                </svg>
+                ورود به پنل مدیریتی
+            </a>
+                {% endif %}
+            {% endif %}
+            <a class="sh-drawer__cta" href="{% url 'orders:cart' %}">
+                سبد خرید{% if cart_item_count %} ({{ cart_item_count }}){% endif %}
+            </a>
+            {% if request.user.is_authenticated %}
+                <a class="sh-drawer__cta sh-drawer__cta--ghost" href="{% url 'users:profile' %}">حساب کاربری</a>
+            {% else %}
+                <a class="sh-drawer__cta sh-drawer__cta--ghost" href="{% url 'users:login' %}">ورود / ثبت‌نام</a>
+            {% endif %}
+        </div>
+
+    </aside>
+</div>
+
+    <div class="sh-search-panel" id="sh-search-panel" data-sh-search-panel aria-hidden="true">
+        <button type="button" class="sh-search-panel__scrim" data-sh-search-close aria-label="بستن جستجو"></button>
+        <section class="sh-search-panel__card" role="dialog" aria-modal="true" aria-labelledby="sh-search-title">
+            <div class="sh-search-panel__top">
+                <div>
+                    <span class="sh-search-panel__eyebrow">BABAEI / SEARCH</span>
+                    <h2 id="sh-search-title">چی می‌خوای پیدا کنی؟</h2>
+                    <p>نام محصول، رنگ، سایز، دسته‌بندی یا کد SKU را جستجو کن.</p>
+                </div>
+                <button type="button" class="sh-icon sh-search-panel__close" data-sh-search-close aria-label="بستن جستجو">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+                </button>
+            </div>
+
+            <form class="sh-search-form" action="{% url 'shop:search' %}" method="get" role="search">
+                <label class="sh-search-form__field">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4"></path></svg>
+                    <input type="search" name="q" value="{{ search_query|default:'' }}" placeholder="مثلاً: تیشرت مشکی L" autocomplete="off" enterkeyhint="search" data-sh-search-input>
+                </label>
+                <button type="submit" class="sh-search-form__submit">
+                    <span>جستجو</span><b aria-hidden="true">←</b>
+                </button>
+            </form>
+
+            <div class="sh-search-panel__hint">
+                <span>نتایج فقط بعد از ارسال جستجو بارگذاری می‌شوند.</span>
+                <span>نام · دسته‌بندی · رنگ · سایز · SKU</span>
+            </div>
+        </section>
+    </div>

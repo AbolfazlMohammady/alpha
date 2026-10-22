@@ -1,0 +1,80 @@
+{% load i18n static tz %}
+<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}
+<html lang="{{ LANGUAGE_CODE|default:'fa' }}" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="robots" content="NONE,NOARCHIVE">
+    <title>{% block title %}{{ title|default:'مدیریت' }} | BABAEI{% endblock %}</title>
+    {% block stylesheet %}{% endblock %}
+    {% block dark-mode-vars %}{% endblock %}
+    {% block extrastyle %}{% endblock %}
+    {% block extrahead %}{% endblock %}
+    {% block responsive %}{% endblock %}
+</head>
+<body class="{% block bodyclass %}{% endblock %}" data-admin-utc-offset="{% now 'Z' %}">
+<a class="ba-skip" href="#content-start">پرش به محتوای اصلی</a>
+
+{% if not is_popup %}
+<header class="ba-topbar">
+    <button type="button" class="ba-menu-toggle" data-admin-menu aria-label="باز کردن منو" aria-expanded="false"><span></span><span></span><span></span></button>
+    <div class="ba-topbar__brand">{% block branding %}<a href="{% url 'admin:index' %}" class="ba-brand"><span class="ba-brand__mark">B</span><span><b>BABAEI</b><small>CONTROL CENTER</small></span></a>{% endblock %}</div>
+    <div class="ba-topbar__actions">{% block nav-global %}<a href="/" target="_blank" rel="noopener" class="ba-topbar__store">مشاهده فروشگاه <span>↗</span></a>{% endblock %}
+        {% if has_permission %}
+        <div class="ba-user"><button type="button" class="ba-user__button" data-admin-user aria-expanded="false"><span class="ba-user__avatar">B</span><span class="ba-user__meta"><b>{{ user.get_short_name|default:user.get_username }}</b><small>{{ user.username }}</small></span><span class="ba-user__chevron">⌄</span></button>
+            <div class="ba-user__menu" data-admin-user-menu>
+                {% if user.has_usable_password %}<a href="{% url 'admin:password_change' %}">تغییر رمز عبور</a>{% endif %}
+                <form method="post" action="{% url 'admin:logout' %}">{% csrf_token %}<button type="submit">خروج از حساب</button></form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</header>
+
+<div class="ba-shell"><div class="ba-overlay" data-admin-overlay></div>
+<aside class="ba-sidebar" data-admin-sidebar>
+    <div class="ba-sidebar__head"><a href="{% url 'admin:index' %}" class="ba-sidebar__home"><span class="ba-sidebar__mark">B</span><span><b>مرکز کنترل</b><small>BABAEI ADMIN</small></span></a><button type="button" class="ba-sidebar__close" data-admin-close aria-label="بستن منو">×</button></div>
+    <nav class="ba-sidebar__nav" aria-label="منوی مدیریت">
+        <a class="ba-nav-item {% if request.path == '/admin/' %}is-active{% endif %}" href="{% url 'admin:index' %}"><span class="ba-nav-icon">⌂</span><span>داشبورد</span></a>
+        {% with nav_apps=available_apps %}
+            {% for app in nav_apps %}
+            <div class="ba-nav-group">
+                <button type="button" class="ba-nav-group__head" data-admin-group><span><i class="ba-nav-group__dot"></i>{{ app.name }}</span><b>⌄</b></button>
+                <div class="ba-nav-group__items">
+                    {% for model in app.models %}
+                        {% if model.admin_url %}<a class="ba-nav-item ba-nav-item--sub {% if request.path == model.admin_url %}is-active{% endif %}" href="{{ model.admin_url }}"><span>{{ model.name }}</span>{% if model.add_url %}<small>+</small>{% endif %}</a>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        {% endwith %}
+    </nav>
+    <div class="ba-sidebar__foot"><a href="/" target="_blank" rel="noopener"><span>↗</span> مشاهده سایت</a></div>
+</aside>
+{% endif %}
+
+<main id="content-start" class="{% if is_popup %}ba-popup{% else %}ba-main{% endif %}" tabindex="-1">
+{% if not is_popup %}
+{% block nav-breadcrumbs %}<nav class="ba-breadcrumbs" aria-label="مسیر">{% block breadcrumbs %}<a href="{% url 'admin:index' %}">خانه</a>{% if title %}<span>/</span><strong>{{ title }}</strong>{% endif %}{% endblock %}</nav>{% endblock %}
+{% block messages %}{% if messages %}<div class="ba-messages" aria-live="polite">{% for message in messages %}<div class="ba-message ba-message--{{ message.tags|default:'info' }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% endblock %}
+<div id="content" class="{% block coltype %}colM{% endblock %}">
+    <div class="ba-page-head"><div class="ba-page-title">{% block pretitle %}{% endblock %}{% block content_title %}{% if title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}{% block content_subtitle %}{% if subtitle %}<p>{{ subtitle }}</p>{% endif %}{% endblock %}</div><div class="ba-page-tools">{% block object-tools %}{% endblock %}</div></div>
+{% endif %}
+
+{% block content %}{{ content }}{% endblock %}
+
+{% if not is_popup %}
+    {% block sidebar %}{% endblock %}
+</div>
+{% endif %}
+</main>
+
+{% if not is_popup %}
+</div>
+<footer class="ba-footer"><span>BABAEI CONTROL CENTER</span><span>© {% now "Y" %} BABAEI</span></footer>
+{% endif %}
+
+{% block extrabody %}<script src="{% static 'js/admin/admin.js' %}?v=1"></script>{% endblock %}
+</body>
+</html>

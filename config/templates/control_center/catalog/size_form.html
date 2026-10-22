@@ -1,0 +1,78 @@
+{% extends "control_center/base.html" %}
+{% block title %}{% if object %}ویرایش سایز{% else %}افزودن سایز{% endif %} | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-page-head cc-catalog-form-head">
+  <div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:catalog' %}">رنگ‌ها و سایزها</a>
+      <span>/</span>
+      <span>سایزها</span>
+    </div>
+    <h1>{% if object %}ویرایش سایز{% else %}افزودن سایز جدید{% endif %}</h1>
+    <p>{% if object %}اطلاعات این سایز را برای استفاده در محصولات به‌روزرسانی کن.{% else %}یک سایز پایه تعریف کن تا در تنوع محصولات قابل انتخاب باشد.{% endif %}</p>
+  </div>
+  <a class="cc-btn cc-back-btn" href="{% url 'control:catalog' %}">بازگشت به کاتالوگ</a>
+</div>
+
+<form method="post" class="cc-card cc-catalog-form cc-catalog-form-v2">
+  {% csrf_token %}
+
+  <div class="cc-catalog-form-top">
+    <div class="cc-form-section-title">
+      <span class="cc-section-icon">S</span>
+      <div>
+        <h2>اطلاعات سایز</h2>
+        <p>نام، شناسه داخلی و ترتیب نمایش را مشخص کن.</p>
+      </div>
+    </div>
+    {% if object %}
+      <span class="cc-form-state {% if object.is_active %}is-active{% endif %}">
+        {% if object.is_active %}فعال{% else %}غیرفعال{% endif %}
+      </span>
+    {% endif %}
+  </div>
+
+  <div class="cc-catalog-form-grid cc-catalog-form-grid-v2 cc-size-form-grid-v2">
+    <div class="cc-catalog-field">
+      <label for="{{ form.name.id_for_label }}">نام سایز</label>
+      {{ form.name }}
+      <small>مثلاً S، M، L، XL یا 2XL</small>
+      {% if form.name.errors %}<span class="cc-error">{{ form.name.errors|striptags }}</span>{% endif %}
+    </div>
+
+    <div class="cc-catalog-field">
+      <label for="{{ form.slug.id_for_label }}">شناسه فنی سایز</label>
+      {{ form.slug }}
+      <small>برای استفاده داخلی سیستم؛ می‌تواند با نام سایز یکی باشد.</small>
+      {% if form.slug.errors %}<span class="cc-error">{{ form.slug.errors|striptags }}</span>{% endif %}
+    </div>
+
+    <div class="cc-catalog-field">
+      <label for="{{ form.sort_order.id_for_label }}">ترتیب نمایش</label>
+      {{ form.sort_order }}
+      <small>عدد کمتر، سایز را زودتر در فهرست نمایش می‌دهد.</small>
+      {% if form.sort_order.errors %}<span class="cc-error">{{ form.sort_order.errors|striptags }}</span>{% endif %}
+    </div>
+
+    <div class="cc-catalog-field cc-catalog-check">
+      <label>وضعیت</label>
+      <label class="cc-catalog-toggle cc-catalog-toggle-v2">
+        {{ form.is_active }}
+        <span class="cc-switch-ui" aria-hidden="true"><i></i></span>
+        <span class="cc-toggle-copy">
+          <strong>سایز فعال باشد</strong>
+          <small>در انتخاب سایز محصولات نمایش داده شود.</small>
+        </span>
+      </label>
+      {% if form.is_active.errors %}<span class="cc-error">{{ form.is_active.errors|striptags }}</span>{% endif %}
+    </div>
+  </div>
+
+  <div class="cc-catalog-form-actions cc-catalog-form-actions-v2">
+    <a class="cc-btn" href="{% url 'control:catalog' %}">انصراف</a>
+    <button class="cc-btn primary cc-save-btn" type="submit">
+      {% if object %}ذخیره تغییرات{% else %}افزودن سایز{% endif %}
+    </button>
+  </div>
+</form>
+{% endblock %}

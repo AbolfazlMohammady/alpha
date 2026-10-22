@@ -1,0 +1,1642 @@
+/* ==========================================================================
+   BABAEI — Shop shell
+   --------------------------------------------------------------------------
+   Single source of truth for the shop page chrome: navigation, mobile drawer,
+   hero and category rail.
+
+   WHY THIS FILE EXISTS
+   The old shop navbar was spread over ~139 rule lines in shop-reference.css
+   and at least eight complete rewrites had been stacked on top of each other
+   (rule blocks around lines 692, 1987, 2098, 2278, 2337, 2389, 2589 and 2768),
+   each relying on !important to beat the previous one. The mobile hamburger
+   was set to display:grid!important on one line and display:none!important on
+   a later line, so it could never appear.
+
+   Those rules have been removed. This file defines the chrome once, with
+   zero !important. A rule here is the only rule for its selector.
+
+   Palette: forest green + cream (the brand direction).
+   Motion:  every transition is disabled under prefers-reduced-motion.
+   ========================================================================== */
+
+/* ==========================================================================
+   01 — DESIGN TOKENS
+   One palette, one spacing scale, one easing curve.
+   ========================================================================== */
+
+/* Palette and motion live in css/fonts.css on :root, so the account, auth
+   and saved pages can use the same values. What stays here is genuinely
+   shop-specific: the bar height and the page gutter. */
+body.shop-page {    /* --- surface --- */
+    /* --- forest green --- */
+    /* --- ink --- */
+    --sh-on-dark: #f6f3ec;
+    --sh-on-dark-soft: rgba(246, 243, 236, .72);
+    /* --- lines & shadows --- */
+    /* --- geometry --- */
+    --sh-nav-h: 74px;
+    --sh-gutter: clamp(18px, 4.4vw, 56px);
+    --sh-shell: 1240px;
+    --sh-tap: 44px;
+    /* --- motion ---
+       `transition: <property> var(--sh-fast)`. Where only a bare duration is
+       valid — `transition: visibility 0s linear <delay>` — use --sh-dur*.
+       Substituting a two-token pair there makes the whole declaration
+       invalid at computed-value time, which silently drops the transition. */
+}
+
+/* The shop shell owns its own typography now that the webfont really loads. */
+body.shop-page {
+    font-family: var(--sh-font);
+    color: var(--sh-ink);
+    background: var(--sh-cream);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* The floating quick-actions ring used to be hidden here. It is now suppressed
+   at the source instead — base.html skips the markup for the shop namespace,
+   so no dead DOM is shipped and this file needs no hiding rule. */
+
+
+/* ==========================================================================
+   02 — NAVIGATION
+   Sticky, in normal flow, no absolute positioning and no fixed height hack.
+   Server-rendered with .is-top so the transparent state never flashes.
+   ========================================================================== */
+
+.sh-nav {
+    position: sticky;
+    top: 0;
+    z-index: 80;
+    height: var(--sh-nav-h);
+    background: var(--sh-cream);
+    border-bottom: 1px solid transparent;
+    transition: background var(--sh-slow), border-color var(--sh-slow),
+                box-shadow var(--sh-slow), color var(--sh-slow);
+}
+
+.sh-nav.is-scrolled {
+    background: rgba(251, 250, 247, .96);
+    border-bottom-color: var(--sh-line);
+    box-shadow: 0 12px 30px -26px rgba(11, 48, 37, .5);
+}
+
+/* Transparent over the hero. Only applied when it is safe: the markup ships
+   with .is-top, and <noscript> restores the solid surface without JS. */
+.sh-nav.is-top {
+    background: transparent;
+    border-bottom-color: transparent;
+    box-shadow: none;
+}
+
+.sh-nav__inner {
+    display: flex;
+    align-items: center;
+    gap: clamp(10px, 2vw, 26px);
+    width: min(var(--sh-shell), 100% - (var(--sh-gutter) * 2));
+    height: 100%;
+    margin-inline: auto;
+}
+
+/* --- brand ------------------------------------------------------------- */
+
+.sh-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: var(--sh-tap);
+    color: var(--sh-forest);
+    text-decoration: none;
+    transition: color var(--sh-slow);
+}
+
+.sh-brand__mark {
+    display: grid;
+    place-items: center;
+    flex: 0 0 40px;
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    font-family: Georgia, serif;
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1;
+    transition: background var(--sh-slow), color var(--sh-slow),
+                transform var(--sh-fast);
+}
+
+.sh-brand:hover .sh-brand__mark {
+    transform: rotate(-6deg);
+}
+
+.sh-brand__name {
+    display: block;
+    color: currentColor;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 19px;
+    font-weight: 500;
+    letter-spacing: .26em;
+    line-height: 1.05;
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.sh-brand__tagline {
+    display: block;
+    margin-top: 2px;
+    color: var(--sh-muted);
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: .2em;
+    line-height: 1;
+    direction: ltr;
+    unicode-bidi: isolate;
+    transition: color var(--sh-slow);
+}
+
+/* --- desktop links ----------------------------------------------------- */
+
+.sh-nav__links {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-inline-start: clamp(6px, 2vw, 22px);
+}
+
+.sh-nav__link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--sh-tap);
+    padding: 0 14px;
+    border-radius: var(--sh-radius-sm);
+    color: var(--sh-ink-2);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color var(--sh-fast), background var(--sh-fast);
+}
+
+.sh-nav__link::after {
+    content: "";
+    position: absolute;
+    inset-inline: 14px;
+    bottom: 6px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--sh-forest);
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform var(--sh-fast);
+}
+
+.sh-nav__link:hover {
+    color: var(--sh-forest);
+}
+
+.sh-nav__link:hover::after,
+.sh-nav__link[aria-current="page"]::after {
+    transform: scaleX(1);
+}
+
+.sh-nav__link[aria-current="page"] {
+    color: var(--sh-forest);
+    font-weight: 700;
+}
+
+.sh-nav__spacer {
+    flex: 1;
+}
+
+/* --- actions ----------------------------------------------------------- */
+
+.sh-nav__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sh-icon {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--sh-line);
+    border-radius: var(--sh-radius-sm);
+    background: transparent;
+    color: var(--sh-ink-2);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color var(--sh-fast), background var(--sh-fast),
+                border-color var(--sh-fast), transform var(--sh-fast);
+}
+
+.sh-icon svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.sh-icon:hover {
+    border-color: transparent;
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    transform: translateY(-2px);
+}
+
+.sh-icon__badge {
+    position: absolute;
+    top: -6px;
+    inset-inline-end: -6px;
+    display: grid;
+    place-items: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border: 2px solid var(--sh-cream);
+    border-radius: 999px;
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* --- the scrolled state repaints text for the cream surface ------------- */
+
+/* --- burger (phones only) ---------------------------------------------- */
+
+.sh-burger {
+    display: none;
+}
+
+.sh-burger__bars {
+    display: grid;
+    gap: 4px;
+    width: 18px;
+}
+
+.sh-burger__bars i {
+    display: block;
+    height: 1.8px;
+    border-radius: 2px;
+    background: currentColor;
+    transition: transform var(--sh-fast), opacity var(--sh-fast);
+}
+
+/* --- transparent-over-hero text colours -------------------------------- */
+
+.sh-nav.is-top .sh-brand,
+.sh-nav.is-top .sh-nav__link,
+.sh-nav.is-top .sh-icon {
+    color: var(--sh-on-dark);
+}
+
+.sh-nav.is-top .sh-brand__mark {
+    background: var(--sh-cream);
+    color: var(--sh-forest);
+}
+
+.sh-nav.is-top .sh-brand__tagline {
+    color: var(--sh-on-dark-soft);
+}
+
+.sh-nav.is-top .sh-icon {
+    border-color: rgba(246, 243, 236, .26);
+}
+
+.sh-nav.is-top .sh-nav__link::after {
+    background: var(--sh-cream);
+}
+
+.sh-nav.is-top .sh-icon__badge {
+    border-color: var(--sh-forest-deep);
+}
+
+
+/* --------------------------------------------------------------------------
+   Non-hero guard
+   --------------------------------------------------------------------------
+   The transparent state is valid only when this page actually contains the
+   shared dark hero. Keeping this guard in the shared shell makes every
+   non-hero page (contact, category, product, etc.) use the exact same light
+   navbar without page-specific navigation CSS.
+   -------------------------------------------------------------------------- */
+body.shop-page:not(:has(.sh-hero)) .sh-nav.is-top {
+    background: var(--sh-cream);
+    border-bottom-color: var(--sh-line);
+    box-shadow: 0 8px 22px -20px rgba(11, 48, 37, .42);
+}
+
+body.shop-page:not(:has(.sh-hero)) .sh-nav.is-top .sh-brand,
+body.shop-page:not(:has(.sh-hero)) .sh-nav.is-top .sh-nav__link,
+body.shop-page:not(:has(.sh-hero)) .sh-nav.is-top .sh-icon {
+    color: var(--sh-ink-2);
+}
+
+body.shop-page:not(:has(.sh-hero)) .sh-nav.is-top .sh-brand__mark {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+body.shop-page:not(:has(.sh-hero)) .sh-nav.is-top .sh-brand__tagline {
+    color: var(--sh-muted);
+}
+
+body.shop-page:not(:has(.sh-hero)) .sh-nav.is-top .sh-icon {
+    border-color: var(--sh-line);
+}
+
+body.shop-page:not(:has(.sh-hero)) .sh-nav.is-top .sh-nav__link::after {
+    background: var(--sh-forest);
+}
+
+body.shop-page:not(:has(.sh-hero)) .sh-nav.is-top .sh-icon__badge {
+    border-color: var(--sh-cream);
+}
+
+/* The scrolled state uses the account/cart hover fill. */
+
+/* ==========================================================================
+   03 — MOBILE DRAWER
+   Replaces the old .mobile-menu panel, which had no trigger anywhere in the
+   markup and therefore could never open.
+   ========================================================================== */
+
+.sh-drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    visibility: hidden;
+    pointer-events: none;
+    /* Duration 0 + the delay: hiding waits for the panel to finish sliding
+       out, while showing is instant (see .is-open). */
+    transition: visibility 0s linear var(--sh-dur);
+}
+
+.sh-drawer.is-open {
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
+}
+
+.sh-drawer__scrim {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    padding: 0;
+    background: rgba(11, 48, 37, .46);
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity var(--sh-slow);
+}
+
+.sh-drawer.is-open .sh-drawer__scrim {
+    opacity: 1;
+}
+
+.sh-drawer__panel {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    display: flex;
+    flex-direction: column;
+    width: min(380px, 88vw);
+    padding: 20px clamp(18px, 5vw, 26px) 26px;
+    background: var(--sh-cream-2);
+    box-shadow: -20px 0 60px -30px rgba(11, 48, 37, .6);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateX(100%);
+    transition: transform var(--sh-slow);
+}
+
+.sh-drawer.is-open .sh-drawer__panel {
+    transform: translateX(0);
+}
+
+.sh-drawer__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--sh-line);
+}
+
+.sh-drawer__close {
+    flex: 0 0 auto;
+}
+
+.sh-drawer__group {
+    padding-block: 20px;
+    border-bottom: 1px solid var(--sh-line);
+}
+
+.sh-drawer__label {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--sh-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+}
+
+.sh-drawer__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    padding-inline: 2px;
+    border-radius: var(--sh-radius-sm);
+    color: var(--sh-ink);
+    font-size: 15.5px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color var(--sh-fast), padding-inline-start var(--sh-fast);
+}
+
+.sh-drawer__link:hover {
+    color: var(--sh-forest);
+    padding-inline-start: 8px;
+}
+
+.sh-drawer__link--muted {
+    min-height: 42px;
+    color: var(--sh-ink-2);
+    font-size: 14px;
+}
+
+.sh-drawer__num {
+    color: var(--sh-moss);
+    font-size: 11px;
+    font-weight: 700;
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.sh-drawer__count {
+    min-width: 24px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--sh-paper);
+    color: var(--sh-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.sh-drawer__foot {
+    margin-top: auto;
+    padding-top: 22px;
+    display: grid;
+    gap: 10px;
+}
+
+.sh-drawer__cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding-inline: 18px;
+    border-radius: var(--sh-radius-sm);
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    font-size: 14.5px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background var(--sh-fast);
+}
+
+.sh-drawer__cta:hover {
+    background: var(--sh-forest-soft);
+}
+
+.sh-drawer__cta--ghost {
+    background: transparent;
+    border: 1px solid var(--sh-line-strong);
+    color: var(--sh-ink);
+}
+
+.sh-drawer__cta--ghost:hover {
+    background: var(--sh-paper);
+}
+
+/* staggered entrance */
+.sh-drawer.is-open .sh-drawer__group,
+.sh-drawer.is-open .sh-drawer__foot {
+    animation: sh-drawer-in 380ms var(--sh-ease) backwards;
+}
+
+.sh-drawer.is-open .sh-drawer__group:nth-of-type(2) { animation-delay: 40ms; }
+.sh-drawer.is-open .sh-drawer__group:nth-of-type(3) { animation-delay: 80ms; }
+.sh-drawer.is-open .sh-drawer__foot { animation-delay: 120ms; }
+
+@keyframes sh-drawer-in {
+    from { opacity: 0; transform: translateX(14px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ==========================================================================
+   04 — HERO
+   The photo carries the mood; the type carries the brand. Text sits on the
+   RTL start edge (right) where the source image is darkest, so the cream
+   headline stays legible and the lit left third of the photo stays visible.
+   ========================================================================== */
+
+.sh-hero {
+    position: relative;
+    display: grid;
+    align-items: end;
+    isolation: isolate;
+    min-height: clamp(460px, 74vh, 660px);
+    /* The hero starts at the top of the document and the sticky nav overlays
+       its upper edge, instead of the old absolute-positioned/height:0 trick.
+       The copy is bottom-aligned, so the nav never covers it. */
+    margin-top: calc(var(--sh-nav-h) * -1);
+    background: var(--sh-forest-deep);
+    overflow: hidden;
+}
+
+.sh-hero__media {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+}
+
+.sh-hero__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+/* right (start) side darkened for the copy, left side left open for the photo */
+.sh-hero__media::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        linear-gradient(270deg,
+            rgba(9, 30, 23, .94) 0%,
+            rgba(9, 30, 23, .80) 30%,
+            rgba(9, 30, 23, .40) 58%,
+            rgba(9, 30, 23, .08) 82%,
+            rgba(9, 30, 23, 0) 100%),
+        linear-gradient(0deg,
+            rgba(9, 30, 23, .70) 0%,
+            rgba(9, 30, 23, .10) 42%,
+            rgba(9, 30, 23, 0) 70%);
+}
+
+.sh-hero__inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: clamp(20px, 4vw, 48px);
+    width: min(var(--sh-shell), 100% - (var(--sh-gutter) * 2));
+    margin-inline: auto;
+    padding-block: clamp(34px, 6vw, 62px);
+}
+
+.sh-hero__copy {
+    max-width: min(560px, 100%);
+    color: var(--sh-on-dark);
+}
+
+/* The breadcrumb's default colour is muted ink, because it also renders on the
+   category page's light header. Here it sits on the dark hero photo, so it
+   switches to the on-dark tone. */
+.sh-hero .shop-reference__crumbs {
+    margin-bottom: 26px;
+    color: var(--sh-on-dark-soft);
+}
+
+.sh-hero .shop-reference__crumbs a:hover {
+    color: var(--sh-on-dark);
+}
+
+.sh-hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 16px;
+    color: var(--sh-on-dark-soft);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.sh-hero__eyebrow::before {
+    content: "";
+    width: 26px;
+    height: 1px;
+    background: var(--sh-moss);
+}
+
+.sh-hero__title {
+    margin: 0;
+    font-size: clamp(38px, 6.2vw, 76px);
+    font-weight: 800;
+    letter-spacing: -.035em;
+    line-height: 1.02;
+}
+
+.sh-hero__title em {
+    display: block;
+    color: var(--sh-moss);
+    font-style: normal;
+    font-weight: 400;
+}
+
+.sh-hero__lead {
+    max-width: 40ch;
+    margin: 16px 0 0;
+    color: var(--sh-on-dark-soft);
+    font-size: clamp(14px, 1.4vw, 16px);
+    line-height: 1.95;
+}
+
+.sh-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 26px;
+}
+
+.sh-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 48px;
+    padding-inline: 24px;
+    border: 1px solid transparent;
+    border-radius: var(--sh-radius-sm);
+    font-family: inherit;
+    font-size: 14.5px;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background var(--sh-fast), color var(--sh-fast),
+                border-color var(--sh-fast), transform var(--sh-fast);
+}
+
+.sh-btn svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.sh-btn--solid {
+    background: var(--sh-cream);
+    color: var(--sh-forest-deep);
+}
+
+.sh-btn--solid:hover {
+    background: #fff;
+    transform: translateY(-2px);
+}
+
+.sh-btn--ghost {
+    border-color: rgba(246, 243, 236, .34);
+    color: var(--sh-on-dark);
+}
+
+.sh-btn--ghost:hover {
+    border-color: transparent;
+    background: rgba(246, 243, 236, .14);
+    transform: translateY(-2px);
+}
+
+.sh-btn:focus-visible {
+    outline: 3px solid var(--sh-moss);
+    outline-offset: 3px;
+}
+/* ==========================================================================
+   05 — CATEGORY RAIL
+   Real links to the shop:category pages. Those pages carry their own
+   canonical, CollectionPage schema and sitemap entries, but until now nothing
+   in the markup linked to them, so they were orphaned.
+   ========================================================================== */
+
+.sh-rail {
+    position: relative;
+    z-index: 2;
+    margin-top: calc(var(--sh-gutter) * -0.9);
+}
+
+.sh-rail__inner {
+    width: min(var(--sh-shell), 100% - (var(--sh-gutter) * 2));
+    margin-inline: auto;
+}
+
+.sh-rail__list {
+    display: flex;
+    gap: 8px;
+    margin: 0;
+    padding: 10px;
+    list-style: none;
+    border: 1px solid var(--sh-line);
+    border-radius: var(--sh-radius);
+    background: var(--sh-cream-2);
+    box-shadow: var(--sh-shadow-1);
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-inline: contain;
+}
+
+.sh-rail__list::-webkit-scrollbar {
+    display: none;
+}
+
+.sh-rail__item {
+    scroll-snap-align: start;
+}
+
+.sh-rail__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding-inline: 16px;
+    border-radius: 999px;
+    background: var(--sh-paper);
+    color: var(--sh-ink);
+    font-size: 13.5px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background var(--sh-fast), color var(--sh-fast);
+}
+
+.sh-rail__link:hover {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.sh-rail__count {
+    color: var(--sh-muted);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.sh-rail__link:hover .sh-rail__count {
+    color: rgba(251, 250, 247, .7);
+}
+
+/* The row that matches the filter currently applied to the grid. */
+.sh-rail__link.is-active {
+    background: var(--sh-forest);
+    border-color: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.sh-rail__link.is-active .sh-rail__count {
+    background: rgba(255, 255, 255, .16);
+    color: var(--sh-cream-2);
+}
+
+.sh-rail__link--all {
+    background: transparent;
+    border: 1px dashed var(--sh-line-strong);
+}
+
+/* ==========================================================================
+   06 — UTILITIES / A11Y
+   ========================================================================== */
+
+.sh-skip {
+    position: absolute;
+    inset-inline-start: 12px;
+    top: 12px;
+    z-index: 300;
+    padding: 10px 16px;
+    border-radius: var(--sh-radius-sm);
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    transform: translateY(-160%);
+    transition: transform var(--sh-fast);
+}
+
+.sh-skip:focus-visible {
+    transform: translateY(0);
+}
+
+body.shop-page.sh-no-scroll {
+    overflow: hidden;
+}
+
+.sh-nav__link:focus-visible,
+.sh-icon:focus-visible,
+.sh-brand:focus-visible,
+.sh-rail__link:focus-visible,
+.sh-drawer__link:focus-visible,
+.sh-drawer__cta:focus-visible {
+    outline: 3px solid var(--sh-forest);
+    outline-offset: 2px;
+}
+
+.sh-nav.is-top .sh-nav__link:focus-visible,
+.sh-nav.is-top .sh-icon:focus-visible,
+.sh-nav.is-top .sh-brand:focus-visible {
+    outline-color: var(--sh-moss);
+}
+
+/* ==========================================================================
+   07 — RESPONSIVE
+   Two breakpoints only. The nav collapses to brand + actions + burger once the
+   link row no longer fits; the hero drops its meta panel before its copy.
+   ========================================================================== */
+
+@media (max-width: 1080px) {
+    .sh-nav__link {
+        padding-inline: 11px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 940px) {
+    body.shop-page,
+    body.cart-page {
+        --sh-nav-h: 68px;
+    }
+
+    .sh-nav__links {
+        display: none;
+    }
+
+    .sh-burger {
+        display: grid;
+    }}
+
+@media (max-width: 700px) {
+    body.shop-page,
+    body.cart-page {
+        --sh-nav-h: 62px;
+        --sh-gutter: 16px;
+    }
+
+    .sh-hero {
+        min-height: min(88svh, 620px);
+        align-items: end;
+    }
+
+    .sh-hero__inner {
+        padding-block: 26px 30px;
+    }
+
+    .sh-hero__title {
+        font-size: clamp(32px, 10vw, 46px);
+    }
+
+    .sh-hero__lead {
+        font-size: 13.5px;
+        line-height: 1.85;
+    }
+
+    .sh-hero__actions {
+        gap: 8px;
+        margin-top: 20px;
+    }
+
+    .sh-btn {
+        flex: 1 1 auto;
+        min-height: 46px;
+        padding-inline: 16px;
+        font-size: 13.5px;
+    }
+
+    .sh-brand__mark {
+        flex-basis: 36px;
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+        font-size: 19px;
+    }
+
+    .sh-brand__name {
+        font-size: 16px;
+        letter-spacing: .2em;
+    }
+
+    .sh-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .sh-rail {
+        margin-top: -14px;
+    }
+
+    .sh-rail__list {
+        border-radius: var(--sh-radius-sm);
+        scroll-snap-type: x mandatory;
+    }
+}
+
+@media (max-width: 420px) {
+    .sh-brand__tagline {
+        display: none;
+    }
+
+    .sh-hero__lead {
+        max-width: 100%;
+    }
+}
+
+/* ==========================================================================
+   08 — MOTION PREFERENCE
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .sh-nav,
+    .sh-nav__link,
+    .sh-nav__link::after,
+    .sh-icon,
+    .sh-brand,
+    .sh-brand__mark,
+    .sh-drawer,
+    .sh-drawer__panel,
+    .sh-drawer__scrim,
+    .sh-btn,
+    .sh-rail__link,
+    .sh-skip {
+        transition-duration: 1ms;
+    }
+
+    .sh-drawer.is-open .sh-drawer__group,
+    .sh-drawer.is-open .sh-drawer__foot {
+        animation: none;
+    }
+
+    .sh-brand:hover .sh-brand__mark,
+    .sh-icon:hover,
+    .sh-btn:hover {
+        transform: none;
+    }
+}
+
+
+/* ==========================================================================
+   SHOP HERO — mobile composition
+   Keep the garment visible, move the copy into its readable dark zone and
+   prevent the headline from colliding with the category rail.
+   ========================================================================== */
+@media (max-width: 700px) {
+    body.shop-page .sh-hero {
+        min-height: 610px;
+        height: 610px;
+        align-items: stretch;
+    }
+
+    body.shop-page .sh-hero__media img {
+        object-position: 64% center;
+    }
+
+    body.shop-page .sh-hero__inner {
+        width: 100%;
+        min-height: 610px;
+        height: 100%;
+        padding: 88px 16px 110px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-start;
+    }
+
+    body.shop-page .sh-hero__copy {
+        width: min(100%, 300px);
+        max-width: 300px;
+        margin-inline-start: auto;
+        margin-inline-end: 0;
+        padding: 0;
+        text-align: right;
+    }
+
+    body.shop-page .sh-hero .shop-reference__crumbs {
+        margin-bottom: 12px;
+        font-size: 9px;
+    }
+
+    body.shop-page .sh-hero__eyebrow {
+        margin-bottom: 9px;
+        font-size: 8px;
+        letter-spacing: .14em;
+    }
+
+    body.shop-page .sh-hero__title {
+        width: 100%;
+        max-width: 300px;
+        margin: 0;
+        font-family: var(--sh-font);
+        font-size: clamp(34px, 9vw, 41px);
+        font-weight: 850;
+        line-height: 1.14;
+        letter-spacing: -.045em;
+        white-space: normal;
+        overflow-wrap: normal;
+        text-wrap: balance;
+    }
+
+    body.shop-page .sh-hero__lead {
+        max-width: 240px;
+        margin: 10px 0 0;
+        font-size: 12px;
+        line-height: 1.8;
+    }
+
+    body.shop-page .sh-hero__actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+        max-width: 300px;
+        gap: 7px;
+        margin-top: 14px;
+    }
+
+    body.shop-page .sh-hero__actions .sh-btn {
+        min-width: 0;
+        min-height: 44px;
+        padding-inline: 8px;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+
+    body.shop-page .sh-hero__actions .sh-btn svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    body.shop-page .sh-rail {
+        margin-top: -14px;
+    }
+
+    body.shop-page .sh-rail__list {
+        padding: 7px;
+        gap: 6px;
+        border-radius: 13px;
+    }
+
+    body.shop-page .sh-rail__link {
+        min-height: 38px;
+        padding-inline: 13px;
+        font-size: 12px;
+    }
+
+    body.shop-page .sh-rail__count {
+        font-size: 9px;
+    }
+}
+
+@media (max-width: 420px) {
+    body.shop-page .sh-hero {
+        min-height: 590px;
+        height: 590px;
+    }
+
+    body.shop-page .sh-hero__inner {
+        min-height: 590px;
+        padding-top: 82px;
+        padding-bottom: 108px;
+    }
+
+    body.shop-page .sh-hero__copy {
+        width: min(100%, 285px);
+        max-width: 285px;
+    }
+
+    body.shop-page .sh-hero__title {
+        max-width: 285px;
+        font-size: clamp(32px, 8.8vw, 38px);
+    }
+
+    body.shop-page .sh-hero__lead {
+        font-size: 11.5px;
+    }
+
+    body.shop-page .sh-hero__actions {
+        max-width: 285px;
+    }
+}
+
+
+/* Mobile hero: the copy lives in the upper-left visual zone while the
+   actions stay low, just above the category rail — matching the desktop
+   composition instead of floating halfway up the hero. */
+@media (max-width: 700px) {
+    body.shop-page .sh-hero__copy {
+        position: static;
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        color: var(--sh-on-dark);
+        text-align: right;
+    }
+
+    body.shop-page .sh-hero__text {
+        position: absolute;
+        left: 16px;
+        right: auto;
+        top: 84px;
+        width: min(56%, 220px);
+        max-width: 220px;
+        z-index: 3;
+        text-align: right;
+        direction: rtl;
+    }
+
+    body.shop-page .sh-hero__text .shop-reference__crumbs {
+        justify-content: flex-start;
+        margin-bottom: 10px;
+        font-size: 8px;
+    }
+
+    body.shop-page .sh-hero__text .sh-hero__eyebrow {
+        margin-bottom: 7px;
+        font-size: 7.5px;
+    }
+
+    body.shop-page .sh-hero__text .sh-hero__title {
+        width: 100%;
+        max-width: 220px;
+        margin: 0;
+        font-family: var(--sh-font);
+        font-size: clamp(30px, 8.2vw, 37px);
+        font-weight: 850;
+        line-height: 1.12;
+        letter-spacing: -.04em;
+        overflow-wrap: normal;
+    }
+
+    body.shop-page .sh-hero__text .sh-hero__lead {
+        max-width: 205px;
+        margin: 9px 0 0;
+        font-size: 11px;
+        line-height: 1.75;
+    }
+
+    body.shop-page .sh-hero__actions {
+        position: absolute;
+        left: 16px;
+        right: 16px;
+        bottom: 22px;
+        width: auto;
+        max-width: none;
+        margin: 0;
+        z-index: 4;
+    }
+}
+
+@media (max-width: 420px) {
+    body.shop-page .sh-hero__text {
+        left: 14px;
+        right: auto;
+        top: 78px;
+        width: 58%;
+        max-width: 205px;
+    }
+
+    body.shop-page .sh-hero__text .sh-hero__title {
+        max-width: 205px;
+        font-size: clamp(29px, 8.1vw, 35px);
+    }
+
+    body.shop-page .sh-hero__actions {
+        left: 14px;
+        right: 14px;
+        bottom: 22px;
+        width: auto;
+        max-width: none;
+    }
+}
+
+
+/* Final mobile hero tuning: lower copy and compact right-aligned actions. */
+@media (max-width: 700px) {
+    body.shop-page .sh-hero__text {
+        top: 108px;
+        width: min(58%, 225px);
+        max-width: 225px;
+    }
+
+    body.shop-page .sh-hero__text .sh-hero__title {
+        max-width: 225px;
+        font-size: clamp(31px, 8.5vw, 38px);
+        line-height: 1.16;
+    }
+
+    body.shop-page .sh-hero__actions {
+        left: auto;
+        right: 16px;
+        bottom: 22px;
+        width: 196px;
+        max-width: 196px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    body.shop-page .sh-hero__actions .sh-btn {
+        min-height: 38px;
+        height: 38px;
+        padding-inline: 7px;
+        border-radius: 9px;
+        font-size: 9.5px;
+        font-weight: 750;
+    }
+
+    body.shop-page .sh-hero__actions .sh-btn svg {
+        width: 13px;
+        height: 13px;
+    }
+}
+
+@media (max-width: 420px) {
+    body.shop-page .sh-hero__text {
+        top: 102px;
+        left: 13px;
+        width: 59%;
+        max-width: 205px;
+    }
+
+    body.shop-page .sh-hero__text .sh-hero__title {
+        max-width: 205px;
+        font-size: clamp(29px, 8.2vw, 35px);
+    }
+
+    body.shop-page .sh-hero__actions {
+        right: 13px;
+        bottom: 21px;
+        width: 188px;
+        max-width: 188px;
+    }
+
+    body.shop-page .sh-hero__actions .sh-btn {
+        min-height: 37px;
+        height: 37px;
+        font-size: 9px;
+    }
+}
+
+
+/* ==========================================================================
+   NAVBAR PRODUCT SEARCH
+   Opening/searching this panel is local UI work. No request is sent until the
+   GET form is actually submitted.
+   ========================================================================== */
+.sh-search-trigger {
+    flex: 0 0 auto;
+}
+
+.sh-drawer__search {
+    padding-top: 16px;
+}
+
+.sh-drawer__search button {
+    display: grid;
+    grid-template-columns: 21px minmax(0,1fr) auto;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 13px;
+    border: 1px solid var(--sh-line);
+    border-radius: 13px;
+    background: var(--sh-paper);
+    color: var(--sh-ink);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+.sh-drawer__search button svg {
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+}
+
+.sh-drawer__search button b {
+    color: var(--sh-forest);
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.sh-search-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 240;
+    display: grid;
+    place-items: start center;
+    padding: calc(var(--sh-nav-h) + 20px) 18px 28px;
+    visibility: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 180ms ease, visibility 0s linear 180ms;
+}
+
+.sh-search-panel.is-open {
+    visibility: visible;
+    pointer-events: auto;
+    opacity: 1;
+    transition-delay: 0s;
+}
+
+.sh-search-panel__scrim {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgba(9,30,23,.54);
+    backdrop-filter: blur(7px);
+    cursor: pointer;
+}
+
+.sh-search-panel__card {
+    position: relative;
+    z-index: 1;
+    width: min(780px, 100%);
+    padding: 27px;
+    border: 1px solid rgba(20,22,26,.12);
+    border-radius: 22px;
+    background: var(--sh-cream-2);
+    box-shadow: 0 32px 74px -44px rgba(9,28,20,.9);
+    transform: translateY(-12px) scale(.985);
+    transition: transform 220ms cubic-bezier(.16,1,.3,1);
+}
+
+.sh-search-panel.is-open .sh-search-panel__card {
+    transform: translateY(0) scale(1);
+}
+
+.sh-search-panel__top {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) 42px;
+    gap: 18px;
+    align-items: start;
+}
+
+.sh-search-panel__eyebrow {
+    color: var(--sh-forest);
+    font-family: var(--sh-font-latin);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    direction: ltr;
+}
+
+.sh-search-panel__top h2 {
+    margin: 7px 0 5px;
+    color: var(--sh-ink);
+    font-size: 28px;
+    font-weight: 850;
+    line-height: 1.2;
+}
+
+.sh-search-panel__top p {
+    margin: 0;
+    color: var(--sh-muted);
+    font-size: 12px;
+    line-height: 1.8;
+}
+
+.sh-search-panel__close {
+    width: 42px;
+    height: 42px;
+}
+
+.sh-search-form {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) 116px;
+    gap: 8px;
+    margin-top: 22px;
+}
+
+.sh-search-form__field {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 56px;
+    padding: 0 16px;
+    border: 1px solid var(--sh-line-strong);
+    border-radius: 14px;
+    background: #fff;
+}
+
+.sh-search-form__field:focus-within {
+    border-color: var(--sh-forest);
+    box-shadow: 0 0 0 4px rgba(20,82,60,.07);
+}
+
+.sh-search-form__field svg {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: var(--sh-muted);
+    stroke-width: 1.7;
+    stroke-linecap: round;
+}
+
+.sh-search-form__field input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--sh-ink);
+    font: inherit;
+    font-size: 14px;
+}
+
+.sh-search-form__submit {
+    min-height: 56px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 850;
+    cursor: pointer;
+}
+
+.sh-search-panel__hint {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    margin-top: 11px;
+    color: var(--sh-muted);
+    font-size: 9px;
+}
+
+@media (max-width: 700px) {
+    .sh-search-panel {
+        padding: calc(var(--sh-nav-h) + 9px) 9px 78px;
+    }
+
+    .sh-search-panel__card {
+        width: 100%;
+        padding: 17px;
+        border-radius: 18px;
+    }
+
+    .sh-search-panel__top {
+        grid-template-columns: minmax(0,1fr) 38px;
+        gap: 10px;
+    }
+
+    .sh-search-panel__top h2 {
+        font-size: 21px;
+    }
+
+    .sh-search-panel__top p {
+        font-size: 10px;
+    }
+
+    .sh-search-panel__close {
+        width: 38px;
+        height: 38px;
+    }
+
+    .sh-search-form {
+        grid-template-columns: 1fr;
+        gap: 7px;
+        margin-top: 15px;
+    }
+
+    .sh-search-form__field {
+        min-height: 50px;
+    }
+
+    .sh-search-form__field input {
+        font-size: 13px;
+    }
+
+    .sh-search-form__submit {
+        min-height: 46px;
+    }
+
+    .sh-search-panel__hint {
+        flex-direction: column;
+        gap: 2px;
+        font-size: 8px;
+    }
+}
+
+
+/* Global 3D designer entry ------------------------------------------------ */
+.sh-nav__link--design {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.sh-nav__design-icon {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.55;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.sh-nav__link--design[aria-current="page"] .sh-nav__design-icon {
+    stroke-width: 1.8;
+}
+.sh-drawer__link--design .sh-drawer__link-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+}
+.sh-drawer__link--design svg {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.55;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+
+/* Role-based management panel entry -------------------------------------- */
+.sh-admin-entry {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 0 12px;
+    border: 1px solid rgba(20, 82, 60, .18);
+    border-radius: 999px;
+    color: var(--sh-forest);
+    background: rgba(255, 255, 255, .72);
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: background .2s ease, border-color .2s ease, transform .2s ease;
+}
+.sh-admin-entry svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.sh-admin-entry:hover {
+    background: #fff;
+    border-color: rgba(20, 82, 60, .35);
+    transform: translateY(-1px);
+}
+.sh-drawer__cta--manager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--sh-forest);
+    color: #fff;
+}
+.sh-drawer__cta--manager svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+@media (max-width: 940px) {
+    .sh-admin-entry {
+        display: none;
+    }
+}

@@ -1,0 +1,2286 @@
+/* ==========================================================================
+   BABAEI — Account area
+   --------------------------------------------------------------------------
+   ONE design system for profile / addresses / address form / saved items and
+   the cart. It is the shop shell's language, moved into the account namespace:
+
+     forest  #14523c / #1d6b4e      cream  #f4f1ea / #fbfaf7
+     1px hairlines (--sh-line)      16-20px radii
+     one gold accent, used on markers only
+
+   The whole area used to be three designs at once (a cream sidebar, a white
+   form box and a red logout pill), which is what this file replaces.
+
+   Contents
+     00  tokens
+     01  page frame
+     02  shell header
+     03  layout + sidebar
+     04  identity block
+     05  navigation
+     06  content headers
+     07  cards
+     08  buttons
+     09  fields
+     10  empty states
+     11  profile
+     12  date wheel (jalali)
+     13  addresses
+     14  address form
+     15  saved items
+     16  footer
+     17  responsive
+     18  reduced motion
+
+   Shared primitives are namespaced `ac-*` and are loaded by the cart page too
+   (orders/cart.html links this file before cart.css), so the cart is part of
+   the same family rather than a second design.
+
+   Zero !important declarations. Verified.
+   ========================================================================== */
+
+/* ==========================================================================
+   00 — TOKENS
+   ========================================================================== */
+
+:root {
+    --ac-shell: 1240px;
+    --ac-gutter: clamp(16px, 4vw, 44px);
+    --ac-sidebar: 300px;
+
+    --ac-radius: 18px;
+    --ac-radius-sm: 14px;
+    --ac-radius-xs: 12px;
+
+    --ac-line: var(--sh-line);
+    --ac-line-2: rgba(20, 22, 26, .16);
+    --ac-line-3: rgba(20, 22, 26, .26);
+
+    --ac-surface: #f8f5ee;
+    --ac-sunken: var(--sh-sand);
+    --ac-field-bg: #f4f1e9;
+    --ac-field-h: 54px;
+
+    --ac-ring: 0 0 0 3px rgba(20, 82, 60, .16);
+    --ac-shadow: 0 18px 40px -28px rgba(9, 28, 20, .55);
+    --ac-brick: #9c3b2e;
+}
+
+/* ==========================================================================
+   01 — PAGE FRAME
+   ========================================================================== */
+
+.account-body {
+    /* Account, addresses and favourites use exactly the same typography token
+       as the public shop. */
+    font-family: var(--sh-font);
+    --sh-nav-h: 74px;
+    --sh-gutter: clamp(18px, 4.4vw, 56px);
+    --sh-shell: 1240px;
+    background: var(--sh-cream);
+    color: var(--sh-ink);
+    font-size: 16px;
+}
+
+.account-body main {
+    display: block;
+}
+
+/* Legacy account chrome is not rendered; account pages use the shared
+   BABAEI shop header and mobile dock. */
+.account-body > header.site-header,
+.account-body > .mobile-menu {
+    display: none;
+}
+
+.account-page {
+    padding-block: clamp(18px, 3vw, 34px) 0;
+}
+
+/* ==========================================================================
+   02 — SHELL HEADER
+   ========================================================================== */
+
+.account-shell-header {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 40;
+
+    border-block-end: 1px solid var(--ac-line);
+    background: rgba(251, 250, 247, .94);
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    backdrop-filter: blur(10px) saturate(150%);
+}
+
+.account-shell-header__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    width: min(var(--ac-shell), 100% - (var(--ac-gutter) * 2));
+    min-height: 68px;
+    margin-inline: auto;
+}
+
+.account-shell-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+
+    color: var(--sh-forest);
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: .26em;
+    line-height: 1;
+}
+
+.account-shell-brand__line {
+    display: block;
+    width: 20px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--sh-gold);
+}
+
+.account-shell-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.account-shell-header__actions form {
+    display: flex;
+    margin: 0;
+}
+
+/* Both top-bar controls are the same control: a hairline chip. The old pair
+   (outlined back link + red logout pill) is what made the bar read as a third
+   design. */
+.account-shell-back,
+.account-logout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    min-height: 42px;
+    padding-inline: 15px;
+
+    border: 1px solid var(--ac-line-2);
+    border-radius: 999px;
+    background: var(--ac-surface);
+    color: var(--sh-ink-2);
+
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: border-color var(--sh-fast), background-color var(--sh-fast),
+                color var(--sh-fast);
+}
+
+.account-shell-back:hover,
+.account-logout:hover {
+    border-color: var(--sh-forest);
+    background: var(--sh-cream-2);
+    color: var(--sh-forest);
+}
+
+.account-logout:hover {
+    border-color: rgba(156, 59, 46, .34);
+    color: var(--ac-brick);
+}
+
+.account-shell-back svg,
+.account-logout svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ==========================================================================
+   03 — LAYOUT
+   ========================================================================== */
+
+.account-layout {
+    display: grid;
+    grid-template-columns: var(--ac-sidebar) minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+
+    width: min(var(--ac-shell), 100% - (var(--ac-gutter) * 2));
+    margin-inline: auto;
+}
+
+.account-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    position: sticky;
+    inset-block-start: 88px;
+}
+
+.account-content {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+}
+
+/* ==========================================================================
+   04 — IDENTITY BLOCK
+   ========================================================================== */
+
+.account-user {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    padding: 16px;
+    border: 1px solid var(--ac-line);
+    border-radius: var(--ac-radius);
+    background: var(--ac-surface);
+}
+
+.account-avatar {
+    position: relative;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+
+    width: 60px;
+    height: 60px;
+    overflow: hidden;
+
+    border-radius: 20px;
+    background: linear-gradient(150deg, var(--sh-forest-soft), var(--sh-forest));
+    color: var(--sh-cream-2);
+
+    font-size: 21px;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.account-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.account-user__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.account-user__name {
+    overflow: hidden;
+    color: var(--sh-ink);
+    font-size: 15.5px;
+    font-weight: 800;
+    line-height: 1.55;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.account-user__phone {
+    color: var(--sh-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .04em;
+}
+
+.account-user__tag {
+    align-self: flex-start;
+    margin-block-start: 4px;
+    padding: 3px 9px;
+
+    border-radius: 999px;
+    background: rgba(20, 82, 60, .08);
+    color: var(--sh-forest);
+
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .16em;
+}
+
+/* ==========================================================================
+   05 — NAVIGATION
+   ========================================================================== */
+
+.account-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    padding: 6px;
+    border: 1px solid var(--ac-line);
+    border-radius: var(--ac-radius);
+    background: var(--ac-surface);
+}
+
+.account-nav__item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 11px;
+
+    min-height: 54px;
+    padding-inline: 12px;
+
+    border-radius: var(--ac-radius-sm);
+    color: var(--sh-ink-2);
+
+    font-size: 13.5px;
+    font-weight: 700;
+    transition: background-color var(--sh-fast), color var(--sh-fast),
+                box-shadow var(--sh-fast);
+}
+
+.account-nav__item:hover {
+    background: var(--sh-cream);
+    color: var(--sh-forest);
+}
+
+.account-nav__index {
+    display: grid;
+    place-items: center;
+
+    width: 28px;
+    height: 28px;
+
+    border-radius: 9px;
+    background: var(--ac-sunken);
+    color: var(--sh-muted);
+
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .06em;
+}
+
+.account-nav__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.account-nav__chevron {
+    display: grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    opacity: .38;
+}
+
+.account-nav__chevron svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* The active row: filled in the brand colour, number chip inverted to gold. */
+.account-nav__item.is-active {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    box-shadow: var(--ac-shadow);
+}
+
+.account-nav__item.is-active .account-nav__index {
+    background: rgba(251, 250, 247, .16);
+    color: var(--sh-gold);
+}
+
+.account-nav__item.is-active .account-nav__chevron {
+    opacity: .8;
+}
+
+/* ==========================================================================
+   06 — CONTENT HEADERS
+   ========================================================================== */
+
+.account-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+
+    padding-block-end: 2px;
+}
+
+.account-page-header__copy {
+    min-width: 0;
+}
+
+.account-page-header__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    color: var(--sh-forest);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .22em;
+    line-height: 1;
+}
+
+.account-page-header__eyebrow::before {
+    content: "";
+    display: block;
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--sh-gold);
+}
+
+.account-page-title {
+    margin-block-start: 9px;
+    color: var(--sh-ink);
+    font-size: 23px;
+    font-weight: 900;
+    line-height: 1.35;
+}
+
+.account-page-description {
+    max-width: 58ch;
+    margin-block-start: 6px;
+    color: var(--sh-muted);
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.account-page-header__action {
+    flex: 0 0 auto;
+}
+
+/* ==========================================================================
+   07 — CARDS
+   ========================================================================== */
+
+.ac-card {
+    padding: clamp(16px, 2.2vw, 24px);
+    border: 1px solid var(--ac-line);
+    border-radius: var(--ac-radius);
+    background: var(--ac-surface);
+}
+
+/* ==========================================================================
+   08 — BUTTONS
+   ========================================================================== */
+
+.ac-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    min-height: var(--ac-field-h);
+    padding-inline: 22px;
+
+    border: 1px solid transparent;
+    border-radius: var(--ac-radius-sm);
+    background: transparent;
+    color: var(--sh-ink-2);
+
+    font-size: 13.5px;
+    font-weight: 800;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color var(--sh-fast), color var(--sh-fast),
+                border-color var(--sh-fast), transform var(--sh-fast);
+}
+
+.ac-btn svg {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.ac-btn--primary {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.ac-btn--primary:hover {
+    background: var(--sh-forest-deep);
+}
+
+.ac-btn--ghost {
+    border-color: var(--ac-line-2);
+    background: var(--ac-surface);
+    color: var(--sh-ink-2);
+}
+
+.ac-btn--ghost:hover {
+    border-color: var(--sh-forest);
+    color: var(--sh-forest);
+}
+
+.ac-btn--danger {
+    border-color: rgba(156, 59, 46, .28);
+    color: var(--ac-brick);
+}
+
+.ac-btn--danger:hover {
+    border-color: var(--ac-brick);
+    background: rgba(156, 59, 46, .07);
+}
+
+.ac-btn--sm {
+    min-height: 42px;
+    padding-inline: 16px;
+    border-radius: var(--ac-radius-xs);
+    font-size: 12.5px;
+}
+
+.ac-btn:focus-visible {
+    outline: 2px solid var(--sh-forest);
+    outline-offset: 2px;
+}
+
+.ac-btn:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
+/* ==========================================================================
+   09 — FIELDS
+   ========================================================================== */
+
+.ac-form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.ac-form__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 18px;
+}
+
+.ac-form__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    padding-block-start: 4px;
+}
+
+.ac-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.ac-label {
+    color: var(--sh-ink-2);
+    font-size: 12.5px;
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+.ac-hint {
+    color: var(--sh-muted);
+    font-size: 11.5px;
+    line-height: 1.7;
+}
+
+.ac-input,
+.ac-textarea,
+.ac-select {
+    width: 100%;
+    min-height: var(--ac-field-h);
+    padding: 14px 15px;
+
+    border: 1px solid var(--ac-line-2);
+    border-radius: var(--ac-radius-sm);
+    background: var(--ac-field-bg);
+    color: var(--sh-ink);
+
+    font: inherit;
+    font-size: 14.5px;
+    line-height: 1.5;
+
+    transition: border-color var(--sh-fast), box-shadow var(--sh-fast),
+                background-color var(--sh-fast);
+}
+
+.ac-input::placeholder,
+.ac-textarea::placeholder {
+    color: #9aa0a6;
+}
+
+.ac-input:hover:not(:disabled),
+.ac-textarea:hover:not(:disabled),
+.ac-select:hover:not(:disabled) {
+    border-color: var(--ac-line-3);
+}
+
+.ac-input:focus,
+.ac-textarea:focus,
+.ac-select:focus {
+    border-color: var(--sh-forest);
+    box-shadow: var(--ac-ring);
+}
+
+/* The brand ring above is the focus indicator for fields, so the global
+   currentColor outline is not drawn twice. */
+.ac-input:focus-visible,
+.ac-textarea:focus-visible,
+.ac-select:focus-visible {
+    outline: none;
+}
+
+.ac-input:disabled,
+.ac-select:disabled {
+    border-color: var(--ac-line);
+    background: var(--sh-cream);
+    color: var(--sh-muted);
+    cursor: not-allowed;
+}
+
+.ac-textarea {
+    min-height: 138px;
+    resize: vertical;
+}
+
+.ac-input-group {
+    position: relative;
+    display: block;
+}
+
+.ac-input-group .ac-input {
+    padding-inline-end: 46px;
+    cursor: pointer;
+}
+
+.ac-input-group__icon {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: 15px;
+    translate: 0 -50%;
+
+    display: grid;
+    place-items: center;
+
+    color: var(--sh-forest);
+    pointer-events: none;
+}
+
+.ac-input-group__icon svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Segmented choice (gender): two bordered boxes that fill with forest. */
+.ac-choice {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.ac-choice__option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+
+    min-height: var(--ac-field-h);
+    padding-inline: 12px;
+
+    border: 1px solid var(--ac-line-2);
+    border-radius: var(--ac-radius-sm);
+    background: var(--ac-field-bg);
+    color: var(--sh-ink-2);
+
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color var(--sh-fast), background-color var(--sh-fast),
+                color var(--sh-fast);
+}
+
+.ac-choice__option:hover {
+    border-color: var(--sh-forest);
+}
+
+.ac-choice__option:focus-within {
+    border-color: var(--sh-forest);
+    box-shadow: var(--ac-ring);
+}
+
+.ac-choice__option.is-selected {
+    border-color: var(--sh-forest);
+    background: rgba(20, 82, 60, .07);
+    color: var(--sh-forest);
+    font-weight: 800;
+}
+
+.ac-choice__option input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    clip-path: inset(50%);
+}
+
+.ac-choice__icon {
+    display: grid;
+    place-items: center;
+
+    width: 26px;
+    height: 26px;
+
+    border-radius: 9px;
+    background: var(--ac-sunken);
+    color: var(--sh-ink-2);
+
+    font-size: 14px;
+    line-height: 1;
+}
+
+.ac-choice__option.is-selected .ac-choice__icon {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.ac-fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.ac-legend {
+    display: block;
+    width: 100%;
+    margin-block-end: 14px;
+    padding-block-end: 9px;
+
+    border-block-end: 1px solid var(--ac-line);
+    color: var(--sh-ink);
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: .01em;
+}
+
+/* ==========================================================================
+   10 — EMPTY STATES
+   ========================================================================== */
+
+.ac-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    min-height: clamp(300px, 38vw, 380px);
+    padding: clamp(28px, 4vw, 46px) clamp(18px, 3vw, 40px);
+
+    border: 1px solid var(--ac-line);
+    border-radius: var(--ac-radius);
+    background: var(--ac-surface);
+    text-align: center;
+}
+
+.ac-empty__art {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 212px;
+    height: 124px;
+    margin-block-end: 4px;
+}
+
+/* Map panel + address sheet: the composition, instead of one lonely circle. */
+.ac-empty__map {
+    position: absolute;
+    z-index: 1;
+    inset-inline-start: 0;
+    inset-block-start: 12px;
+
+    width: 140px;
+    height: 100px;
+    overflow: hidden;
+
+    border: 1px solid var(--ac-line-2);
+    border-radius: var(--ac-radius);
+    background: var(--sh-paper);
+}
+
+.ac-empty__map::before,
+.ac-empty__map::after {
+    content: "";
+    position: absolute;
+    background: var(--sh-cream-2);
+}
+
+.ac-empty__map::before {
+    inset-inline-start: -14px;
+    inset-block-start: 36px;
+    width: 180px;
+    height: 9px;
+    border-block: 1px solid var(--ac-line);
+    rotate: -7deg;
+}
+
+.ac-empty__map::after {
+    inset-inline-start: 54px;
+    inset-block-start: -14px;
+    width: 9px;
+    height: 150px;
+    border-inline: 1px solid var(--ac-line);
+    rotate: 10deg;
+}
+
+.ac-empty__art--map::before {
+    content: "";
+    position: absolute;
+    z-index: 2;
+    inset-inline-end: 0;
+    inset-block-start: 26px;
+
+    width: 142px;
+    height: 82px;
+
+    border: 1px solid var(--ac-line);
+    border-radius: var(--ac-radius-sm);
+    background: var(--ac-surface);
+    box-shadow: var(--ac-shadow);
+}
+
+.ac-empty__line {
+    position: absolute;
+    z-index: 3;
+    inset-inline-end: 18px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--ac-sunken);
+}
+
+.ac-empty__line--a {
+    inset-block-start: 44px;
+    width: 84px;
+}
+
+.ac-empty__line--b {
+    inset-block-start: 60px;
+    width: 64px;
+}
+
+.ac-empty__line--c {
+    inset-block-start: 76px;
+    width: 72px;
+    background: rgba(20, 82, 60, .22);
+}
+
+.ac-empty__pin {
+    position: absolute;
+    z-index: 4;
+    inset-block-start: 0;
+    inset-inline-start: 52px;
+
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--sh-forest);
+    box-shadow: 0 0 0 6px rgba(20, 82, 60, .10);
+}
+
+.ac-empty__pin::after {
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border-radius: 50%;
+    background: var(--sh-gold);
+}
+
+/* Saved items: a framed plate holding the mark. */
+.ac-empty__art--heart,
+.ac-empty__art--bookmark {
+    width: 96px;
+    height: 92px;
+    margin-block-end: 10px;
+}
+
+.ac-empty__art--heart::before,
+.ac-empty__art--bookmark::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--ac-line-2);
+    border-radius: 26px;
+    background: var(--sh-cream-2);
+}
+
+.ac-empty__heart {
+    position: relative;
+    z-index: 1;
+    width: 34px;
+    height: 30px;
+}
+
+.ac-empty__heart::before,
+.ac-empty__heart::after {
+    content: "";
+    position: absolute;
+    inset-block-start: 0;
+    width: 17px;
+    height: 27px;
+    border-radius: 17px 17px 0 0;
+    background: var(--sh-forest);
+}
+
+.ac-empty__heart::before {
+    inset-inline-start: 17px;
+    transform: rotate(-45deg);
+    transform-origin: 0 100%;
+}
+
+.ac-empty__heart::after {
+    inset-inline-start: 0;
+    transform: rotate(45deg);
+    transform-origin: 100% 100%;
+}
+
+.ac-empty__bookmark {
+    position: relative;
+    z-index: 1;
+    width: 32px;
+    height: 44px;
+    background: var(--sh-forest);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 72%, 0 100%);
+}
+
+.ac-empty__eyebrow {
+    color: var(--sh-forest);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .22em;
+}
+
+.ac-empty h2 {
+    max-width: 30ch;
+    color: var(--sh-ink);
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1.6;
+}
+
+.ac-empty p {
+    max-width: 46ch;
+    color: var(--sh-muted);
+    font-size: 13px;
+    line-height: 1.9;
+}
+
+.ac-empty .ac-btn {
+    margin-block-start: 8px;
+}
+
+/* ==========================================================================
+   11 — PROFILE
+   ========================================================================== */
+
+.profile-card {
+    display: block;
+}
+
+.profile-identity {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+
+    padding-block-end: 20px;
+    border-block-end: 1px solid var(--ac-line);
+}
+
+.profile-image {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    overflow: hidden;
+
+    border-radius: 24px;
+    background: linear-gradient(150deg, var(--sh-forest-soft), var(--sh-forest));
+    color: var(--sh-cream-2);
+    font-weight: 800;
+    line-height: 1;
+}
+
+.profile-image--large {
+    width: 76px;
+    height: 76px;
+    font-size: 26px;
+}
+
+.profile-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-identity__info {
+    min-width: 0;
+    flex: 1 1 180px;
+}
+
+.profile-identity__info h2 {
+    overflow: hidden;
+    color: var(--sh-ink);
+    font-size: 17px;
+    font-weight: 800;
+    line-height: 1.6;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-identity__phone {
+    display: block;
+    margin-block-start: 4px;
+    color: var(--sh-muted);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: .04em;
+}
+
+.profile-file {
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.profile-file input[type="file"] {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    clip-path: inset(50%);
+}
+
+.profile-field--wide {
+    grid-column: 1 / -1;
+}
+
+/* ==========================================================================
+   12 — DATE WHEEL (jalali)
+   --------------------------------------------------------------------------
+   js/pages/profile.js builds the inside of [data-jalali-calendar], so every
+   date-wheel__* name below is fixed by that script.
+   ========================================================================== */
+
+.jalali-picker-field {
+    position: relative;
+}
+
+.jalali-date-input {
+    cursor: pointer;
+}
+
+.jalali-picker {
+    position: absolute;
+    z-index: 60;
+    inset-block-start: calc(100% + 10px);
+    inset-inline-start: 0;
+
+    width: min(340px, 100%);
+    overflow: hidden;
+
+    border: 1px solid var(--ac-line-2);
+    border-radius: var(--ac-radius);
+    background: var(--ac-surface);
+    box-shadow: 0 26px 60px -30px rgba(9, 28, 20, .55);
+}
+
+.jalali-picker[hidden] {
+    display: none;
+}
+
+.date-wheel__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+
+    padding: 14px 16px 12px;
+    border-block-end: 1px solid var(--ac-line);
+}
+
+.date-wheel__top > div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.date-wheel__eyebrow {
+    color: var(--sh-forest);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .2em;
+}
+
+.date-wheel__top strong {
+    color: var(--sh-ink);
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.6;
+}
+
+.date-wheel__close {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+
+    border: 1px solid var(--ac-line);
+    border-radius: 10px;
+    background: var(--sh-cream);
+    color: var(--sh-ink-2);
+
+    font-size: 17px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color var(--sh-fast), color var(--sh-fast);
+}
+
+.date-wheel__close:hover {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.date-wheel__columns {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+
+    padding: 10px;
+    background: var(--sh-paper);
+}
+
+.date-wheel__column-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.date-wheel__column-wrap > span {
+    color: var(--sh-muted);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-align: center;
+}
+
+.date-wheel__column {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    height: 176px;
+    padding: 4px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    border: 1px solid var(--ac-line);
+    border-radius: var(--ac-radius-xs);
+    background: var(--sh-cream-2);
+    scrollbar-width: thin;
+}
+
+.date-wheel__column::-webkit-scrollbar {
+    width: 4px;
+}
+
+.date-wheel__column::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: var(--ac-sunken);
+}
+
+.date-wheel__spacer {
+    flex: 0 0 68px;
+}
+
+.date-wheel__item {
+    min-height: 38px;
+    padding: 0 6px;
+
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--sh-ink-2);
+
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color var(--sh-fast), color var(--sh-fast);
+}
+
+.date-wheel__item:hover {
+    background: var(--sh-cream);
+    color: var(--sh-forest);
+}
+
+.date-wheel__item.is-selected {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    font-weight: 800;
+}
+
+.date-wheel__item.is-disabled {
+    color: var(--sh-muted);
+    opacity: .45;
+    cursor: not-allowed;
+}
+
+.date-wheel__column[data-year] .date-wheel__item {
+    font-size: 12.5px;
+}
+
+.date-wheel__selection {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline: 10px;
+    height: 46px;
+    translate: 0 -50%;
+
+    border-block: 1px solid rgba(20, 82, 60, .28);
+    border-radius: 8px;
+    pointer-events: none;
+}
+
+.date-wheel__bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    padding: 12px 14px 14px;
+    border-block-start: 1px solid var(--ac-line);
+}
+
+.date-wheel__bottom > span {
+    color: var(--sh-forest);
+    font-size: 12.5px;
+    font-weight: 800;
+}
+
+.date-wheel__bottom > div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.date-wheel__clear,
+.date-wheel__confirm {
+    min-height: 40px;
+    padding-inline: 16px;
+
+    border: 1px solid var(--ac-line-2);
+    border-radius: var(--ac-radius-xs);
+    background: var(--ac-surface);
+    color: var(--sh-ink-2);
+
+    font-size: 12.5px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color var(--sh-fast), color var(--sh-fast),
+                border-color var(--sh-fast);
+}
+
+.date-wheel__clear:hover {
+    border-color: var(--ac-brick);
+    color: var(--ac-brick);
+}
+
+.date-wheel__confirm {
+    border-color: var(--sh-forest);
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.date-wheel__confirm:hover {
+    background: var(--sh-forest-deep);
+}
+
+/* ==========================================================================
+   13 — ADDRESSES
+   ========================================================================== */
+
+.address-list {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+}
+
+.address-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 16px;
+}
+
+.address-card__main {
+    min-width: 0;
+}
+
+.address-card__top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.address-card__pin {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+
+    border-radius: 12px;
+    background: rgba(20, 82, 60, .08);
+    color: var(--sh-forest);
+}
+
+.address-card__pin svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.address-card__top h2 {
+    overflow: hidden;
+    color: var(--sh-ink);
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.6;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.address-card__badge {
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .1em;
+}
+
+.address-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 26px;
+
+    margin-block-start: 14px;
+}
+
+.address-card__meta > div {
+    min-width: 0;
+}
+
+.address-card__meta dt {
+    color: var(--sh-muted);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: .1em;
+}
+
+.address-card__meta dd {
+    margin-block-start: 3px;
+    color: var(--sh-ink-2);
+    font-size: 13.5px;
+    font-weight: 700;
+}
+
+.address-card__description {
+    margin-block-start: 12px;
+    padding-block-start: 12px;
+
+    border-block-start: 1px dashed var(--ac-line-2);
+    color: var(--sh-muted);
+    font-size: 13px;
+    line-height: 1.9;
+}
+
+.address-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.address-actions form {
+    display: flex;
+    margin: 0;
+}
+
+/* ==========================================================================
+   14 — ADDRESS FORM
+   ========================================================================== */
+
+.address-form-card {
+    display: block;
+}
+
+.address-form__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr));
+    gap: 16px 18px;
+}
+
+.address-form__actions {
+    padding-block-start: 4px;
+    border-block-start: 1px solid var(--ac-line);
+}
+
+/* ==========================================================================
+   16 — FOOTER
+   ========================================================================== */
+
+.account-shell-footer {
+    margin-block-start: clamp(30px, 5vw, 58px);
+    border-block-start: 1px solid rgba(255, 255, 255, .08);
+    background:
+        radial-gradient(circle at 15% 0%, rgba(194, 154, 74, .14), transparent 32%),
+        linear-gradient(145deg, #123f31 0%, #0d3025 58%, #0a271f 100%);
+    color: #f7f3e9;
+}
+
+.account-shell-footer__inner {
+    width: min(var(--ac-shell), 100% - (var(--ac-gutter) * 2));
+    margin-inline: auto;
+    padding-block: 34px 28px;
+}
+
+.account-shell-footer__top {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(150px, .8fr));
+    gap: 34px;
+    padding-block-end: 28px;
+}
+
+.account-shell-footer__brand-block {
+    max-width: 430px;
+}
+
+.account-shell-footer__eyebrow {
+    display: block;
+    margin-block-end: 10px;
+    color: #d8bd7d;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .24em;
+}
+
+.account-shell-footer__brand {
+    display: block;
+    color: #fbfaf7;
+    font-size: 25px;
+    font-weight: 900;
+    letter-spacing: .28em;
+    line-height: 1;
+}
+
+.account-shell-footer__brand-block p {
+    max-width: 38ch;
+    margin-block: 12px 16px;
+    color: rgba(247, 243, 233, .68);
+    font-size: 12px;
+    line-height: 1.9;
+}
+
+.account-shell-footer__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.account-shell-footer__chips span {
+    padding: 7px 10px;
+    border: 1px solid rgba(255, 255, 255, .11);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .055);
+    color: rgba(247, 243, 233, .82);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.account-shell-footer__group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 9px;
+}
+
+.account-shell-footer__group strong {
+    margin-block-end: 4px;
+    color: #fbfaf7;
+    font-size: 12.5px;
+    font-weight: 850;
+}
+
+.account-shell-footer__group a {
+    color: rgba(247, 243, 233, .62);
+    font-size: 11.5px;
+    font-weight: 650;
+    transition: color var(--sh-fast), translate var(--sh-fast);
+}
+
+.account-shell-footer__group a:hover {
+    color: #fbfaf7;
+    translate: -2px 0;
+}
+
+.account-shell-footer__note {
+    max-width: 24ch;
+    color: rgba(247, 243, 233, .44);
+    font-size: 10.5px;
+    line-height: 1.8;
+}
+
+.account-shell-footer__bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-block-start: 18px;
+    border-block-start: 1px solid rgba(255, 255, 255, .10);
+    color: rgba(247, 243, 233, .42);
+    font-size: 10.5px;
+}
+
+.account-shell-footer__mark {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(216, 189, 125, .38);
+    border-radius: 50%;
+    color: #d8bd7d;
+    font-family: Georgia, serif;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+@media (min-width: 901px) {
+    .account-shell-footer__inner {
+        padding-block: 36px 132px;
+    }
+}
+
+@media (max-width: 700px) {
+    .account-shell-footer {
+        margin-block-start: 24px;
+    }
+
+    .account-shell-footer__inner {
+        width: min(var(--ac-shell), 100% - 28px);
+        padding-block: 28px calc(var(--dock-h, 64px) + 24px);
+    }
+
+    .account-shell-footer__top {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 26px 20px;
+    }
+
+    .account-shell-footer__brand-block {
+        grid-column: 1 / -1;
+    }
+
+    .account-shell-footer__brand {
+        font-size: 22px;
+    }
+}
+
+@media (max-width: 420px) {
+    .account-shell-footer__top {
+        grid-template-columns: 1fr 1fr;
+        gap: 24px 16px;
+    }
+
+    .account-shell-footer__group a {
+        font-size: 11px;
+    }
+
+    .account-shell-footer__bottom {
+        align-items: flex-start;
+        font-size: 9.5px;
+    }
+}
+
+/* ==========================================================================
+   17 — RESPONSIVE
+   ========================================================================== */
+
+@media (max-width: 1120px) {
+    :root {
+        --ac-sidebar: 268px;
+    }
+}
+
+/* Below 1001px the sidebar leaves the column: the identity block becomes a
+   compact row and the nav turns into a horizontal scroller. */
+@media (max-width: 1000px) {
+    .account-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    .account-sidebar {
+        position: static;
+        gap: 12px;
+    }
+
+    .account-nav {
+        flex-direction: row;
+        gap: 6px;
+        padding: 6px;
+
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: none;
+    }
+
+    .account-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .account-nav__item {
+        grid-template-columns: auto auto;
+        flex: 0 0 auto;
+        min-height: 48px;
+        padding-inline: 14px;
+
+        border: 1px solid var(--ac-line);
+        background: var(--sh-cream-2);
+    }
+
+    .account-nav__item.is-active {
+        border-color: var(--sh-forest);
+        box-shadow: none;
+    }
+
+    .account-nav__chevron {
+        display: none;
+    }
+
+    .account-nav__label {
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 640px) {
+    .account-shell-header__inner {
+        min-height: 60px;
+    }
+
+    .account-shell-back {
+        padding-inline: 13px;
+    }
+
+    .account-shell-back span {
+        display: none;
+    }
+
+    .account-page-header {
+        align-items: flex-start;
+    }
+
+    .account-page-header__action {
+        width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .ac-form__grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .address-card {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .address-actions {
+        padding-block-start: 14px;
+        border-block-start: 1px dashed var(--ac-line);
+    }
+
+    .address-actions .ac-btn,
+    .address-actions form {
+        flex: 1 1 auto;
+    }
+
+    .address-actions .ac-btn {
+        width: 100%;
+    }
+
+    .profile-identity {
+        align-items: flex-start;
+    }
+
+    .profile-file {
+        width: 100%;
+    }
+
+    .ac-empty {
+        min-height: 300px;
+    }
+
+    .ac-empty__art {
+        scale: .92;
+    }
+}
+
+@media (max-width: 420px) {
+    .account-shell-brand {
+        font-size: 13.5px;
+        letter-spacing: .2em;
+    }
+
+    .account-shell-brand__line {
+        width: 14px;
+    }
+
+    .account-page-title {
+        font-size: 20px;
+    }
+
+    .ac-card {
+        padding: 15px;
+    }
+
+    .account-user {
+        padding: 14px;
+    }
+
+    .account-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 17px;
+        font-size: 18px;
+    }
+
+    .saved-product__remove span {
+        display: none;
+    }
+
+    .saved-product__remove {
+        padding-inline: 0;
+    }
+
+    .jalali-picker {
+        width: min(300px, calc(100vw - 32px));
+    }
+}
+
+/* ==========================================================================
+   18 — REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .account-nav__item,
+    .ac-btn,
+    .ac-btn--primary:hover,
+    .ac-input,
+    .ac-textarea,
+    .ac-choice__option,
+    .saved-product,
+    .saved-product:hover,
+    .saved-product__image img,
+    .account-nav__item.is-active,
+    .saved-tab,
+    .date-wheel__item,
+    .saved-product__remove {
+        transition: none;
+        transform: none;
+        translate: none;
+        rotate: none;
+        scale: none;
+    }
+}
+
+
+/* ==========================================================================
+   19 — ACCOUNT / SHOP SHELL INTEGRATION
+   ========================================================================== */
+
+.account-logout-form {
+    display: flex;
+    margin: 0;
+}
+
+.account-sidebar > .account-logout-form {
+    width: 100%;
+}
+
+.account-sidebar > .account-logout-form .account-logout {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+}
+
+@media (max-width: 640px) {
+    .account-sidebar > .account-logout-form .account-logout {
+        min-height: 46px;
+    }
+}
+
+/* The shop navbar is the desktop account header. The mobile experience keeps
+   the existing mobile dock/navigation and removes the desktop navbar entirely. */
+@media (max-width: 700px) {
+    body.account-body .sh-nav {
+        display: none;
+    }
+
+    body.account-body .sh-drawer {
+        display: none;
+    }
+}
+
+
+/* ==========================================================================
+   19 — PROFILE / SAVED CATALOG POLISH
+   ========================================================================== */
+
+.account-body .ac-card,
+.account-body .account-user,
+.account-body .account-nav {
+    box-shadow: 0 12px 30px -28px rgba(9, 28, 20, .55);
+}
+
+.account-body .ac-card {
+    background: #f8f5ee;
+}
+
+.account-saved-catalog {
+    /* Favorites has no filter rail, so the catalog spans the complete account
+       content column instead of inheriting the shop's sidebar reservation. */
+    grid-template-columns: minmax(0, 1fr);
+    margin-block-start: 4px;
+    padding: clamp(16px, 2vw, 22px);
+    background: rgba(248, 245, 238, .72);
+}
+
+.account-saved-catalog .shop-reference__results {
+    grid-column: 1 / -1;
+}
+
+.account-saved-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-block-end: 16px;
+    padding-inline: 2px;
+}
+
+.account-saved-toolbar h2 {
+    margin: 0;
+    color: var(--sh-ink);
+    font-size: 14px;
+    font-weight: 850;
+}
+
+.account-saved-toolbar span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding-inline: 10px;
+    border: 1px solid var(--sh-line);
+    border-radius: 999px;
+    background: var(--sh-cream-2);
+    color: var(--sh-muted);
+    font-size: 10.5px;
+    font-weight: 750;
+}
+
+@media (min-width: 1001px) {
+    .account-saved-catalog .shop-reference__products {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 701px) and (max-width: 1000px) {
+    .account-saved-catalog .shop-reference__products {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.jalali-picker {
+    z-index: 160;
+    background: #f5f1e8;
+    border-color: rgba(20, 22, 26, .12);
+    box-shadow: 0 30px 70px -30px rgba(9, 28, 20, .62);
+}
+
+.date-wheel__columns {
+    background: #ebe6dc;
+}
+
+.date-wheel__column {
+    background: #f7f3eb;
+    border-color: rgba(20, 22, 26, .12);
+}
+
+.date-wheel__item:hover {
+    background: #ebe6dc;
+}
+
+.date-wheel__bottom {
+    background: #f5f1e8;
+}
+
+.date-wheel__clear {
+    background: #eee9df;
+}
+
+.date-wheel__confirm {
+    border-color: var(--sh-forest);
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.date-wheel__confirm:hover {
+    background: var(--sh-forest-deep);
+}
+
+@media (max-width: 700px) {
+    .account-saved-catalog {
+        padding: 12px;
+    }
+
+    .account-saved-catalog .shop-reference__products {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .account-saved-toolbar {
+        margin-block-end: 12px;
+    }
+
+    /* The dock sits above the picker, so its actions can never be covered. */
+    .jalali-picker {
+        position: fixed;
+        inset-inline-start: 50%;
+        inset-block-end: calc(var(--dock-h, 64px) + env(safe-area-inset-bottom, 0px) + 18px);
+        inset-block-start: auto;
+        width: min(352px, calc(100vw - 24px));
+        max-height: min(610px, calc(100dvh - var(--dock-h, 64px) - env(safe-area-inset-bottom, 0px) - 34px));
+        overflow: auto;
+        transform: translateX(-50%);
+        z-index: 1000;
+        isolation: isolate;
+    }
+
+    /* JS supplies fixed viewport coordinates so the mobile picker stays
+       centered and can still follow the date field vertically. */
+    .jalali-picker.is-mobile-portal {
+        position: fixed;
+        inset: auto;
+        width: min(352px, calc(100vw - 24px));
+        max-width: calc(100vw - 24px);
+        max-height: calc(100dvh - 24px);
+        pointer-events: auto;
+        touch-action: manipulation;
+    }
+
+    .jalali-picker.is-mobile-portal[hidden] {
+        display: none;
+    }
+
+    .date-wheel__columns {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .date-wheel__column {
+        height: 150px;
+    }
+
+    .date-wheel__spacer {
+        flex-basis: 56px;
+    }
+
+    .date-wheel__item {
+        min-height: 36px;
+    }
+
+    .date-wheel__bottom {
+        position: sticky;
+        inset-block-end: 0;
+        z-index: 2;
+        flex-wrap: nowrap;
+        padding: 10px;
+        box-shadow: 0 -10px 20px -20px rgba(9, 28, 20, .7);
+    }
+
+    .date-wheel__bottom > span {
+        max-width: 38%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .date-wheel__bottom > div {
+        flex: 1;
+        justify-content: flex-end;
+    }
+
+    .date-wheel__clear,
+    .date-wheel__confirm {
+        min-height: 42px;
+        padding-inline: 13px;
+    }
+}
+
+@media (max-width: 380px) {
+    .date-wheel__top {
+        padding-inline: 12px;
+    }
+
+    .date-wheel__columns {
+        padding: 7px;
+        gap: 4px;
+    }
+
+    .date-wheel__item {
+        padding-inline: 3px;
+        font-size: 12px;
+    }
+
+    .date-wheel__bottom > span {
+        display: none;
+    }
+
+    .date-wheel__bottom > div {
+        width: 100%;
+        justify-content: stretch;
+    }
+
+    .date-wheel__clear,
+    .date-wheel__confirm {
+        flex: 1;
+    }
+}
+
+
+/* ==========================================================================
+   20 — JALALI WHEEL / 3D FOCUS
+   ========================================================================== */
+
+.date-wheel__column {
+    position: relative;
+    perspective: 260px;
+    perspective-origin: center center;
+    scrollbar-width: none;
+    overscroll-behavior-y: contain;
+    scroll-snap-type: y proximity;
+    scroll-padding-block: 56px;
+    -ms-overflow-style: none;
+}
+
+.date-wheel__column::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.date-wheel__item {
+    position: relative;
+    transform-origin: center center;
+    will-change: transform, opacity, background-color, color;
+    backface-visibility: hidden;
+    transition:
+        transform 90ms ease-out,
+        opacity 90ms ease-out,
+        background-color 120ms ease-out,
+        color 120ms ease-out,
+        box-shadow 120ms ease-out;
+}
+
+.date-wheel__item.is-wheel-focused {
+    z-index: 3;
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+    font-weight: 900;
+    box-shadow: 0 8px 18px -12px rgba(9, 28, 20, .75);
+}
+
+.date-wheel__item.is-wheel-focused:hover {
+    background: var(--sh-forest);
+    color: var(--sh-cream-2);
+}
+
+.date-wheel__selection {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .date-wheel__item {
+        transition: background-color 1ms linear, color 1ms linear;
+        transform: none !important;
+    }
+}
+
+
+/* Typography contract: profile, addresses and favourites inherit the exact
+   same Persian face used by the public shop. Latin brand/code text continues
+   to use the shared Runtime rule from fonts.css. */
+body.account-body .account-page,
+body.account-body .account-sidebar,
+body.account-body .account-content {
+    font-family: var(--sh-font);
+}
+
+/* ==========================================================================
+   21 — SAVED PAGE / FULL-WIDTH CATALOG
+   The saved page uses the shop catalog cards, but it is not a shop with a
+   filter rail. Keep its catalog as a single full-width content surface so the
+   empty state and product cards never collapse into the narrow grid column.
+   ========================================================================== */
+
+body.account-body.saved-account-page .account-content {
+    min-width: 0;
+    width: 100%;
+}
+
+body.account-body.saved-account-page .saved-page {
+    width: 100%;
+    min-width: 0;
+}
+
+body.account-body.saved-account-page .account-saved-catalog {
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: clamp(16px, 2.2vw, 24px);
+    box-sizing: border-box;
+    border: 1px solid var(--ac-line);
+    border-radius: var(--ac-radius);
+    background: var(--ac-surface);
+    box-shadow: var(--ac-shadow);
+}
+
+body.account-body.saved-account-page .account-saved-catalog .shop-reference__results {
+    width: 100%;
+    min-width: 0;
+}
+
+body.account-body.saved-account-page .account-saved-toolbar {
+    width: 100%;
+}
+
+body.account-body.saved-account-page .account-saved-catalog .shop-reference__products {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+}
+
+body.account-body.saved-account-page .account-saved-catalog .shop-reference__card {
+    min-width: 0;
+}
+
+body.account-body.saved-account-page .saved-empty {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    width: 100%;
+    min-width: 0;
+    min-height: 320px;
+    box-sizing: border-box;
+}
+
+body.account-body.saved-account-page .saved-empty h2,
+body.account-body.saved-account-page .saved-empty p {
+    width: min(100%, 640px);
+}
+
+@media (min-width: 701px) and (max-width: 1000px) {
+    body.account-body.saved-account-page .account-saved-catalog .shop-reference__products {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    body.account-body.saved-account-page .account-saved-catalog {
+        padding: 12px;
+        border-radius: 15px;
+    }
+
+    body.account-body.saved-account-page .account-saved-catalog .shop-reference__products {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    body.account-body.saved-account-page .saved-empty {
+        min-height: 280px;
+        padding: 28px 18px;
+    }
+
+    body.account-body.saved-account-page .saved-empty h2 {
+        max-width: 24ch;
+        font-size: 17px;
+        line-height: 1.7;
+    }
+
+    body.account-body.saved-account-page .saved-empty p {
+        max-width: 36ch;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 420px) {
+    body.account-body.saved-account-page .account-saved-catalog {
+        padding: 10px;
+    }
+
+    body.account-body.saved-account-page .saved-empty {
+        min-height: 250px;
+        padding: 24px 14px;
+    }
+}

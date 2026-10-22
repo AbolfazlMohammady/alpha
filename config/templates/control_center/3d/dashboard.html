@@ -1,0 +1,235 @@
+{% extends "control_center/base.html" %}
+{% load shop_tags %}
+
+{% block title %}مدیریت طراحی سه‌بعدی | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head cc-3d-page-head">
+  <div>
+    <div class="cc-eyebrow">3D DESIGN MANAGER</div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:dashboard' %}">داشبورد</a>
+      <span>/</span>
+      <strong>طراحی سه‌بعدی</strong>
+    </div>
+    <h1>مدیریت طراحی سه‌بعدی</h1>
+    <p>اینجا فقط طراحی‌هایی را ببین که مشتری با آن‌ها لباس را واقعاً خریده؛ نه پیش‌نویس و نه سفارش پرداخت‌نشده.</p>
+  </div>
+</div>
+
+<div class="cc-3d-overview-links">
+  <a class="cc-3d-link-card" href="{% url 'control:artwork_library' %}">
+    <div class="cc-3d-link-card-main">
+      <span class="cc-3d-overview-icon">◇</span>
+      <div>
+        <span class="cc-eyebrow">STORE LIBRARY</span>
+        <strong>کتابخانه لیبل‌ها</strong>
+        <small>لیبل‌های دائمی و مدیریتی فروشگاه</small>
+      </div>
+      <b class="cc-3d-link-count">{{ library_count }}</b>
+    </div>
+    <div class="cc-3d-card-previews">
+      {% for artwork in library_preview %}
+        <span>{% if artwork.image %}<img src="{{ artwork.image.url }}" alt="" loading="lazy">{% endif %}</span>
+      {% empty %}
+        <small>هنوز لیبلی به کتابخانه اضافه نشده.</small>
+      {% endfor %}
+      <em>مدیریت کتابخانه ↗</em>
+    </div>
+  </a>
+
+  <a class="cc-3d-link-card" href="{% url 'control:customer_artworks' %}">
+    <div class="cc-3d-link-card-main">
+      <span class="cc-3d-overview-icon">♢</span>
+      <div>
+        <span class="cc-eyebrow">PURCHASED CUSTOMER LABELS</span>
+        <strong>لیبل‌های ثبت‌شده مشتریان</strong>
+        <small>فقط لیبل‌هایی که داخل یک خرید موفق استفاده شده‌اند</small>
+      </div>
+      <b class="cc-3d-link-count">{{ customer_artwork_count }}</b>
+    </div>
+    <div class="cc-3d-card-previews">
+      {% for artwork in customer_artwork_preview %}
+        <span>{% if artwork.image %}<img src="{{ artwork.image.url }}" alt="" loading="lazy">{% endif %}</span>
+      {% empty %}
+        <small>هنوز لیبل مشتری ثبت خریدشده‌ای وجود ندارد.</small>
+      {% endfor %}
+      <em>مشاهده لیبل‌های مشتری ↗</em>
+    </div>
+  </a>
+</div>
+
+<section class="cc-card cc-3d-pricing-summary">
+  <div class="cc-3d-pricing-summary-main">
+    <div>
+      <span class="cc-eyebrow">LIVE PRICING</span>
+      <h2>قیمت‌های فعال استودیو</h2>
+      <p>این دو مبلغ مستقیماً در محاسبه قیمت طراحی سه‌بعدی استفاده می‌شوند.</p>
+    </div>
+    <a class="cc-btn primary" href="{% url 'control:3d_pricing' %}">تنظیم قیمت‌ها</a>
+  </div>
+  <div class="cc-3d-pricing-summary-grid">
+    <div>
+      <span>قیمت پایه تیشرت</span>
+      <strong>{{ pricing_tshirt_base|price }}</strong>
+      <small>تومان برای هر طراحی</small>
+    </div>
+    <div>
+      <span>قیمت هر لیبل مشتری</span>
+      <strong>{{ pricing_customer_label|price }}</strong>
+      <small>تومان برای هر لیبل آپلودی</small>
+    </div>
+  </div>
+</section>
+
+<div class="cc-3d-simple-stats">
+  <div>
+    <span>لیبل‌های کتابخانه</span>
+    <b>{{ library_count }}</b>
+  </div>
+  <div>
+    <span>لیبل‌های ثبت‌شده مشتریان</span>
+    <b>{{ customer_artwork_count }}</b>
+  </div>
+  <div>
+    <span>طراحی‌های خریداری‌شده</span>
+    <b>{{ ordered_design_count }}</b>
+  </div>
+  <div>
+    <span>دارایی 3D آماده</span>
+    <b>{{ ready_3d_count }}</b>
+  </div>
+</div>
+
+<section class="cc-card cc-purchased-designs cc-production-queue">
+  <div class="cc-purchased-designs-head cc-production-head">
+    <div>
+      <span class="cc-eyebrow">TO DO</span>
+      <h2>سفارش‌های انجام‌نشده</h2>
+      <p>این‌ها طراحی‌های سه‌بعدی خریداری‌شده‌ای هستند که هنوز برای تولید علامت «تمام شد» نخورده‌اند.</p>
+    </div>
+    <span class="cc-production-count is-pending">{{ pending_design_total_count }} سفارش</span>
+  </div>
+
+  {% if pending_designs %}
+    <div class="cc-purchased-design-list">
+      {% for item in pending_designs %}
+        <article class="cc-production-card">
+          <div class="cc-production-card-media">
+            {% if item.custom_design.preview_front %}
+              <img src="{{ item.custom_design.preview_front.url }}" alt="" loading="lazy">
+            {% else %}
+              <span>3D</span>
+            {% endif %}
+          </div>
+          <div class="cc-production-card-body">
+            <div class="cc-production-card-top">
+              <div class="cc-production-card-identity">
+                <a href="{% url 'control:design_detail' item.custom_design.uuid %}" dir="ltr">{{ item.custom_design.design_code }}</a>
+                <strong>{{ item.product.name }}</strong>
+                <small>
+                  {% if item.order.user %}
+                    {{ item.order.user.get_full_name|default:item.order.user.phone }}
+                  {% else %}
+                    مشتری
+                  {% endif %}
+                </small>
+              </div>
+              <span class="cc-production-card-status is-pending">در انتظار</span>
+            </div>
+            <div class="cc-production-card-meta">
+              <span><b>رنگ</b>{{ item.design_display_color|default:"—" }}</span>
+              <span><b>سایز</b>{{ item.design_display_size|default:"—" }}</span>
+              <span><b>لیبل</b>{{ item.design_layer_count }}</span>
+              <span><b>تعداد</b>{{ item.quantity }}</span>
+            </div>
+            <div class="cc-production-card-actions">
+              <a class="cc-btn" href="{% url 'control:design_detail' item.custom_design.uuid %}">جزئیات طراحی</a>
+              <form method="post" action="{% url 'control:design_complete' item.custom_design.uuid %}">
+                {% csrf_token %}
+                <button class="cc-btn primary" type="submit">انجام شد ✓</button>
+              </form>
+            </div>
+            <a class="cc-production-card-order" href="{% url 'control:order_detail' item.order.pk %}" dir="ltr">{{ item.order.number }} ↗</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+    {% if pending_design_total_count > pending_design_count %}
+      <div class="cc-production-more">۲۰ سفارش اول نمایش داده می‌شود. مجموع سفارش‌های انجام‌نشده: {{ pending_design_total_count }}</div>
+    {% endif %}
+  {% else %}
+    <div class="cc-label-empty">
+      <span>✓</span>
+      <strong>هیچ سفارش انجام‌نشده‌ای نداری.</strong>
+      <small>هر خرید جدید طراحی سه‌بعدی اینجا قرار می‌گیرد تا بعد از آماده‌سازی روی «انجام شد» بزنی.</small>
+    </div>
+  {% endif %}
+</section>
+
+<section class="cc-card cc-purchased-designs cc-production-completed">
+  <div class="cc-purchased-designs-head cc-production-head">
+    <div>
+      <span class="cc-eyebrow">DONE</span>
+      <h2>سفارش‌های تمام‌شده</h2>
+      <p>سفارش‌هایی که خودت با زدن «انجام شد» از صف کار خارج کرده‌ای.</p>
+    </div>
+    <span class="cc-production-count is-done">{{ completed_design_total_count }} سفارش</span>
+  </div>
+
+  {% if completed_designs %}
+    <div class="cc-purchased-design-list">
+      {% for item in completed_designs %}
+        <article class="cc-production-card is-completed">
+          <div class="cc-production-card-media">
+            {% if item.custom_design.preview_front %}
+              <img src="{{ item.custom_design.preview_front.url }}" alt="" loading="lazy">
+            {% else %}
+              <span>3D</span>
+            {% endif %}
+          </div>
+          <div class="cc-production-card-body">
+            <div class="cc-production-card-top">
+              <div class="cc-production-card-identity">
+                <a href="{% url 'control:design_detail' item.custom_design.uuid %}" dir="ltr">{{ item.custom_design.design_code }}</a>
+                <strong>{{ item.product.name }}</strong>
+                <small>
+                  {% if item.order.user %}
+                    {{ item.order.user.get_full_name|default:item.order.user.phone }}
+                  {% else %}
+                    مشتری
+                  {% endif %}
+                </small>
+              </div>
+              <span class="cc-production-card-status is-done">تمام‌شده</span>
+            </div>
+            <div class="cc-production-card-meta">
+              <span><b>رنگ</b>{{ item.design_display_color|default:"—" }}</span>
+              <span><b>سایز</b>{{ item.design_display_size|default:"—" }}</span>
+              <span><b>لیبل</b>{{ item.design_layer_count }}</span>
+              <span><b>تعداد</b>{{ item.quantity }}</span>
+            </div>
+            <div class="cc-production-card-actions">
+              <a class="cc-btn" href="{% url 'control:design_detail' item.custom_design.uuid %}">مشاهده طراحی</a>
+              <form method="post" action="{% url 'control:design_complete' item.custom_design.uuid %}">
+                {% csrf_token %}
+                <button class="cc-btn" type="submit">برگردان به ناتمام</button>
+              </form>
+            </div>
+            <a class="cc-production-card-order" href="{% url 'control:order_detail' item.order.pk %}" dir="ltr">{{ item.order.number }} ↗</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+    {% if completed_design_total_count > completed_design_count %}
+      <div class="cc-production-more">۲۰ سفارش آخر نمایش داده می‌شود. مجموع سفارش‌های تمام‌شده: {{ completed_design_total_count }}</div>
+    {% endif %}
+  {% else %}
+    <div class="cc-label-empty">
+      <span>○</span>
+      <strong>هنوز سفارشی به بخش تمام‌شده‌ها منتقل نشده.</strong>
+      <small>وقتی یک سفارش را انجام دادی، دکمه «انجام شد» آن را به این قسمت منتقل می‌کند.</small>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

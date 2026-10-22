@@ -1,0 +1,71 @@
+{% extends "control_center/base.html" %}
+{% block title %}دسته‌بندی‌ها | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-page-head cc-list-page-head cc-entity-list-head">
+  <div>
+    <span class="cc-eyebrow">STORE / CATEGORIES</span>
+    <h1>دسته‌بندی‌ها</h1>
+    <p>ساختار محصولات فروشگاه را مدیریت کن.</p>
+  </div>
+  <div class="cc-list-head-side">
+    <span class="cc-list-count"><b>{{ page_obj.paginator.count }}</b> دسته</span>
+    <a class="cc-btn primary cc-list-add-btn" href="{% url 'control:category_create' %}"><span>+</span> دسته‌بندی جدید</a>
+  </div>
+</div>
+
+<div class="cc-card cc-list-card cc-category-list-card">
+  <div class="cc-list-card-head">
+    <div>
+      <strong>لیست دسته‌بندی‌ها</strong>
+      <small>{{ page_obj.paginator.count }} دسته‌بندی · مرتب‌شده بر اساس ترتیب نمایش</small>
+    </div>
+    <a class="cc-btn primary cc-category-head-add" href="{% url 'control:category_create' %}">+ دسته جدید</a>
+  </div>
+
+  <div class="cc-category-compact-list">
+    {% for item in categories %}
+      <article class="cc-category-compact-row">
+        <div class="cc-category-compact-identity">
+          <span class="cc-category-compact-icon">C</span>
+          <div>
+            <strong>{{ item.name }}</strong>
+            <small>{{ item.slug }}</small>
+          </div>
+        </div>
+
+        <div class="cc-category-compact-info">
+          <div>
+            <span>محصولات</span>
+            <strong>{{ item.product_count }}</strong>
+          </div>
+          <div>
+            <span>ترتیب</span>
+            <strong>{{ item.sort_order }}</strong>
+          </div>
+          <div>
+            <span>وضعیت</span>
+            <strong>
+              <span class="cc-badge {% if item.is_active %}success{% else %}danger{% endif %}">
+                {% if item.is_active %}فعال{% else %}غیرفعال{% endif %}
+              </span>
+            </strong>
+          </div>
+        </div>
+
+        <div class="cc-category-compact-actions">
+          <a href="{% url 'control:category_edit' item.pk %}" class="cc-category-compact-edit">ویرایش</a>
+          <a href="{% url 'control:category_delete' item.pk %}" class="cc-category-compact-delete">حذف</a>
+        </div>
+      </article>
+    {% empty %}
+      <div class="cc-category-empty">
+        <span>⌑</span>
+        <strong>دسته‌بندی‌ای وجود ندارد.</strong>
+        <small>برای شروع یک دسته‌بندی جدید ایجاد کن.</small>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% include "control_center/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,630 @@
+{% extends "control_center/base.html" %}
+{% block title %}{% if object %}ویرایش محصول{% else %}محصول جدید{% endif %} | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head">
+  <div>
+    <h1>{% if object %}ویرایش محصول{% else %}ایجاد محصول جدید{% endif %}</h1>
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="cc-editor-form" id="product-editor">
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="cc-form-alert">{{ form.non_field_errors|striptags }}</div>{% endif %}
+
+  <div class="cc-editor-layout">
+    <div class="cc-editor-main">
+
+      <section class="cc-form-section">
+        <div class="cc-section-heading">
+          <div class="cc-section-icon">01</div>
+          <div><h2>اطلاعات اصلی</h2></div>
+        </div>
+        <div class="cc-field-grid">
+          <div class="cc-field cc-field-wide">
+            {{ form.name.label_tag }}{{ form.name }}
+            {% if form.name.errors %}<small class="cc-error">{{ form.name.errors|striptags }}</small>{% endif %}
+          </div>
+          <div class="cc-field">
+            {{ form.category.label_tag }}{{ form.category }}
+            {% if form.category.errors %}<small class="cc-error">{{ form.category.errors|striptags }}</small>{% endif %}
+          </div>
+          <div class="cc-field">
+            {{ form.slug.label_tag }}{{ form.slug }}
+            <small class="cc-help">با تایپ نام محصول، خودکار ساخته می‌شود؛ اگر دستی تغییرش بدهی، دیگر دست نمی‌خورد.</small>
+            {% if form.slug.errors %}<small class="cc-error">{{ form.slug.errors|striptags }}</small>{% endif %}
+          </div>
+        </div>
+      </section>
+
+      <section class="cc-form-section">
+        <div class="cc-section-heading">
+          <div class="cc-section-icon">02</div>
+          <div><h2>توضیحات محصول</h2></div>
+        </div>
+        <div class="cc-field-stack">
+          <div class="cc-field">{{ form.short_description.label_tag }}{{ form.short_description }}{% if form.short_description.errors %}<small class="cc-error">{{ form.short_description.errors|striptags }}</small>{% endif %}</div>
+          <div class="cc-field">{{ form.description.label_tag }}{{ form.description }}{% if form.description.errors %}<small class="cc-error">{{ form.description.errors|striptags }}</small>{% endif %}</div>
+        </div>
+      </section>
+
+      <section class="cc-form-section cc-pricing-section">
+        <div class="cc-section-heading">
+          <div class="cc-section-icon">03</div>
+          <div><h2>قیمت محصول</h2></div>
+        </div>
+        <div class="cc-pricing-grid">
+          <div class="cc-field">
+            <label for="{{ form.base_price.id_for_label }}">قیمت قبل از تخفیف</label>
+            <div class="cc-money-field">
+              {{ form.base_price }}<span>تومان</span>
+            </div>
+            {% if form.base_price.errors %}<small class="cc-error">{{ form.base_price.errors|striptags }}</small>{% endif %}
+          </div>
+          <div class="cc-field">
+            {{ form.discount_percent.label_tag }}
+            <div class="cc-percent-field">{{ form.discount_percent }}<span>٪</span></div>
+            <small class="cc-help">مثلاً ۱۰٪</small>
+            {% if form.discount_percent.errors %}<small class="cc-error">{{ form.discount_percent.errors|striptags }}</small>{% endif %}
+          </div>
+        </div>
+        <div class="cc-price-result">
+          <div><span>قیمت نهایی</span></div>
+          <strong id="cc-final-price">—</strong><em>تومان</em>
+        </div>
+        {{ form.compare_at_price }}
+      </section>
+
+      <section class="cc-form-section cc-variants-section">
+        <div class="cc-section-heading">
+          <div class="cc-section-icon">04</div>
+          <div><h2>تنوع محصول</h2></div>
+        </div>
+
+        {{ variant_formset.management_form }}
+        {% if variant_formset.non_form_errors %}<div class="cc-form-alert">{{ variant_formset.non_form_errors|striptags }}</div>{% endif %}
+
+        <div class="cc-catalog-color-picker" id="variant-color-picker">
+          {% for color in catalog_colors %}
+          <button type="button" class="cc-catalog-color" data-catalog-color="{{ color.pk }}" data-hex="{{ color.hex_code }}">
+            <span class="cc-catalog-swatch" style="--picked-color:{{ color.hex_code }}"></span>
+            <span>{{ color.name }}</span>
+          </button>
+          {% empty %}
+          <div class="cc-empty-inline">هنوز رنگی در کاتالوگ نیست.</div>
+          {% endfor %}
+        </div>
+
+        <div class="cc-variant-groups" id="variant-groups"></div>
+        <div class="cc-empty-inline" id="empty-variant-groups">یک رنگ انتخاب کن، بعد سایزهای موجود آن را بزن.</div>
+
+        <div class="cc-variant-source" id="variant-list">
+          {% for vf in variant_formset %}
+          <div class="cc-variant-row" data-variant-row data-posted-color="{{ vf.data.color|default:'' }}">
+            {{ vf.id }}
+            <div class="cc-hidden-field">{{ vf.color }}</div>
+            <div class="cc-hidden-field">{{ vf.size }}</div>
+            <div class="cc-hidden-field">{{ vf.sku }}{{ vf.is_active }}</div>
+            <div class="cc-variant-visible">
+              <div class="cc-field cc-size-field"><label>سایز</label><span data-size-label>—</span></div>
+              <div class="cc-field cc-stock-field"><label>موجودی</label>{{ vf.stock_quantity }}</div>
+              <button type="button" class="cc-remove-size" data-remove-variant>حذف</button>
+            </div>
+            <div class="cc-hidden-variant-price">
+              {{ vf.use_product_price }}
+              <input type="number" name="{{ vf.prefix }}-price" value="{{ vf.price.value|default_if_none:'' }}" data-variant-price>
+              {{ vf.compare_at_price }}
+              {{ vf.DELETE }}
+              <input type="hidden" name="{{ vf.prefix }}-discount_percent" value="0" data-variant-discount>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <template id="variant-empty-form">
+          <div class="cc-variant-row" data-variant-row>
+            {{ variant_formset.empty_form.id }}
+            <div class="cc-hidden-field">{{ variant_formset.empty_form.color }}</div>
+            <div class="cc-hidden-field">{{ variant_formset.empty_form.size }}</div>
+            <div class="cc-hidden-field">{{ variant_formset.empty_form.sku }}{{ variant_formset.empty_form.is_active }}</div>
+            <div class="cc-variant-visible">
+              <div class="cc-field cc-size-field"><label>سایز</label><span data-size-label>—</span></div>
+              <div class="cc-field cc-stock-field"><label>موجودی</label>{{ variant_formset.empty_form.stock_quantity }}</div>
+              <button type="button" class="cc-remove-size" data-remove-variant>حذف</button>
+            </div>
+            <div class="cc-hidden-variant-price">
+              {{ variant_formset.empty_form.use_product_price }}
+              <input type="number" name="{{ variant_formset.empty_form.prefix }}-price" value="" data-variant-price>
+              {{ variant_formset.empty_form.compare_at_price }}
+              <input type="hidden" name="{{ variant_formset.empty_form.prefix }}-discount_percent" value="0" data-variant-discount>
+              {{ variant_formset.empty_form.DELETE }}
+            </div>
+          </div>
+        </template>
+      </section>
+
+      <section class="cc-form-section cc-images-section">
+        <div class="cc-section-heading">
+          <div class="cc-section-icon">06</div>
+          <div><h2>عکس‌های محصول</h2></div>
+          <button type="button" class="cc-btn primary cc-add-inline" id="add-image">+ افزودن عکس</button>
+        </div>
+        {{ image_formset.management_form }}
+        {% if image_formset.non_form_errors %}<div class="cc-form-alert">{{ image_formset.non_form_errors|striptags }}</div>{% endif %}
+        <div class="cc-image-list" id="image-list">
+          {% for im in image_formset %}
+          <div class="cc-image-card" data-image-row>
+            {{ im.id }}
+            <div class="cc-image-preview" data-image-preview>
+              {% if im.instance.image %}<img src="{{ im.instance.image.url }}" alt="{{ im.instance.alt_text }}">{% else %}<span>IMG</span>{% endif %}
+            </div>
+            <div class="cc-image-fields">
+              <div class="cc-field">{{ im.image.label_tag }}{{ im.image }}{% if im.image.errors %}<small class="cc-error">{{ im.image.errors|striptags }}</small>{% endif %}</div>
+              <div class="cc-field">{{ im.image_type.label_tag }}{{ im.image_type }}{% if im.image_type.errors %}<small class="cc-error">{{ im.image_type.errors|striptags }}</small>{% endif %}</div>
+              <div class="cc-field">{{ im.alt_text.label_tag }}{{ im.alt_text }}</div>
+              <div class="cc-field">{{ im.sort_order.label_tag }}{{ im.sort_order }}</div>
+            </div>
+            <div class="cc-hidden-delete">{{ im.DELETE }}</div>
+            <button type="button" class="cc-remove-inline" data-remove-image>حذف</button>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="cc-empty-inline" id="empty-images">هنوز تصویری اضافه نشده است.</div>
+        <template id="image-empty-form">
+          <div class="cc-image-card" data-image-row>
+            {{ image_formset.empty_form.id }}
+            <div class="cc-image-preview" data-image-preview><span>IMG</span></div>
+            <div class="cc-image-fields">
+              <div class="cc-field">{{ image_formset.empty_form.image.label_tag }}{{ image_formset.empty_form.image }}</div>
+              <div class="cc-field">{{ image_formset.empty_form.image_type.label_tag }}{{ image_formset.empty_form.image_type }}</div>
+              <div class="cc-field">{{ image_formset.empty_form.alt_text.label_tag }}{{ image_formset.empty_form.alt_text }}</div>
+              <div class="cc-field">{{ image_formset.empty_form.sort_order.label_tag }}{{ image_formset.empty_form.sort_order }}</div>
+            </div>
+            <div class="cc-hidden-delete">{{ image_formset.empty_form.DELETE }}</div>
+            <button type="button" class="cc-remove-inline" data-remove-image>حذف</button>
+          </div>
+        </template>
+      </section>
+
+      <section class="cc-form-section">
+        <div class="cc-section-heading">
+          <div class="cc-section-icon">07</div>
+          <div><h2>سئو</h2></div>
+        </div>
+        <div class="cc-field-stack">
+          <div class="cc-field">{{ form.seo_title.label_tag }}{{ form.seo_title }}{% if form.seo_title.errors %}<small class="cc-error">{{ form.seo_title.errors|striptags }}</small>{% endif %}</div>
+          <div class="cc-field">{{ form.seo_description.label_tag }}{{ form.seo_description }}{% if form.seo_description.errors %}<small class="cc-error">{{ form.seo_description.errors|striptags }}</small>{% endif %}</div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="cc-editor-side">
+      <section class="cc-side-card">
+        <div class="cc-side-title">وضعیت محصول</div>
+        <div class="cc-status-option">
+          <div><strong>انتشار</strong></div>
+          <label class="cc-switch">{{ form.is_active }}<span></span></label>
+        </div>
+        <div class="cc-status-option">
+          <div><strong>محصول ویژه</strong></div>
+          <label class="cc-switch">{{ form.is_featured }}<span></span></label>
+        </div>
+      </section>
+      {% if object %}
+      <section class="cc-side-card cc-product-summary">
+        <div class="cc-side-title">خلاصه محصول</div>
+        <div class="cc-summary-row"><span>شناسه</span><b>#{{ object.pk }}</b></div>
+        <div class="cc-summary-row"><span>رنگ اختصاصی</span><b>{{ object.colors.count }}</b></div>
+        <div class="cc-summary-row"><span>تنوع‌ها</span><b>{{ object.variants.count }}</b></div>
+        <div class="cc-summary-row"><span>عکس‌ها</span><b>{{ object.images.count }}</b></div>
+      </section>
+      {% endif %}
+    </aside>
+  </div>
+
+  <div class="cc-editor-actions">
+    <a class="cc-btn" href="{% url 'control:products' %}">لغو</a>
+    <button class="cc-btn primary cc-save-btn" type="submit">ذخیره محصول <span>→</span></button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const form=document.getElementById('product-editor');
+  if(!form)return;
+
+  const $=(s,r=document)=>r.querySelector(s);
+  const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+  const money=n=>new Intl.NumberFormat('fa-IR').format(Math.round(Number(n)||0));
+  const slugify=v=>v.trim().toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-+|-+$/g,'');
+  // Styled dropdowns: keep the real <select> for Django, render a clean UI on top.
+  function syncCustomSelect(select){
+    const wrap=select?.closest('.cc-select-wrap');
+    if(!wrap)return;
+    const button=$('.cc-select-trigger',wrap), menu=$('.cc-select-menu',wrap);
+    if(!button||!menu)return;
+    const selected=select.options[select.selectedIndex];
+    button.textContent=selected?.textContent?.trim()||'انتخاب کنید';
+    menu.innerHTML='';
+    [...select.options].forEach(option=>{
+      const item=document.createElement('button');
+      item.type='button';
+      item.className='cc-select-option'+(option.value===select.value?' is-selected':'');
+      item.textContent=option.textContent;
+      item.addEventListener('click',(event)=>{
+        event.preventDefault();
+        event.stopPropagation();
+        select.value=option.value;
+        select.dispatchEvent(new Event('change',{bubbles:true}));
+        syncCustomSelect(select);
+        wrap.classList.remove('is-open');
+      });
+      menu.appendChild(item);
+    });
+  }
+
+  function enhanceSelect(select){
+    if(!select||select.dataset.customized==='1')return;
+    select.dataset.customized='1';
+    const wrap=document.createElement('div');
+    wrap.className='cc-select-wrap';
+    select.parentNode.insertBefore(wrap,select);
+    wrap.appendChild(select);
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='cc-select-trigger';
+    button.setAttribute('aria-haspopup','listbox');
+    const menu=document.createElement('div');
+    menu.className='cc-select-menu';
+    menu.setAttribute('role','listbox');
+    wrap.append(button,menu);
+    button.addEventListener('click',()=>{
+      $$('.cc-select-wrap.is-open').forEach(w=>{if(w!==wrap)w.classList.remove('is-open')});
+      wrap.classList.toggle('is-open');
+    });
+    syncCustomSelect(select);
+  }
+
+  document.addEventListener('click',event=>{
+    if(!event.target.closest('.cc-select-wrap')){
+      $$('.cc-select-wrap.is-open').forEach(w=>w.classList.remove('is-open'));
+    }
+  });
+
+
+  // Product price
+  const name=$('#id_name'),slug=$('#id_slug');
+  let slugManual=Boolean(slug?.value);
+  name?.addEventListener('input',()=>{if(!slugManual&&slug)slug.value=slugify(name.value)});
+  slug?.addEventListener('input',()=>slugManual=true);
+  enhanceSelect($('#id_category'));
+
+  const base=$('#id_base_price'),discount=$('#id_discount_percent'),final=$('#cc-final-price'),compare=$('#id_compare_at_price');
+  function productPrice(){
+    const before=Number(base?.value)||0,pct=Math.min(100,Math.max(0,Number(discount?.value)||0));
+    const value=before?Math.round(before*(100-pct)/100):0;
+    if(final)final.textContent=value?money(value):'—';
+    if(compare)compare.value=pct>0&&before?before:'';
+    return value;
+  }
+  base?.addEventListener('input',productPrice);
+  discount?.addEventListener('input',productPrice);
+  productPrice();
+
+  const variantsTotal=$('#id_variants-TOTAL_FORMS');
+  const variantSource=$('#variant-list');
+  const variantTemplate=$('#variant-empty-form');
+  const groups=$('#variant-groups');
+  const empty=$('#empty-variant-groups');
+  const colorPicker=$('#variant-color-picker');
+
+  const sizes=[
+    {% for size in product_sizes %}
+    {id:"{{ size.pk }}",name:"{{ size.name|escapejs }}"}{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  function catalogColors(){
+    return $$('.cc-catalog-color',colorPicker).map(b=>({
+      id:String(b.dataset.catalogColor),
+      name:b.textContent.trim(),
+      hex:b.dataset.hex||'#d2ad5f'
+    }));
+  }
+
+  function rows(group){
+    return $$('[data-variant-row]:not(.is-deleted)',group);
+  }
+
+  function colorId(group){
+    return String($('[data-group-color]',group)?.value||'');
+  }
+
+  function setRowColor(row,id){
+    const select=$('select[name$="-color"]',row);
+    if(!select)return;
+    if(![...select.options].some(o=>o.value===String(id))){
+      const color=catalogColors().find(c=>c.id===String(id));
+      if(color){
+        const option=document.createElement('option');
+        option.value=color.id;option.textContent=color.name;select.appendChild(option);
+      }
+    }
+    select.value=String(id);
+  }
+
+  function setRowSize(row,size){
+    const select=$('select[name$="-size"]',row);
+    if(!select)return;
+    if(![...select.options].some(o=>o.value===String(size.id))){
+      const option=document.createElement('option');
+      option.value=size.id;option.textContent=size.name;select.appendChild(option);
+    }
+    select.value=String(size.id);
+    const label=$('[data-size-label]',row);
+    if(label)label.textContent=size.name;
+  }
+
+  function syncRowPrice(row,group){
+    const inherit=$('[data-group-inherit]',group);
+    const price=$('[data-group-price]',group);
+    const pct=$('[data-group-discount]',group);
+    const use=$('input[name$="-use_product_price"]',row);
+    const value=$('[data-variant-price]',row);
+    const compare=$('input[name$="-compare_at_price"]',row);
+    const discountField=$('[data-variant-discount]',row);
+    const inherited=Boolean(inherit?.checked);
+    const raw=Number(price?.value)||0;
+    const rate=Math.min(100,Math.max(0,Number(pct?.value)||0));
+    if(use)use.checked=inherited;
+    if(value){
+      value.value=inherited?'':String(raw||'');
+      value.disabled=inherited;
+    }
+    if(compare)compare.value=!inherited&&rate&&raw?String(raw):'';
+    if(discountField)discountField.value=inherited?'':String(rate||0);
+  }
+
+  function syncGroup(group){
+    const id=colorId(group);
+    const color=catalogColors().find(c=>c.id===id);
+    const swatch=$('[data-group-swatch]',group);
+    if(swatch)swatch.style.setProperty('--picked-color',color?.hex||'#d2ad5f');
+
+    const count=$('[data-size-count]',group);
+    if(count)count.textContent=rows(group).length+' سایز انتخاب شده';
+
+    const selected=new Set(rows(group).map(r=>$('select[name$="-size"]',r)?.value).filter(Boolean));
+    $$('[data-size]',group).forEach(b=>b.classList.toggle('is-selected',selected.has(String(b.dataset.size))));
+
+    const inherit=$('[data-group-inherit]',group);
+    const custom=$('[data-group-custom]',group);
+    custom?.classList.toggle('is-hidden',Boolean(inherit?.checked));
+    const price=productPrice();
+    const raw=Number($('[data-group-price]',group)?.value)||0;
+    const pct=Math.min(100,Math.max(0,Number($('[data-group-discount]',group)?.value)||0));
+    const value=inherit?.checked?price:(raw?Math.round(raw*(100-pct)/100):0);
+    const result=$('[data-group-final]',group);
+    if(result)result.textContent=value?money(value):'—';
+
+    rows(group).forEach(r=>syncRowPrice(r,group));
+    empty.style.display=$$('[data-variant-group]').length?'none':'';
+  }
+
+  function createRow(group,size){
+    const index=Number(variantsTotal.value||0);
+    const html=variantTemplate.innerHTML.replaceAll('__prefix__',index);
+    variantSource.insertAdjacentHTML('beforeend',html);
+    variantsTotal.value=index+1;
+    const row=variantSource.lastElementChild;
+    setRowColor(row,colorId(group));
+    setRowSize(row,size);
+    bindRow(row,group);
+    group.querySelector('[data-size-editors]').appendChild(row);
+    syncGroup(group);
+    return row;
+  }
+
+  function bindRow(row,group){
+    $('[data-remove-variant]',row)?.addEventListener('click',(event)=>{
+      event.preventDefault();
+      const del=$('input[name$="-DELETE"]',row);
+      if(del){
+        del.checked=true;
+        row.classList.add('is-deleted');
+        row.style.display='none';
+      }else{
+        row.remove();
+      }
+      syncGroup(group);
+    });
+  }
+
+  function toggleSize(group,size){
+    const active=rows(group).find(r=>$('select[name$="-size"]',r)?.value===String(size.id));
+    if(active){
+      return;
+    }
+
+    // A previously deleted formset row is ignored by rows(). Do not reuse it;
+    // create one fresh form only when the size is no longer active.
+    createRow(group,size);
+    syncGroup(group);
+  }
+
+  function renderSizes(group){
+    const box=$('[data-size-chips]',group);
+    box.innerHTML='';
+    sizes.forEach(size=>{
+      const b=document.createElement('button');
+      b.type='button';b.className='cc-size-chip';b.dataset.size=size.id;
+      b.textContent=size.name;
+      b.addEventListener('click',()=>toggleSize(group,size));
+      box.appendChild(b);
+    });
+    syncGroup(group);
+  }
+
+  function refreshColorSelects(){
+    const colors=catalogColors();
+    const all=$$('[data-variant-group]');
+    all.forEach(group=>{
+      const select=$('[data-group-color]',group),current=select.value;
+      const used=new Set(all.filter(g=>g!==group).map(g=>colorId(g)).filter(Boolean));
+      select.innerHTML='<option value="">انتخاب رنگ</option>';
+      colors.forEach(c=>{
+        if(used.has(c.id)&&c.id!==current)return;
+        const o=document.createElement('option');
+        o.value=c.id;o.textContent=c.name;o.dataset.hex=c.hex;
+        select.appendChild(o);
+      });
+      if(current)select.value=current;
+      enhanceSelect(select);
+      syncCustomSelect(select);
+    });
+  }
+
+  function createGroup(color=''){
+    const group=document.createElement('div');
+    group.className='cc-variant-group';
+    group.dataset.variantGroup='1';
+    group.innerHTML=`
+      <div class="cc-variant-group-head">
+        <div class="cc-variant-group-identity">
+          <span class="cc-group-swatch" data-group-swatch></span>
+          <div><strong>رنگ محصول</strong><small><b data-size-count>0 سایز انتخاب شده</b></small></div>
+        </div>
+        <div class="cc-group-actions">
+          <select class="cc-group-color-select" data-group-color><option value="">انتخاب رنگ</option></select>
+          <button type="button" class="cc-remove-group" data-remove-group>حذف</button>
+        </div>
+      </div>
+      <div class="cc-size-picker">
+        <div class="cc-picker-label"><strong>سایزها</strong><small>چند سایز را انتخاب کن</small></div>
+        <div class="cc-size-chips" data-size-chips></div>
+      </div>
+      <div class="cc-group-price">
+        <div class="cc-group-price-head">
+          <div><strong>قیمت این رنگ</strong><small>به‌صورت پیش‌فرض از قیمت محصول استفاده می‌شود.</small></div>
+          <label class="cc-group-inherit"><input type="checkbox" checked data-group-inherit><span>قیمت محصول</span></label>
+        </div>
+        <div class="cc-group-custom is-hidden" data-group-custom>
+          <div><label>قیمت قبل از تخفیف</label><input type="number" min="0" inputmode="numeric" data-group-price></div>
+          <div><label>تخفیف</label><input type="number" min="0" max="100" value="0" data-group-discount></div>
+        </div>
+        <div class="cc-group-final"><span>قیمت نهایی</span><strong data-group-final>—</strong><em>تومان</em></div>
+      </div>
+      <div class="cc-size-editors" data-size-editors></div>
+    `;
+    groups.appendChild(group);
+
+    const select=$('[data-group-color]',group);
+    select.addEventListener('change',()=>{
+      const value=select.value;
+      const duplicate=$$('[data-variant-group]').some(g=>g!==group&&colorId(g)===value&&value);
+      if(duplicate){select.value='';syncGroup(group);return}
+      syncGroup(group);
+    });
+
+    $('[data-group-inherit]',group)?.addEventListener('change',()=>syncGroup(group));
+    $('[data-group-price]',group)?.addEventListener('input',()=>syncGroup(group));
+    $('[data-group-discount]',group)?.addEventListener('input',()=>syncGroup(group));
+
+    $('[data-remove-group]',group).addEventListener('click',()=>{
+      rows(group).forEach(row=>{
+        const del=$('input[name$="-DELETE"]',row);
+        if(del){del.checked=true;row.classList.add('is-deleted')}
+      });
+      group.remove();
+      refreshColorSelects();
+      empty.style.display=$$('[data-variant-group]').length?'none':'';
+    });
+
+    refreshColorSelects();
+    if(color)select.value=String(color);
+    enhanceSelect(select);
+    syncCustomSelect(select);
+    renderSizes(group);
+    syncGroup(group);
+    return group;
+  }
+
+  function addColor(color){
+    const existing=$$('[data-variant-group]').find(g=>colorId(g)===String(color));
+    if(existing){existing.scrollIntoView({behavior:'smooth',block:'center'});return existing}
+    const group=createGroup(String(color));
+    group.scrollIntoView({behavior:'smooth',block:'center'});
+    return group;
+  }
+
+  $$('.cc-catalog-color',colorPicker).forEach(button=>{
+    button.addEventListener('click',()=>{
+      const color=String(button.dataset.catalogColor||'');
+      if(!color)return;
+      addColor(color);
+      $$('.cc-catalog-color',colorPicker).forEach(b=>{
+        const selected=$$('[data-variant-group]').some(g=>colorId(g)===String(b.dataset.catalogColor||''));
+        b.classList.toggle('is-selected',selected);
+      });
+    });
+  });
+
+  // Rebuild groups from the real Django formset when editing.
+  function loadExistingVariants(){
+    const map=new Map();
+    $$('.cc-variant-row',variantSource).forEach(row=>{
+      if($('input[name$="-DELETE"]',row)?.checked){
+        row.style.display='none';
+        row.classList.add('is-deleted');
+        return;
+      }
+      const color=$('select[name$="-color"]',row)?.value||row.dataset.postedColor;
+      const size=$('select[name$="-size"]',row)?.value;
+      if(!color||!size)return;
+      let group=map.get(color);
+      if(!group)group=createGroup(color),map.set(color,group);
+      const sizeObj=sizes.find(s=>String(s.id)===String(size));
+      if(sizeObj){
+        setRowSize(row,sizeObj);
+        group.querySelector('[data-size-editors]').appendChild(row);
+        bindRow(row,group);
+      }
+    });
+    $$('[data-variant-group]').forEach(syncGroup);
+  }
+
+  // Images
+  const totalImages=$('#id_images-TOTAL_FORMS'),imageList=$('#image-list'),imageTemplate=$('#image-empty-form');
+  function bindImage(row){
+    const input=$('input[type="file"]',row),preview=$('[data-image-preview]',row);
+    input?.addEventListener('change',()=>{
+      const file=input.files?.[0];
+      if(file&&preview)preview.innerHTML='<img src="'+URL.createObjectURL(file)+'" alt="">';
+    });
+    $('[data-remove-image]',row)?.addEventListener('click',()=>{
+      const del=$('input[name$="-DELETE"]',row);
+      if(del){del.checked=true;row.classList.add('is-deleted')}else row.remove();
+    });
+  }
+  $$('.cc-image-card').forEach(bindImage);
+  $('#add-image')?.addEventListener('click',()=>{
+    const index=Number(totalImages.value||0);
+    imageList.insertAdjacentHTML('beforeend',imageTemplate.innerHTML.replaceAll('__prefix__',index));
+    totalImages.value=index+1;
+    bindImage(imageList.lastElementChild);
+  });
+
+  loadExistingVariants();
+  refreshColorSelects();
+
+  form.addEventListener('submit',()=>{
+    $$('[data-variant-group]').forEach(group=>{
+      if(!colorId(group))return;
+      syncGroup(group);
+    });
+  });
+})();
+</script>
+{% endblock %}

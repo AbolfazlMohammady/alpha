@@ -1,0 +1,94 @@
+{% extends "control_center/base.html" %}
+
+{% block title %}لیبل‌های ثبت‌شده مشتریان | طراحی سه‌بعدی | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head cc-3d-page-head">
+  <div>
+    <div class="cc-eyebrow">PURCHASED CUSTOMER LABELS</div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:3d_dashboard' %}">طراحی سه‌بعدی</a>
+      <span>/</span>
+      <strong>لیبل‌های مشتریان</strong>
+    </div>
+    <h1>لیبل‌های ثبت‌شده مشتریان</h1>
+    <p>فقط لیبل مشتریانی در این بخش نگهداری می‌شود که داخل یک طراحی سه‌بعدی استفاده شده و آن لباس با پرداخت موفق خریداری شده باشد.</p>
+  </div>
+  <a class="cc-btn" href="{% url 'control:artwork_library' %}">کتابخانه لیبل‌ها</a>
+</div>
+
+<div class="cc-3d-simple-stats">
+  <div><span>لیبل‌های ثبت‌شده</span><b>{{ customer_artwork_count }}</b></div>
+  <div><span>سفارش‌های مرتبط</span><b>{{ customer_artwork_order_count }}</b></div>
+  <div><span>صفحه</span><b>{{ page_obj.number }}</b></div>
+  <div><span>نوع نگهداری</span><b>خرید موفق</b></div>
+</div>
+
+<section class="cc-card cc-customer-labels-panel">
+  <div class="cc-customer-labels-head">
+    <div>
+      <span class="cc-eyebrow">CUSTOMER ASSETS</span>
+      <h2>لیبل‌هایی که واقعاً وارد خرید شده‌اند</h2>
+      <p>آپلودهای رهاشده، پیش‌نویس‌ها و سفارش‌های پرداخت‌نشده عمداً در اینجا نمایش داده نمی‌شوند.</p>
+    </div>
+  </div>
+
+  {% if customer_artworks %}
+    <div class="cc-customer-label-grid">
+      {% for item in customer_artworks %}
+        <article class="cc-customer-label-card">
+          <div class="cc-customer-label-image">
+            {% if item.image %}
+              <img src="{{ item.image.url }}" alt="{{ item.name }}" loading="lazy">
+            {% endif %}
+            <span>ثبت خرید</span>
+          </div>
+
+          <div class="cc-customer-label-content">
+            <div class="cc-customer-label-title">
+              <div>
+                <span class="cc-eyebrow">LABEL</span>
+                <h3>{{ item.name }}</h3>
+                <small dir="ltr">{{ item.code }}</small>
+              </div>
+              <strong>{{ item.confirmed_usage_count }} استفاده</strong>
+            </div>
+
+            <div class="cc-customer-label-owner">
+              <span>{% if item.owner %}{{ item.owner.get_full_name|default:item.owner.phone }}{% else %}مشتری{% endif %}</span>
+              <span>{{ item.order_count }} سفارش</span>
+            </div>
+
+            <div class="cc-customer-label-specs">
+              <div><span>لباس</span><b>{{ item.latest_product_name|default:"—" }}</b></div>
+              <div><span>رنگ</span><b>{{ item.latest_color_name|default:"—" }}</b></div>
+              <div><span>سایز</span><b>{{ item.latest_size_name|default:"—" }}</b></div>
+            </div>
+
+            <div class="cc-customer-label-actions">
+              {% if item.latest_design_uuid %}
+                <a class="cc-btn primary" href="{% url 'control:design_detail' item.latest_design_uuid %}">مشاهده طراحی ↗</a>
+              {% endif %}
+              {% if item.latest_order_id %}
+                <a class="cc-btn" href="{% url 'control:order_detail' item.latest_order_id %}">سفارش {{ item.latest_order_number }}</a>
+              {% endif %}
+            </div>
+
+            {% if item.latest_order_created_at %}
+              <time>{{ item.latest_order_created_at|date:"Y/m/d H:i" }}</time>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="cc-label-empty">
+      <span>♢</span>
+      <strong>هنوز لیبل ثبت‌خریدشده‌ای از مشتری وجود ندارد.</strong>
+      <small>بعد از پرداخت موفق یک سفارش طراحی سه‌بعدی، لیبل‌های همان طراحی اینجا قرار می‌گیرند.</small>
+    </div>
+  {% endif %}
+</section>
+
+{% include "control_center/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "control_center/base.html" %}
+{% block title %}تنظیمات پشتیبان‌گیری | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-page-head"><div><span class="cc-eyebrow">BACKUP / SCHEDULE</span><h1>تنظیمات پشتیبان‌گیری</h1><p>دوره اجرای خودکار را مشخص کنید؛ نگهداری همیشه روی ۵ نسخه است.</p></div></div>
+<section class="cc-card cc-form-card"><form class="cc-form" method="post">{% csrf_token %}{{ form.non_field_errors }}<div class="cc-form-grid">{% for field in form %}<label class="cc-field"><span>{{ field.label }}</span>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{{ field.errors }}</label>{% endfor %}</div><div class="cc-actions"><a class="cc-btn" href="{% url 'control:backups' %}">انصراف</a><button class="cc-btn primary" type="submit">ذخیره تنظیمات</button></div></form></section>
+{% endblock %}

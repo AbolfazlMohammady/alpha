@@ -1,0 +1,405 @@
+/* ==========================================================================
+   BABAEI — Contact page
+   --------------------------------------------------------------------------
+   Compact editorial contact page using the existing shop shell, fonts and
+   palette. The globe is rendered by D3; no image asset is required.
+   ========================================================================== */
+
+body.contact-page {
+    --contact-bg: var(--sh-cream, #f4f1ea);
+    --contact-surface: var(--sh-cream-2, #fbfaf7);
+    --contact-ink: var(--sh-ink, #171717);
+    --contact-muted: var(--sh-muted, #777);
+    --contact-forest: var(--sh-forest, #14523c);
+    --contact-line: var(--sh-line, #e7e7e4);
+    background: var(--contact-bg);
+    color: var(--contact-ink);
+    font-family: var(--sh-font);
+}
+
+.contact-globe {
+    width: 100%;
+    min-height: calc(100vh - var(--sh-nav-h));
+    overflow: hidden;
+    background: var(--contact-bg);
+    padding: 42px 0 58px;
+}
+
+.contact-globe__container {
+    width: min(1040px, calc(100% - (var(--sh-gutter) * 2)));
+    margin-inline: auto;
+}
+
+.contact-globe__hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 11px;
+    margin: 0 auto 34px;
+    text-align: center;
+}
+
+.contact-globe__badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0 14px;
+    border: 1px solid rgba(20, 82, 60, .18);
+    border-radius: 999px;
+    background: rgba(20, 82, 60, .05);
+    color: var(--contact-forest);
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.contact-globe__hero h1 {
+    margin: 0;
+    color: var(--contact-ink);
+    font-family: var(--sh-font);
+    font-size: clamp(36px, 4.7vw, 54px);
+    line-height: 1.12;
+    letter-spacing: -.04em;
+    font-weight: 850;
+}
+
+.contact-globe__hero p {
+    max-width: 580px;
+    margin: 0;
+    color: var(--contact-muted);
+    font-family: var(--sh-font);
+    font-size: 13px;
+    line-height: 1.9;
+}
+
+.contact-globe__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(30px, 4vw, 46px);
+    width: min(900px, 100%);
+    margin-inline: auto;
+    align-items: center;
+}
+
+.contact-globe__left {
+    min-width: 0;
+}
+
+.contact-globe__copy {
+    margin-bottom: 16px;
+}
+
+.contact-globe__copy h2,
+.contact-globe__contact-card h2 {
+    margin: 0 0 6px;
+    color: var(--contact-ink);
+    font-size: 19px;
+    line-height: 1.45;
+    font-weight: 850;
+    letter-spacing: -.02em;
+}
+
+.contact-globe__copy p,
+.contact-globe__contact-card > p {
+    max-width: 390px;
+    margin: 0;
+    color: var(--contact-muted);
+    font-size: 12.5px;
+    line-height: 1.9;
+}
+
+.contact-globe__phone-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: min(100%, 410px);
+    min-height: 56px;
+    padding: 8px 11px;
+    border: 1px solid var(--contact-line);
+    border-radius: var(--sh-radius, 14px);
+    background: var(--contact-surface);
+    color: var(--contact-ink);
+    text-decoration: none;
+    box-shadow: 0 10px 30px -28px rgba(11, 48, 37, .55);
+    transition: border-color var(--sh-fast), transform var(--sh-fast), box-shadow var(--sh-fast);
+}
+
+.contact-globe__phone-link:hover {
+    border-color: rgba(20, 82, 60, .3);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 30px -24px rgba(11, 48, 37, .6);
+}
+
+.contact-globe__phone-icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    border-radius: 10px;
+    background: var(--contact-forest);
+    color: var(--contact-surface);
+}
+
+.contact-globe__phone-icon svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.contact-globe__phone-link > span:nth-child(2) {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    min-width: 0;
+}
+
+.contact-globe__phone-link small {
+    color: var(--contact-muted);
+    font-size: 9px;
+}
+
+.contact-globe__phone-link strong {
+    color: var(--contact-ink);
+    font-family: var(--sh-font-latin, var(--sh-font));
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: .02em;
+}
+
+.contact-globe__phone-link > b {
+    margin-inline-start: auto;
+    color: var(--contact-forest);
+    font-size: 15px;
+}
+
+.contact-globe__world {
+    position: relative;
+    width: 100%;
+    height: 250px;
+    margin-top: 6px;
+    overflow: hidden;
+}
+
+.contact-globe__svg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    color: var(--contact-forest);
+}
+
+.contact-globe__svg svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
+}
+
+.contact-globe__svg svg:active {
+    cursor: grabbing;
+}
+
+.contact-globe__world-fade {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 38%;
+    pointer-events: none;
+    background: linear-gradient(to top, var(--contact-bg), rgba(244, 241, 234, 0));
+}
+
+.contact-globe__contact-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+    min-height: 270px;
+    padding: 25px;
+    border: 1px solid var(--contact-line);
+    border-radius: var(--sh-radius-lg, 20px);
+    background: var(--contact-surface);
+    box-shadow: 0 22px 55px -42px rgba(11, 48, 37, .55);
+}
+
+.contact-globe__card-label {
+    margin-bottom: 12px;
+    color: var(--contact-forest);
+    font-family: var(--sh-font-latin, var(--sh-font));
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .18em;
+    direction: ltr;
+}
+
+.contact-globe__separator {
+    width: 100%;
+    height: 10px;
+    margin: 18px 0;
+    background-image: radial-gradient(circle, var(--contact-muted) .7px, transparent .7px);
+    background-repeat: repeat-x;
+    background-size: 6px 100%;
+    opacity: .38;
+    -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+}
+
+.contact-globe__number {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    margin-bottom: 17px;
+}
+
+.contact-globe__number span {
+    color: var(--contact-muted);
+    font-size: 10px;
+}
+
+.contact-globe__number strong {
+    color: var(--contact-ink);
+    font-family: var(--sh-font-latin, var(--sh-font));
+    font-size: clamp(22px, 2.7vw, 31px);
+    font-weight: 800;
+    letter-spacing: .02em;
+    overflow-wrap: anywhere;
+}
+
+.contact-globe__call {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    min-height: 42px;
+    padding: 0 18px;
+    border-radius: 11px;
+    background: var(--contact-forest);
+    color: var(--contact-surface);
+    font-size: 12px;
+    font-weight: 800;
+    text-decoration: none;
+    transition: background var(--sh-fast), transform var(--sh-fast);
+}
+
+.contact-globe__call:hover {
+    background: var(--sh-forest-soft);
+    transform: translateY(-1px);
+}
+
+.contact-globe__empty {
+    padding: 13px 14px;
+    border: 1px dashed var(--contact-line);
+    border-radius: 11px;
+    color: var(--contact-muted);
+    font-size: 11px;
+}
+
+@media (max-width: 820px) {
+    .contact-globe {
+        padding: 38px 0 54px;
+    }
+
+    .contact-globe__hero {
+        margin-bottom: 28px;
+    }
+
+    .contact-globe__layout {
+        grid-template-columns: 1fr;
+        gap: 22px;
+        max-width: 560px;
+    }
+
+    .contact-globe__world {
+        height: 220px;
+    }
+
+    .contact-globe__contact-card {
+        min-height: 0;
+    }
+}
+
+@media (max-width: 560px) {
+    .contact-globe {
+        padding: 28px 0 48px;
+    }
+
+    .contact-globe__container {
+        width: min(calc(100% - 28px), 560px);
+    }
+
+    .contact-globe__hero {
+        gap: 9px;
+        margin-bottom: 22px;
+    }
+
+    .contact-globe__badge {
+        min-height: 28px;
+        padding-inline: 12px;
+        font-size: 9px;
+    }
+
+    .contact-globe__hero h1 {
+        font-size: 34px;
+    }
+
+    .contact-globe__hero p {
+        font-size: 11.5px;
+        line-height: 1.85;
+    }
+
+    .contact-globe__copy h2,
+    .contact-globe__contact-card h2 {
+        font-size: 17px;
+    }
+
+    .contact-globe__copy p,
+    .contact-globe__contact-card > p {
+        font-size: 11.5px;
+    }
+
+    .contact-globe__world {
+        height: 195px;
+    }
+
+    .contact-globe__contact-card {
+        padding: 20px 17px;
+        border-radius: 15px;
+    }
+
+    .contact-globe__number strong {
+        font-size: 23px;
+    }
+
+    .contact-globe__call {
+        width: 100%;
+    }
+}
+
+@media (max-width: 400px) {
+    .contact-globe__hero h1 {
+        font-size: 31px;
+    }
+
+    .contact-globe__world {
+        height: 180px;
+    }
+
+    .contact-globe__phone-link strong {
+        font-size: 14px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .contact-globe__phone-link,
+    .contact-globe__call {
+        transition-duration: 1ms;
+    }
+}

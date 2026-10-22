@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load static shop_tags %}
+
+{% block title %}فروشگاه لباس و تیشرت | BABAEI{% endblock %}
+{% block meta_description %}خرید تیشرت و لباس از BABAEI؛ انتخاب مدل، رنگ و سایز و آماده برای شخصی‌سازی.{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ canonical_url }}">{% endblock %}
+{% block common_page_css %}{% endblock %}
+{% block body_class %}shop-page{% endblock %}
+{% block og_title %}فروشگاه لباس و تیشرت | BABAEI{% endblock %}
+{% block og_description %}خرید تیشرت و لباس از BABAEI؛ انتخاب مدل، رنگ و سایز و آماده برای شخصی‌سازی.{% endblock %}
+{% block og_image %}{% if og_image_url %}<meta property="og:image" content="{{ og_image_url }}">{% endif %}{% endblock %}
+{% block extra_head %}<script type="application/ld+json">{{ website_schema }}</script>{% endblock %}
+{% block extra_css %}{% endblock %}
+
+{% comment %}
+storefront.css still owns the product-card and product-detail rules, so it
+stays. css/fonts.css and css/pages/shop-shell.css are injected by base.html
+for the whole shop namespace (this page, category and product detail), so they
+are not repeated here.
+quick-actions.css was dropped: the floating actions ring is retired on shop
+pages (the drawer carries those links) and it loaded on top of the cart.
+{% endcomment %}
+{% block site_optional_css %}
+<link rel="stylesheet" href="{% static 'css/storefront.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/pages/shop-reference.css' %}?v=9">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/shop-cards.js' %}?v=4" defer></script>
+<script src="{% static 'js/pages/shop-reference.js' %}?v=7" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="shop-reference">
+    {% comment %}
+    Hero.
+
+    Performance: the photo is delivered as AVIF + WebP with a 4:5 portrait
+    crop for phones and a 2.95:1 wide set above 700px. The source PNG was
+    1,570 KB; the largest wide candidate is now 33 KB and the phone crop is
+    15 KB, so a 360px device downloads ~46x less for the LCP image.
+
+    Layout: text sits on the RTL start edge (right) where the photo is darkest
+    (measured mean luminance: left 44, centre 26, right 23), so the cream
+    headline stays legible and the lit left third of the photo stays visible.
+
+    No width/height on the <img> by design: the box is owned by .sh-hero's
+    definite min-height and the image is object-fit:cover inside it, so there
+    is no layout shift to reserve space for.
+    {% endcomment %}
+    <section class="sh-hero" aria-labelledby="shop-title">
+        <div class="sh-hero__media">
+            <picture>
+                <source type="image/avif"
+                        media="(max-width: 700px)"
+                        sizes="100vw"
+                        srcset="{% static 'images/shop/hero-portrait-420.avif' %} 420w,
+                                {% static 'images/shop/hero-portrait-640.avif' %} 640w,
+                                {% static 'images/shop/hero-portrait-828.avif' %} 828w">
+                <source type="image/webp"
+                        media="(max-width: 700px)"
+                        sizes="100vw"
+                        srcset="{% static 'images/shop/hero-portrait-420.webp' %} 420w,
+                                {% static 'images/shop/hero-portrait-640.webp' %} 640w,
+                                {% static 'images/shop/hero-portrait-828.webp' %} 828w">
+                <source type="image/avif"
+                        sizes="100vw"
+                        srcset="{% static 'images/shop/hero-480.avif' %} 480w,
+                                {% static 'images/shop/hero-960.avif' %} 960w,
+                                {% static 'images/shop/hero-1440.avif' %} 1440w,
+                                {% static 'images/shop/hero-2153.avif' %} 2153w">
+                <source type="image/webp"
+                        sizes="100vw"
+                        srcset="{% static 'images/shop/hero-480.webp' %} 480w,
+                                {% static 'images/shop/hero-960.webp' %} 960w,
+                                {% static 'images/shop/hero-1440.webp' %} 1440w,
+                                {% static 'images/shop/hero-2153.webp' %} 2153w">
+                <img src="{% static 'images/shop/hero-1440.webp' %}"
+                     alt=""
+                     fetchpriority="high"
+                     decoding="async">
+            </picture>
+        </div>
+
+        <div class="sh-hero__inner">
+            <div class="sh-hero__copy">
+                <div class="sh-hero__text">
+                    <nav class="shop-reference__crumbs" aria-label="مسیر صفحه">
+                        <a href="{% url 'home:index' %}">خانه</a>
+                        <span>‹</span>
+                        <span aria-current="page">فروشگاه</span>
+                    </nav>
+                    <span class="sh-hero__eyebrow">BABAEI / STORE</span>
+                    <h1 class="sh-hero__title" id="shop-title">
+                        فروشگاه لباس و تیشرت
+                    </h1>
+                    <p class="sh-hero__lead">
+                        داستان خودت را بپوش.
+                    </p>
+                </div>
+                <div class="sh-hero__actions">
+                    <a class="sh-btn sh-btn--solid" href="#products">
+                        دیدن محصولات
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"></path></svg>
+                    </a>
+                    {% if designer_product %}
+                        <a class="sh-btn sh-btn--ghost" href="{% url 'customizer:designer' designer_product.uuid %}">
+                            طراحی اختصاصی
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    {% comment %}
+    Category rail.
+
+    Real shop:category links. Those pages already ship their own canonical,
+    CollectionPage schema and sitemap entry, but no markup linked to them, so
+    they were orphaned from the crawl graph. This is the crawl path.
+    {% endcomment %}
+    <section class="sh-rail" aria-label="دسته‌بندی محصولات">
+        <div class="sh-rail__inner">
+            <ul class="sh-rail__list">
+                <li class="sh-rail__item">
+                    <a class="sh-rail__link sh-rail__link--all{% if not filter_category %} is-active{% endif %}"
+                       href="{% url 'shop:index' %}"
+                       {% if not filter_category %}aria-current="true"{% endif %}>
+                        همه محصولات
+                        <span class="sh-rail__count">{{ paginator.count|price }}</span>
+                    </a>
+                </li>
+                {% for category in categories %}
+                    <li class="sh-rail__item">
+                        <a class="sh-rail__link{% if category.slug == filter_category %} is-active{% endif %}"
+                           href="?category={{ category.slug }}"
+                           {% if category.slug == filter_category %}aria-current="true"{% endif %}>
+                            {{ category.name }}
+                            <span class="sh-rail__count">{{ category.product_count|price }}</span>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+
+    {% include "shop/includes/_catalog.html" %}
+</div>
+{% endblock %}

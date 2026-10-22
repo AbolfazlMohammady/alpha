@@ -1,0 +1,43 @@
+# Local Python environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# VCS / editor files
+.git/
+.vscode/
+.idea/
+
+# Local databases and runtime data
+*.sqlite3
+*.sqlite3-journal
+data/database/
+data/logs/
+data/media/
+
+# Test / coverage output
+.coverage
+htmlcov/
+coverage.xml
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Frontend / build artifacts
+node_modules/
+dist/
+build/
+
+# Temporary files
+*.log
+*.tmp

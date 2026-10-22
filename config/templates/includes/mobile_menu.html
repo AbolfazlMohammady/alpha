@@ -1,0 +1,82 @@
+<div
+    class="mobile-menu"
+    data-mobile-menu-panel
+    aria-hidden="true"
+>
+
+    <div class="mobile-menu__backdrop" data-mobile-menu-close></div>
+
+    <aside
+        class="mobile-menu__panel"
+        aria-label="منوی موبایل"
+    >
+
+        <div class="mobile-menu__header">
+
+            <a href="/" class="mobile-menu__logo">
+                BABAEI
+            </a>
+
+            <button
+                type="button"
+                class="mobile-menu__close"
+                data-mobile-menu-close
+                aria-label="بستن منو"
+            >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 5l14 14M19 5 5 19"></path>
+                </svg>
+            </button>
+
+        </div>
+
+        <nav class="mobile-menu__nav" aria-label="منوی موبایل">
+
+            <a href="/">
+                <span>خانه</span>
+                <span>01</span>
+            </a>
+
+            <a href="#">
+                <span>فروشگاه</span>
+                <span>02</span>
+            </a>
+
+            <a href="#">
+                <span>طراحی اختصاصی</span>
+                <span>03</span>
+            </a>
+
+            <a href="#">
+                <span>بلاگ</span>
+                <span>04</span>
+            </a>
+
+            <a href="#">
+                <span>درباره ما</span>
+                <span>05</span>
+            </a>
+
+        </nav>
+
+        <div class="mobile-menu__footer">
+
+            {% if request.user.is_authenticated %}
+                <a href="{% url 'users:profile' %}">
+                    حساب کاربری
+                </a>
+            {% else %}
+                <a href="{% url 'users:login' %}">
+                    ورود / ثبت‌نام
+                </a>
+            {% endif %}
+
+            <a href="#">
+                سبد خرید
+            </a>
+
+        </div>
+
+    </aside>
+
+</div>

@@ -1,0 +1,125 @@
+{% extends "control_center/base.html" %}
+{% block title %}{% if object %}ویرایش دسته‌بندی{% else %}دسته‌بندی جدید{% endif %} | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-page-head cc-category-form-head">
+  <div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:categories' %}">دسته‌بندی‌ها</a>
+      <span>/</span>
+      <span>{% if object %}ویرایش{% else %}جدید{% endif %}</span>
+    </div>
+    <span class="cc-eyebrow">STORE / CATEGORY</span>
+    <h1>{% if object %}ویرایش دسته‌بندی{% else %}دسته‌بندی جدید{% endif %}</h1>
+    <p>{% if object %}اطلاعات دسته‌بندی را مرتب و بدون پیچیدگی بروزرسانی کن.{% else %}یک دسته‌بندی جدید برای سازمان‌دهی محصولات فروشگاه بساز.{% endif %}</p>
+  </div>
+  <a class="cc-btn cc-category-back-btn" href="{% url 'control:categories' %}">بازگشت به دسته‌بندی‌ها</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="cc-category-form">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="cc-category-alert">{{ form.non_field_errors|striptags }}</div>
+  {% endif %}
+
+  <div class="cc-category-layout">
+    <main class="cc-category-form-main">
+      <section class="cc-card cc-category-section">
+        <div class="cc-category-section-head">
+          <span class="cc-category-section-icon">01</span>
+          <div>
+            <h2>اطلاعات اصلی</h2>
+            <p>نام و شناسه دسته‌بندی در این بخش قرار می‌گیرد.</p>
+          </div>
+        </div>
+
+        <div class="cc-category-fields cc-category-fields-two">
+          <div class="cc-category-field">
+            <label for="{{ form.name.id_for_label }}">نام دسته‌بندی</label>
+            {{ form.name }}
+            {% if form.name.errors %}<small class="cc-error">{{ form.name.errors|striptags }}</small>{% endif %}
+          </div>
+          <div class="cc-category-field">
+            <label for="{{ form.slug.id_for_label }}">اسلاگ</label>
+            {{ form.slug }}
+            <small>برای URL استفاده می‌شود؛ در صورت خالی بودن خودکار ساخته می‌شود.</small>
+            {% if form.slug.errors %}<small class="cc-error">{{ form.slug.errors|striptags }}</small>{% endif %}
+          </div>
+          <div class="cc-category-field cc-category-field-full">
+            <label for="{{ form.description.id_for_label }}">توضیحات</label>
+            {{ form.description }}
+            {% if form.description.errors %}<small class="cc-error">{{ form.description.errors|striptags }}</small>{% endif %}
+          </div>
+        </div>
+      </section>
+
+      <section class="cc-card cc-category-section">
+        <div class="cc-category-section-head">
+          <span class="cc-category-section-icon">02</span>
+          <div>
+            <h2>نمایش و سئو</h2>
+            <p>کنترل انتشار دسته‌بندی و اطلاعات مناسب موتورهای جستجو.</p>
+          </div>
+        </div>
+
+        <div class="cc-category-fields cc-category-fields-two">
+          <div class="cc-category-field">
+            <label for="{{ form.image.id_for_label }}">تصویر دسته‌بندی</label>
+            {{ form.image }}
+            {% if form.image.errors %}<small class="cc-error">{{ form.image.errors|striptags }}</small>{% endif %}
+          </div>
+          <div class="cc-category-field">
+            <label for="{{ form.sort_order.id_for_label }}">ترتیب نمایش</label>
+            {{ form.sort_order }}
+            <small>عدد کمتر، نمایش بالاتر.</small>
+            {% if form.sort_order.errors %}<small class="cc-error">{{ form.sort_order.errors|striptags }}</small>{% endif %}
+          </div>
+          <div class="cc-category-field">
+            <label for="{{ form.seo_title.id_for_label }}">عنوان سئو</label>
+            {{ form.seo_title }}
+            {% if form.seo_title.errors %}<small class="cc-error">{{ form.seo_title.errors|striptags }}</small>{% endif %}
+          </div>
+          <div class="cc-category-field">
+            <label for="{{ form.seo_description.id_for_label }}">توضیحات سئو</label>
+            {{ form.seo_description }}
+            {% if form.seo_description.errors %}<small class="cc-error">{{ form.seo_description.errors|striptags }}</small>{% endif %}
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="cc-category-form-side">
+      <section class="cc-card cc-category-side-card">
+        <div class="cc-category-side-title">
+          <span>وضعیت</span>
+          <small>انتشار در فروشگاه</small>
+        </div>
+        <label class="cc-category-switch">
+          {{ form.is_active }}
+          <span class="cc-category-switch-ui"></span>
+          <span class="cc-category-switch-copy">
+            <strong>دسته‌بندی فعال</strong>
+            <small>در لیست دسته‌بندی‌ها نمایش داده شود.</small>
+          </span>
+        </label>
+        {% if form.is_active.errors %}<small class="cc-error">{{ form.is_active.errors|striptags }}</small>{% endif %}
+      </section>
+
+      <section class="cc-card cc-category-side-card cc-category-help-card">
+        <div class="cc-category-side-title">
+          <span>راهنما</span>
+          <small>BABAEI STORE</small>
+        </div>
+        <div class="cc-category-help-row"><b>نام</b><span>نام خوانای دسته‌بندی</span></div>
+        <div class="cc-category-help-row"><b>اسلاگ</b><span>شناسه کوتاه برای URL</span></div>
+        <div class="cc-category-help-row"><b>ترتیب</b><span>اولویت نمایش در فروشگاه</span></div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="cc-category-form-actions">
+    <a class="cc-btn" href="{% url 'control:categories' %}">انصراف</a>
+    <button class="cc-btn primary" type="submit">{% if object %}ذخیره تغییرات{% else %}ایجاد دسته‌بندی{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

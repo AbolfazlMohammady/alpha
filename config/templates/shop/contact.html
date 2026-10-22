@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ contact.title|default:"تماس با ما" }} | BABAEI{% endblock %}
+{% block meta_description %}{{ contact.intro|default:"برای ارتباط با BABAEI با ما در تماس باشید."|truncatechars:155 }}{% endblock %}
+{% block body_class %}shop-page contact-page{% endblock %}
+
+{% block extra_css %}{% endblock %}
+
+{% block site_optional_css %}
+<link rel="stylesheet" href="{% static 'css/pages/shop-contact.css' %}?v=14">
+{% endblock %}
+
+{% block content %}
+<section class="contact-globe" aria-labelledby="contact-globe-title">
+    <div class="contact-globe__container">
+        <header class="contact-globe__hero">
+            <span class="contact-globe__badge">درباره BABAEI</span>
+            <h1 id="contact-globe-title">{{ contact.title|default:"تماس با ما" }}</h1>
+            <p>{{ contact.intro|default:"اگر سوالی داری یا برای سفارش به راهنمایی نیاز داری، با ما در ارتباط باش." }}</p>
+        </header>
+
+        <div class="contact-globe__layout">
+            <div class="contact-globe__left">
+                <div class="contact-globe__copy">
+                    <h2>در ارتباط باشیم</h2>
+                    <p>برای راهنمایی، پیگیری سفارش یا هر سوالی که درباره BABAEI داری، با ما در تماس باش.</p>
+                </div>
+
+                {% if contact.phone %}
+                <a class="contact-globe__phone-link" href="tel:{{ contact.phone|cut:' ' }}">
+                    <span class="contact-globe__phone-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24"><path d="M6.2 3.8h3.1l1.5 4-2 1.5a14.5 14.5 0 0 0 5.9 5.9l1.5-2 4 1.5v3.1c0 1-.8 1.8-1.8 1.8C11.5 19.6 4.4 12.5 4.4 5.6c0-1 .8-1.8 1.8-1.8Z"/></svg>
+                    </span>
+                    <span>
+                        <small>{{ contact.phone_label|default:"پشتیبانی و تماس" }}</small>
+                        <strong dir="ltr">{{ contact.phone }}</strong>
+                    </span>
+                    <b aria-hidden="true">←</b>
+                </a>
+                {% endif %}
+
+                <div class="contact-globe__world" aria-hidden="true">
+                    <div id="about-globe" class="contact-globe__svg"></div>
+                    <div class="contact-globe__world-fade"></div>
+                </div>
+            </div>
+
+            <div class="contact-globe__contact-card">
+                <span class="contact-globe__card-label">CONTACT / BABAEI</span>
+                <h2>با ما در تماس باشید</h2>
+                <p>برای تماس مستقیم فقط از شماره پشتیبانی BABAEI استفاده کنید.</p>
+
+                <div class="contact-globe__separator" aria-hidden="true"></div>
+
+                {% if contact.phone %}
+                <div class="contact-globe__number">
+                    <span>{{ contact.phone_label|default:"شماره تماس" }}</span>
+                    <strong dir="ltr">{{ contact.phone }}</strong>
+                </div>
+                <a class="contact-globe__call" href="tel:{{ contact.phone|cut:' ' }}">
+                    تماس با ما
+                    <span aria-hidden="true">←</span>
+                </a>
+                {% else %}
+                <p class="contact-globe__empty">شماره تماس در پنل مدیریت ثبت نشده است.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/shop-contact.js' %}?v=7" defer></script>
+{% endblock %}

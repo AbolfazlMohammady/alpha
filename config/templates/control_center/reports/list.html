@@ -1,0 +1,232 @@
+{% extends "control_center/base.html" %}
+{% block title %}گزارش فعالیت‌ها | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head cc-list-page-head cc-reports-head">
+  <div>
+    <span class="cc-eyebrow">SYSTEM / AUDIT LOG</span>
+    <h1>گزارش فعالیت‌ها</h1>
+    <p>تمام فعالیت‌های انجام‌شده در پنل مدیریت با زمان، کاربر، عملیات و نتیجه ثبت شده‌اند.</p>
+  </div>
+  <div class="cc-list-head-side">
+    <span class="cc-list-count"><b>{{ page_obj.paginator.count }}</b> نتیجه</span>
+  </div>
+</div>
+
+<div class="cc-order-stats cc-report-stats">
+  <div class="cc-order-stat"><span>کل فعالیت‌ها</span><strong>{{ report_total_count }}</strong><small>تمام لاگ‌های ثبت‌شده</small></div>
+  <div class="cc-order-stat is-gold"><span>فعالیت امروز</span><strong>{{ report_today_count }}</strong><small>از ابتدای امروز</small></div>
+  <div class="cc-order-stat is-blue"><span>کاربران فعال</span><strong>{{ report_user_count }}</strong><small>کاربران دارای سابقه فعالیت</small></div>
+  <div class="cc-order-stat is-warning"><span>موارد خطادار</span><strong>{{ report_error_count }}</strong><small>پاسخ‌های ۴۰۰ به بالا</small></div>
+</div>
+
+<form class="cc-card cc-order-filters cc-report-filters cc-order-filters-desktop" method="get">
+  <div class="cc-order-filter-grid">
+    <div class="cc-search-wrap">
+      <span class="cc-search-icon" aria-hidden="true">⌕</span>
+      <input class="cc-input" name="q" value="{{ request.GET.q }}" placeholder="نام کاربر، موبایل، عملیات، مسیر یا IP...">
+    </div>
+    <select class="cc-input" name="user">
+      <option value="">همه کاربران</option>
+      {% for user in report_users %}
+        <option value="{{ user.pk }}" {% if request.GET.user == user.pk|stringformat:"s" %}selected{% endif %}>{{ user.get_full_name|default:user.phone }}</option>
+      {% endfor %}
+    </select>
+    <select class="cc-input" name="action">
+      <option value="">همه عملیات</option>
+      {% for value,label in action_choices %}
+        <option value="{{ value }}" {% if request.GET.action == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select class="cc-input" name="method">
+      <option value="">همه متدها</option>
+      {% for value,label in method_choices %}
+        <option value="{{ value }}" {% if request.GET.method == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select class="cc-input" name="result">
+      <option value="">همه نتایج</option>
+      {% for value,label in result_choices %}
+        <option value="{{ value }}" {% if request.GET.result == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select class="cc-input" name="period">
+      <option value="">همه زمان‌ها</option>
+      <option value="today" {% if request.GET.period == "today" %}selected{% endif %}>امروز</option>
+      <option value="7" {% if request.GET.period == "7" %}selected{% endif %}>۷ روز اخیر</option>
+      <option value="30" {% if request.GET.period == "30" %}selected{% endif %}>۳۰ روز اخیر</option>
+    </select>
+  </div>
+  <div class="cc-order-filter-actions">
+    <button class="cc-btn primary" type="submit">اعمال فیلتر</button>
+    {% if request.GET.q or request.GET.user or request.GET.action or request.GET.method or request.GET.result or request.GET.period %}
+      <a class="cc-btn" href="{% url 'control:reports' %}">پاک کردن</a>
+    {% endif %}
+  </div>
+</form>
+
+<button class="cc-mobile-orders-filter-trigger cc-report-filter-trigger" type="button" data-report-filter-open aria-expanded="false" aria-controls="cc-report-filter-drawer">
+  <span class="cc-mobile-orders-filter-icon" aria-hidden="true">⌘</span>
+  <span>فیلتر گزارش‌ها</span>
+</button>
+
+<div class="cc-mobile-orders-filter-drawer" id="cc-report-filter-drawer" data-report-filter-drawer aria-hidden="true">
+  <div class="cc-mobile-orders-filter-backdrop" data-report-filter-close></div>
+  <section class="cc-mobile-orders-filter-panel" role="dialog" aria-modal="true" aria-labelledby="cc-report-filter-title">
+    <div class="cc-mobile-orders-filter-head">
+      <div>
+        <span class="cc-eyebrow">AUDIT / FILTER</span>
+        <h2 id="cc-report-filter-title">فیلتر گزارش‌ها</h2>
+        <p>فعالیت موردنظر را دقیق پیدا کن.</p>
+      </div>
+      <button type="button" class="cc-mobile-orders-filter-close" data-report-filter-close aria-label="بستن فیلتر">×</button>
+    </div>
+    <form method="get" class="cc-mobile-orders-filter-form">
+      <div class="cc-search-wrap">
+        <span class="cc-search-icon" aria-hidden="true">⌕</span>
+        <input class="cc-input" name="q" value="{{ request.GET.q }}" placeholder="نام، عملیات، مسیر یا IP...">
+      </div>
+      <div class="cc-mobile-orders-filter-section">
+        <h3>کاربر</h3>
+        <select class="cc-input" name="user">
+          <option value="">همه کاربران</option>
+          {% for user in report_users %}
+            <option value="{{ user.pk }}" {% if request.GET.user == user.pk|stringformat:"s" %}selected{% endif %}>{{ user.get_full_name|default:user.phone }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="cc-mobile-orders-filter-section">
+        <h3>نوع عملیات</h3>
+        <select class="cc-input" name="action">
+          <option value="">همه عملیات</option>
+          {% for value,label in action_choices %}<option value="{{ value }}" {% if request.GET.action == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="cc-mobile-orders-filter-section">
+        <h3>نتیجه</h3>
+        <select class="cc-input" name="result">
+          <option value="">همه نتایج</option>
+          {% for value,label in result_choices %}<option value="{{ value }}" {% if request.GET.result == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="cc-mobile-orders-filter-section">
+        <h3>بازه زمانی</h3>
+        <select class="cc-input" name="period">
+          <option value="">همه زمان‌ها</option>
+          <option value="today" {% if request.GET.period == "today" %}selected{% endif %}>امروز</option>
+          <option value="7" {% if request.GET.period == "7" %}selected{% endif %}>۷ روز اخیر</option>
+          <option value="30" {% if request.GET.period == "30" %}selected{% endif %}>۳۰ روز اخیر</option>
+        </select>
+      </div>
+      <div class="cc-mobile-orders-filter-actions">
+        <button class="cc-mobile-orders-filter-apply" type="submit">نمایش گزارش‌ها</button>
+        {% if request.GET.q or request.GET.user or request.GET.action or request.GET.method or request.GET.result or request.GET.period %}
+          <a href="{% url 'control:reports' %}" class="cc-mobile-orders-filter-clear">پاک کردن فیلترها</a>
+        {% endif %}
+      </div>
+    </form>
+  </section>
+</div>
+
+<div class="cc-card cc-list-card cc-report-list-card">
+  <div class="cc-list-card-head">
+    <div>
+      <strong>تاریخچه فعالیت سیستم</strong>
+      <small>هر ردیف مشخص می‌کند چه کسی، چه زمانی، چه عملیاتی را روی پنل انجام داده و پاسخ سیستم چه بوده است.</small>
+    </div>
+    <span class="cc-badge gold">فقط مدیر ارشد</span>
+  </div>
+
+  <div class="cc-mobile-report-list">
+    {% for log in audit_logs %}
+      <article class="cc-mobile-report-card">
+        <div class="cc-mobile-report-top">
+          <div class="cc-report-user">
+            <span class="cc-comment-avatar">{{ log.actor.get_full_name|default:log.actor.phone|slice:":1"|upper }}</span>
+            <div>
+              <strong>{{ log.actor.get_full_name|default:"کاربر حذف‌شده" }}</strong>
+              <small>{{ log.actor.get_role_display|default:"-" }}</small>
+            </div>
+          </div>
+          <div class="cc-report-time"><strong>{{ log.created_at|date:"H:i:s" }}</strong><small>{{ log.created_at|date:"Y/m/d" }}</small></div>
+        </div>
+        <div class="cc-report-description">{{ log.description }}</div>
+        <div class="cc-report-meta-grid">
+          <div><span>متد</span><b class="cc-report-method method-{{ log.method|lower }}">{{ log.method }}</b></div>
+          <div><span>نتیجه</span><b class="cc-report-result result-{{ log.result }}">{{ log.get_result_display }}</b></div>
+          <div><span>کد</span><b>{{ log.status_code }}</b></div>
+          <div><span>IP</span><b dir="ltr">{{ log.ip_address|default:"-" }}</b></div>
+        </div>
+        <div class="cc-report-path" dir="ltr">{{ log.path }}</div>
+      </article>
+    {% empty %}
+      <div class="cc-mobile-order-empty"><strong>گزارشی پیدا نشد</strong><span>فیلترها را تغییر بده.</span></div>
+    {% endfor %}
+  </div>
+
+  <div class="cc-table-wrap cc-list-table-wrap cc-report-table-wrap">
+    <table class="cc-table cc-table-v2 cc-report-table">
+      <thead>
+        <tr>
+          <th>کاربر</th>
+          <th>عملیات</th>
+          <th>زمان</th>
+          <th>متد</th>
+          <th>نتیجه</th>
+          <th>مسیر</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in audit_logs %}
+        <tr class="cc-data-row">
+          <td data-label="کاربر">
+            <div class="cc-report-table-user">
+              <strong>{{ log.actor.get_full_name|default:"کاربر حذف‌شده" }}</strong>
+              <small>{{ log.actor.phone|default:"-" }}</small>
+            </div>
+          </td>
+          <td data-label="عملیات"><strong class="cc-report-action">{{ log.action }}</strong><small>{{ log.description }}</small></td>
+          <td data-label="زمان"><span class="cc-order-date">{{ log.created_at|date:"Y/m/d" }}</span><small class="cc-order-time">{{ log.created_at|date:"H:i:s" }}</small></td>
+          <td data-label="متد"><span class="cc-report-method method-{{ log.method|lower }}">{{ log.method }}</span></td>
+          <td data-label="نتیجه"><span class="cc-report-result result-{{ log.result }}">{{ log.get_result_display }}</span><small>{{ log.status_code }}</small></td>
+          <td data-label="مسیر"><code class="cc-report-path">{{ log.path }}</code></td>
+          <td data-label="IP"><code class="cc-report-ip">{{ log.ip_address|default:"-" }}</code></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" class="cc-empty cc-list-empty"><span>⌁</span><strong>گزارشی پیدا نشد</strong><small>فیلترها را تغییر بده.</small></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "control_center/pagination.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const drawer = document.querySelector('[data-report-filter-drawer]');
+  const openButton = document.querySelector('[data-report-filter-open]');
+  if (!drawer || !openButton) return;
+  const close = () => {
+    drawer.classList.remove('is-open');
+    drawer.setAttribute('aria-hidden', 'true');
+    openButton.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('cc-orders-filter-locked');
+  };
+  const open = () => {
+    drawer.classList.add('is-open');
+    drawer.setAttribute('aria-hidden', 'false');
+    openButton.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('cc-orders-filter-locked');
+  };
+  openButton.addEventListener('click', open);
+  drawer.querySelectorAll('[data-report-filter-close]').forEach(item => item.addEventListener('click', close));
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && drawer.classList.contains('is-open')) close();
+  });
+})();
+</script>
+{% endblock %}

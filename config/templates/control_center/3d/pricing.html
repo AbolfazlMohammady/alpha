@@ -1,0 +1,80 @@
+{% extends "control_center/base.html" %}
+
+{% block title %}قیمت‌گذاری طراحی سه‌بعدی | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head cc-3d-page-head">
+  <div>
+    <div class="cc-eyebrow">3D PRICING</div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:3d_dashboard' %}">طراحی سه‌بعدی</a>
+      <span>/</span>
+      <strong>قیمت‌گذاری</strong>
+    </div>
+    <h1>قیمت‌گذاری طراحی سه‌بعدی</h1>
+    <p>قیمت پایه تیشرت و هزینه هر لیبل آپلودی مشتری را از همین بخش کنترل کن.</p>
+  </div>
+</div>
+
+<form method="post" class="cc-form cc-3d-pricing-form">
+  {% csrf_token %}
+
+  <section class="cc-card cc-3d-pricing-card">
+    <div class="cc-3d-pricing-head">
+      <div>
+        <span class="cc-eyebrow">STUDIO PRICE</span>
+        <h2>قیمت پایه تیشرت</h2>
+        <p>این مبلغ به‌عنوان قیمت پایه هر طراحی سه‌بعدی وارد محاسبه می‌شود.</p>
+      </div>
+      <span class="cc-3d-pricing-icon">₽</span>
+    </div>
+
+    <div class="cc-3d-price-field">
+      <label for="{{ form.tshirt_base_price.id_for_label }}">{{ form.tshirt_base_price.label }}</label>
+      <div class="cc-money-field">
+        {{ form.tshirt_base_price }}
+        <span>تومان</span>
+      </div>
+      {% if form.tshirt_base_price.errors %}<small class="cc-error">{{ form.tshirt_base_price.errors|striptags }}</small>{% endif %}
+      <small class="cc-help">مثلاً ۱٬۰۰۰٬۰۰۰ تومان.</small>
+    </div>
+  </section>
+
+  <section class="cc-card cc-3d-pricing-card">
+    <div class="cc-3d-pricing-head">
+      <div>
+        <span class="cc-eyebrow">CUSTOMER LABEL</span>
+        <h2>قیمت هر لیبل آپلودی مشتری</h2>
+        <p>هر لیبل شخصی که مشتری آپلود کند، در استودیو با این مبلغ به قیمت طراحی اضافه می‌شود.</p>
+      </div>
+      <span class="cc-3d-pricing-icon">◇</span>
+    </div>
+
+    <div class="cc-3d-price-field">
+      <label for="{{ form.customer_label_price.id_for_label }}">{{ form.customer_label_price.label }}</label>
+      <div class="cc-money-field">
+        {{ form.customer_label_price }}
+        <span>تومان</span>
+      </div>
+      {% if form.customer_label_price.errors %}<small class="cc-error">{{ form.customer_label_price.errors|striptags }}</small>{% endif %}
+      <small class="cc-help">مثلاً ۱۰۰٬۰۰۰ تومان برای هر لیبل مشتری.</small>
+    </div>
+  </section>
+
+  <section class="cc-card cc-3d-pricing-example">
+    <div>
+      <span class="cc-eyebrow">CALCULATION</span>
+      <h2>نحوه محاسبه</h2>
+      <p>قیمت نهایی طراحی از قیمت پایه تیشرت + قیمت لیبل‌های استفاده‌شده تشکیل می‌شود. متن روی لباس در حال حاضر هزینه جداگانه‌ای ندارد.</p>
+    </div>
+    <div class="cc-3d-pricing-formula">
+      <b>تیشرت</b><span>+</span><b>هر لیبل مشتری</b><span>× تعداد لیبل‌ها</span>
+    </div>
+  </section>
+
+  <div class="cc-form-actions">
+    <button class="cc-btn primary" type="submit">ذخیره قیمت‌ها</button>
+    <a class="cc-btn" href="{% url 'control:3d_dashboard' %}">انصراف</a>
+  </div>
+</form>
+{% endblock %}

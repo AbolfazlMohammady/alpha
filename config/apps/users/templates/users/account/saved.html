@@ -1,0 +1,68 @@
+{% extends "users/account_base.html" %}
+{% load static shop_tags %}
+
+{% block title %}علاقه‌مندی‌ها | BABAEI{% endblock %}
+{% block body_class %}account-body saved-account-page{% endblock %}
+{% block site_optional_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'css/pages/shop-catalog.css' %}?v=5">
+{% endblock %}
+
+{% block account_content %}
+<section class="saved-page">
+    <header class="account-page-header saved-page__header">
+        <div class="account-page-header__copy">
+            <span class="account-page-header__eyebrow">YOUR COLLECTION</span>
+            <h1 class="account-page-title">علاقه‌مندی‌ها</h1>
+            <p class="account-page-description">محصولاتی که دوست داشته‌ای و برای خرید دوباره نگه داشته‌ای.</p>
+        </div>
+    </header>
+
+    <section class="shop-reference__catalog account-saved-catalog" id="favorites" aria-labelledby="favorites-title">
+        <div class="shop-reference__results">
+            <div class="account-saved-toolbar">
+                <h2 id="favorites-title">علاقه‌مندی‌های من</h2>
+                <span>{{ favorite_count }} محصول</span>
+            </div>
+
+            <div class="shop-reference__products" data-shop-products>
+                {% for product in favorite_products %}
+                    {% include "shop/includes/_catalog_card.html" %}
+                {% empty %}
+                    <div class="ac-empty saved-empty">
+                        <div class="ac-empty__art ac-empty__art--heart" aria-hidden="true">
+                            <span class="ac-empty__heart"></span>
+                        </div>
+                        <span class="ac-empty__eyebrow">FAVOURITES</span>
+                        <h2>هنوز محصولی به علاقه‌مندی‌ها اضافه نکرده‌ای</h2>
+                        <p>هر محصولی را که دوست داشتی، با قلب روی کارت محصول به اینجا اضافه کن.</p>
+                        <a href="{% url 'shop:index' %}" class="ac-btn ac-btn--primary">مشاهده فروشگاه</a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if page_obj.has_other_pages %}
+        <nav class="shop-reference__pagination account-saved-pagination" aria-label="صفحه‌بندی علاقه‌مندی‌ها">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}" aria-label="صفحه قبل">‹</a>
+            {% endif %}
+            {% for number in page_obj.paginator.page_range %}
+                {% if number == page_obj.number %}
+                    <span class="is-current" aria-current="page">{{ number }}</span>
+                {% elif number <= 2 or number > page_obj.paginator.num_pages|add:"-2" or number >= page_obj.number|add:"-1" and number <= page_obj.number|add:"1" %}
+                    <a href="?page={{ number }}">{{ number }}</a>
+                {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" aria-label="صفحه بعد">›</a>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/shop-cards.js' %}?v=4" defer></script>
+{% endblock %}

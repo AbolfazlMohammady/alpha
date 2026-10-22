@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% load static shop_tags %}
+
+{% block title %}ثبت سفارش | BABAEI{% endblock %}
+{% block body_class %}orders-page checkout-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/orders.css' %}?v=13">
+{% endblock %}
+
+{% block content %}
+<section class="orders-shell">
+    <header class="orders-hero">
+        <div>
+            <span class="orders-eyebrow">BABAEI / CHECKOUT</span>
+            <h1>ثبت سفارش</h1>
+            <p>آدرس تحویل را انتخاب کن، سفارش را نهایی کن و وارد مرحله پرداخت شو.</p>
+        </div>
+        <a class="orders-back" href="{% url 'orders:cart' %}">بازگشت به سبد</a>
+    </header>
+
+    <form method="post" class="checkout-layout">
+        {% csrf_token %}
+
+        <div class="checkout-main">
+            <section class="order-card">
+                <div class="order-card__head">
+                    <div>
+                        <span class="order-card__eyebrow">DELIVERY</span>
+                        <h2>مشخصات گیرنده و آدرس</h2>
+                    </div>
+                    <a href="{% url 'users:address_create' %}" class="order-card__link">افزودن آدرس</a>
+                </div>
+
+                {% if addresses %}
+                <div class="address-choice">
+                    {% for address in addresses %}
+                    <label class="address-choice__item{% if selected_address_id == address.pk %} is-selected{% endif %}">
+                        <input type="radio" name="address_id" value="{{ address.pk }}" {% if selected_address_id == address.pk %}checked{% endif %} required>
+                        <span class="address-choice__radio"></span>
+                        <span class="address-choice__body">
+                            <span class="address-choice__title">
+                                <strong>{{ address.title }}</strong>
+                                {% if address.is_default %}<em>پیش‌فرض</em>{% endif %}
+                            </span>
+                            <span class="address-choice__line">
+                                <span>{{ address.city.province.name }}، {{ address.city.name }}</span>
+                                <b dir="ltr">{{ address.phone }}</b>
+                            </span>
+                            <span class="address-choice__address">{{ address.description|default:"بدون توضیحات تکمیلی" }}</span>
+                            <span class="address-choice__recipient">
+                                <small>تحویل‌گیرنده</small>
+                                <strong>{{ address.recipient_display_name|default:"نام پروفایل ثبت نشده" }}</strong>
+                            </span>
+                            <span class="address-choice__postal"><small>کد پستی</small><b dir="ltr">{{ address.postal_code }}</b></span>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="order-empty">
+                    <strong>برای ثبت سفارش هنوز آدرسی نداری.</strong>
+                    <span>یک آدرس تحویل اضافه کن تا بتوانی سفارش را ادامه بدهی.</span>
+                    <a href="{% url 'users:address_create' %}" class="order-btn order-btn--secondary">افزودن آدرس</a>
+                </div>
+                {% endif %}
+            </section>
+
+            <section class="order-card">
+                <div class="order-card__head">
+                    <div>
+                        <span class="order-card__eyebrow">NOTE</span>
+                        <h2>یادداشت سفارش</h2>
+                    </div>
+                </div>
+                <textarea name="customer_note" class="order-textarea" rows="4" placeholder="مثلاً زمان مناسب برای تحویل..."></textarea>
+            </section>
+        </div>
+
+        <aside class="checkout-summary">
+            <div class="checkout-summary__head">
+                <span class="orders-eyebrow">YOUR ORDER</span>
+                <strong>{{ items|length }} آیتم</strong>
+            </div>
+
+            <div class="checkout-items">
+                {% for item in items %}
+                <article class="checkout-item">
+                    <div>
+                        <strong>{% if item.custom_design %}طراحی سفارشی{% else %}{{ item.product.name }}{% endif %}</strong>
+                        {% if item.custom_design %}<small>{{ item.custom_design.design_code }}</small>{% endif %}
+                        {% if item.variant %}
+                        <small>{{ item.variant.color.name }} · {{ item.variant.size.name }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="checkout-item__meta">
+                        <span>× {{ item.quantity }}</span>
+                        <strong>{{ item.line_total|price }} تومان</strong>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+
+            <div class="checkout-summary__rows">
+                <div><span>جمع کالاها</span><strong>{{ subtotal|price }} تومان</strong></div>
+                <div><span>ارسال</span><strong>رایگان</strong></div>
+            </div>
+
+            <div class="checkout-summary__total">
+                <span>مبلغ قابل پرداخت</span>
+                <strong>{{ total_amount|price }} <small>تومان</small></strong>
+            </div>
+
+            <button class="order-btn order-btn--primary" type="submit" {% if not addresses %}disabled{% endif %}>
+                ادامه و ورود به پرداخت
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+            </button>
+
+            <p class="checkout-summary__hint">در این نسخه، مرحله درگاه به‌صورت آزمایشی شبیه‌سازی می‌شود.</p>
+        </aside>
+    </form>
+</section>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const choices = [...document.querySelectorAll(".address-choice__item")];
+    const sync = () => {
+        choices.forEach((choice) => {
+            const input = choice.querySelector("input[type='radio']");
+            choice.classList.toggle("is-selected", Boolean(input?.checked));
+        });
+    };
+
+    choices.forEach((choice) => {
+        const input = choice.querySelector("input[type='radio']");
+        if (!input) return;
+        input.addEventListener("change", sync);
+        choice.addEventListener("click", (event) => {
+            if (event.target === input) return;
+            input.checked = true;
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+    });
+
+    sync();
+});
+</script>
+{% endblock %}

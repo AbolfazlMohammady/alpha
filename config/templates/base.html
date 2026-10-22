@@ -1,0 +1,147 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>{% block title %}BABAEI{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}BABAEI — Wear Your Story.{% endblock %}">
+    <meta name="robots" content="{% block robots %}index,follow,max-image-preview:large{% endblock %}">
+    {% block canonical %}{% endblock %}
+    <meta property="og:site_name" content="BABAEI">
+    <meta property="og:locale" content="fa_IR">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}BABAEI{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}BABAEI — Wear Your Story.{% endblock %}">
+    {% block og_image %}{% endblock %}
+    {% block extra_head %}{% endblock %}
+    {% if request.resolver_match.namespace != 'users' or request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'verify_otp' %}
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=2">
+    {% endif %}
+    {% block site_components_css %}
+    {% if request.resolver_match.namespace != 'users' or request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'verify_otp' %}
+    <link rel="stylesheet" href="{% static 'css/components.css' %}?v=5">
+    {% endif %}
+    {% endblock %}
+    {% block common_page_css %}{% endblock %}
+    {% block extra_css %}{% endblock %}
+    {% block site_external_fonts %}
+    {% if request.resolver_match.namespace == 'users' or request.resolver_match.namespace == 'saved' %}
+        {% if request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'verify_otp' %}
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/AmirAbbasVafaee/persian-fonts-cdn@main/css/peyda.css">
+        {% endif %}
+    {% elif request.resolver_match.namespace != 'orders' and request.resolver_match.namespace != 'shop' %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/AmirAbbasVafaee/persian-fonts-cdn@main/css/peyda.css">
+    {% endif %}
+    {% endblock %}
+    {% block site_optional_css %}
+    {% if request.resolver_match.namespace == 'users' or request.resolver_match.namespace == 'saved' %}
+        {% if request.resolver_match.url_name == 'login' or request.resolver_match.url_name == 'verify_otp' %}
+        {% else %}
+        <link rel="stylesheet" href="{% static 'css/babaei-ui.css' %}?v=2">
+        <link rel="stylesheet" href="{% static 'css/storefront.css' %}?v=12">
+        {% endif %}
+    {% elif request.resolver_match.namespace == 'orders' %}
+        {# Order flow uses the shop shell directly; no legacy storefront/quick-action layer. #}
+    {% else %}
+    <link rel="stylesheet" href="{% static 'css/components/quick-actions.css' %}?v=9">
+    <link rel="stylesheet" href="{% static 'css/babaei-ui.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'css/storefront.css' %}?v=12">
+    {% endif %}
+    {% endblock %}
+    {% comment %}
+    Shop shell.
+
+    Scoped to the shop namespace so the home page, the customizer and the admin
+    keep their current styling. Loaded last so the shell owns the chrome it
+    defines, without needing a single !important.
+
+    The webfont is preloaded because the hero headline is the LCP candidate and
+    a late swap would repaint it.
+    {% endcomment %}
+    {% comment %}
+    The webfont, site-wide.
+
+    app.css and babaei-ui.css have both asked for Vazirmatn for a long time
+    (--font-sans, --ba-font) but nothing ever shipped an @font-face outside the
+    shop namespace, so every other page — sign-in, verification, cart, account,
+    addresses, saved items — silently fell back to Tahoma. That single fact is
+    most of why those pages read as a different, older site next to the shop.
+    {% endcomment %}
+    {% if request.resolver_match.namespace == 'home' or request.resolver_match.namespace == 'shop' or request.resolver_match.namespace == 'users' or request.resolver_match.namespace == 'saved' %}
+    <link rel="preload" href="{% static 'fonts/el-messiri-font/ElmessiriRegular-MVYOr.otf' %}" as="font" type="font/otf" crossorigin>
+    <link rel="preload" href="{% static 'fonts/runtime-font/RuntimeRegular-m2Odx.otf' %}" as="font" type="font/otf" crossorigin>
+    {% endif %}
+    <link rel="stylesheet" href="{% static 'css/fonts.css' %}?v=7">
+
+    {% if request.resolver_match.namespace != 'users' or request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'verify_otp' %}
+    <link rel="stylesheet" href="{% static 'css/pages/shop-shell.css' %}?v=14">
+    {% endif %}
+    {% comment %}
+    The catalogue sheet belongs to pages that actually build a catalogue — the
+    filters, the result grid, the reference cards. The product page renders none
+    of those selectors, so it skips the 27KB render-blocking request.
+    {% endcomment %}
+    {% if request.resolver_match.namespace == 'shop' and request.resolver_match.url_name != 'product' and request.resolver_match.url_name != 'contact' %}
+    <link rel="stylesheet" href="{% static 'css/pages/shop-catalog.css' %}?v=2">
+    {% endif %}
+    {% comment %}
+    The mobile dock. Deliberately absent from the home page, which carries no
+    global navigation of its own.
+    {% endcomment %}
+    {% if request.resolver_match.namespace != 'users' or request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'verify_otp' %}
+    <link rel="stylesheet" href="{% static 'css/mobile-dock.css' %}?v=4">
+    {% endif %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+    {% block site_navigation %}
+    {% include "includes/header.html" %}
+    {% endblock %}
+    {% include "includes/messages.html" %}
+    <main>{% block content %}{% endblock %}</main>
+    {% if request.resolver_match.namespace != "users" and request.resolver_match.namespace != "saved" and request.resolver_match.namespace != "orders" %}
+    {% include "includes/footer.html" %}
+    {% endif %}
+
+    {% block site_mobile_navigation %}
+    {% if request.resolver_match.namespace != 'users' or request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'verify_otp' %}
+    {% include "includes/mobile_dock.html" %}
+    {% endif %}
+    {% endblock %}
+
+    {% if request.resolver_match.namespace != 'users' or request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'verify_otp' %}
+    {% if request.resolver_match.namespace != 'shop' %}
+    <script src="{% static 'js/app.js' %}" defer></script>
+    <script src="{% static 'js/components.js' %}?v=3" defer></script>
+    {% endif %}
+    {% if request.resolver_match.namespace == "users" and request.resolver_match.url_name != "login" and request.resolver_match.url_name != "verify_otp" or request.resolver_match.namespace == "saved" or request.resolver_match.namespace != "users" and request.resolver_match.namespace != "saved" and request.resolver_match.namespace != "orders" or request.resolver_match.namespace != "orders" and request.resolver_match.url_name != "cart" %}
+    <script src="{% static 'js/footer.js' %}?v=2" defer></script>
+    {% endif %}
+    {% endif %}
+    {% block site_optional_js %}
+    {% if request.resolver_match.namespace == 'users' or request.resolver_match.namespace == 'saved' %}
+        {% if request.resolver_match.url_name == 'login' or request.resolver_match.url_name == 'verify_otp' %}
+        {% else %}
+    <script src="{% static 'js/storefront.js' %}?v=3" defer></script>
+        {% endif %}
+    {% elif request.resolver_match.namespace == 'orders' %}
+        {# Order pages load only their page-specific scripts. #}
+    {% else %}
+        {% if request.resolver_match.namespace != 'shop' %}
+    <script src="{% static 'js/components/quick-actions.js' %}?v=4" defer></script>
+        {% endif %}
+    <script src="{% static 'js/storefront.js' %}?v=3" defer></script>
+    {% endif %}
+    {% endblock %}
+    {% if request.resolver_match.namespace != 'users' or request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'verify_otp' %}
+    <script src="{% static 'js/pages/shop-shell.js' %}?v=10" defer></script>
+    {% endif %}
+    {% if request.resolver_match.namespace != 'home' %}
+        {% if request.resolver_match.namespace != 'users' or request.resolver_match.url_name != 'login' and request.resolver_match.url_name != 'verify_otp' %}
+    <script src="{% static 'js/mobile-dock.js' %}?v=3" defer></script>
+        {% endif %}
+    {% endif %}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% load static shop_tags %}
+
+{% block title %}سبد خرید | BABAEI{% endblock %}
+{% block body_class %}cart-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/cart.css' %}?v=20260930-mobile-preview-v5">
+{% endblock %}
+
+{% block content %}
+<div class="cart-shell" data-cart-page>
+    {% if items %}
+    <div class="cart-checkout-layout">
+        <section class="cart-products" aria-label="محصولات سبد خرید">
+            <div class="cart-products__intro">
+                <span class="cart-products__eyebrow">BABAEI / YOUR BAG</span>
+                <h1>سبد خرید</h1>
+                <p>محصولات انتخاب‌شده‌ات را بررسی کن و تعداد هر کالا را تغییر بده.</p>
+            </div>
+
+            <div class="cart-products__list" id="products">
+                {% for item in items %}
+                <article class="cart-product-card" data-cart-item data-cart-id="{{ item.id }}" data-stock="{% if item.variant %}{{ item.variant.stock_quantity }}{% endif %}">
+                    {% if item.custom_design %}
+                    <div class="cart-product-card__image cart-preview-pair" aria-label="پیش‌نمایش جلو و پشت طراحی {{ item.custom_design.design_code }}">
+                        <div class="cart-preview-pair__side">
+                            <span>جلو</span>
+                            {% if item.custom_design.preview_front %}
+                            <img src="{{ item.custom_design.preview_front.url }}" alt="نمای جلو طراحی {{ item.custom_design.design_code }}" loading="lazy" decoding="async">
+                            {% elif item.custom_design.temp_preview_front_path %}
+                            <img src="{{ item.custom_design.temporary_preview_front_url }}" alt="نمای جلو طراحی {{ item.custom_design.design_code }}" loading="lazy" decoding="async">
+                            {% else %}
+                            <div class="cart-product-card__image-placeholder" aria-hidden="true"></div>
+                            {% endif %}
+                        </div>
+                        <div class="cart-preview-pair__side">
+                            <span>پشت</span>
+                            {% if item.custom_design.preview_back %}
+                            <img src="{{ item.custom_design.preview_back.url }}" alt="نمای پشت طراحی {{ item.custom_design.design_code }}" loading="lazy" decoding="async">
+                            {% elif item.custom_design.temp_preview_back_path %}
+                            <img src="{{ item.custom_design.temporary_preview_back_url }}" alt="نمای پشت طراحی {{ item.custom_design.design_code }}" loading="lazy" decoding="async">
+                            {% elif item.custom_design.preview_front %}
+                            <img src="{{ item.custom_design.preview_front.url }}" alt="نمای پشت طراحی {{ item.custom_design.design_code }}" loading="lazy" decoding="async">
+                            {% elif item.custom_design.temp_preview_front_path %}
+                            <img src="{{ item.custom_design.temporary_preview_front_url }}" alt="نمای پشت طراحی {{ item.custom_design.design_code }}" loading="lazy" decoding="async">
+                            {% else %}
+                            <div class="cart-product-card__image-placeholder" aria-hidden="true"></div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <a class="cart-product-card__image" href="{{ item.product.get_absolute_url }}" aria-label="{{ item.product.name }}">
+                        {% if item.primary_image_url %}
+                        <img src="{{ item.primary_image_url }}" alt="{{ item.primary_image_alt|default:item.product.name }}" loading="lazy" decoding="async">
+                        {% else %}
+                        <img src="{% static 'images/home/Tshirt.png' %}" alt="{{ item.product.name }}" loading="lazy" decoding="async">
+                        {% endif %}
+                    </a>
+                    {% endif %}
+
+                    <div class="cart-product-card__info">
+                        <div class="cart-product-card__title-row">
+                            <div class="cart-product-card__title">
+                                <h2>{% if item.custom_design %}طراحی سفارشی{% else %}{{ item.product.name }}{% endif %}</h2>
+                                <span>{% if item.custom_design %}{{ item.custom_design.design_code }}{% else %}{{ item.product.category.name }}{% endif %}</span>
+                            </div>
+                            <span class="cart-product-card__price">{{ item.unit_price|price }} تومان</span>
+                        </div>
+
+                        <div class="cart-product-card__meta">
+                            {% if item.variant and item.variant.color %}
+                            <span class="cart-product-card__color">
+                                <i style="--cart-color: {{ item.variant.color.hex_code }}" aria-hidden="true"></i>
+                                {{ item.variant.color.name }}
+                            </span>
+                            {% endif %}
+                            {% if item.variant and item.variant.size %}
+                            <span>{{ item.variant.size.name }}</span>
+                            {% endif %}
+                            {% if item.variant and item.variant.sku %}
+                            <span dir="ltr">{{ item.variant.sku }}</span>
+                            {% endif %}
+                        </div>
+
+                        <form method="post"
+                              action="{% url 'orders:cart_update' item.id %}"
+                              class="cart-product-card__action"
+                              data-cart-action="update"
+                              aria-label="تعداد {{ item.product.name }}">
+                            {% csrf_token %}
+                            <input type="hidden" name="quantity" value="{{ item.quantity }}">
+                            <button type="submit" data-quantity-button="-1" data-quantity-minus aria-label="کاهش تعداد" {% if item.quantity <= 1 %}disabled{% endif %}>−</button>
+                            <span data-quantity-value data-value="{{ item.quantity }}">{{ item.quantity }}</span>
+                            <button type="submit" data-quantity-button="1" data-quantity-plus aria-label="افزایش تعداد" {% if item.variant and item.quantity >= item.variant.stock_quantity %}disabled{% endif %}>+</button>
+                        </form>
+                    </div>
+
+                    <form method="post"
+                          action="{% url 'orders:cart_remove' item.id %}"
+                          class="cart-product-card__remove-form"
+                          data-cart-action="remove">
+                        {% csrf_token %}
+                        <button class="cart-product-card__remove"
+                                type="submit"
+                                aria-label="حذف {{ item.product.name }}"
+                                title="حذف محصول">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M6 6l12 12M18 6L6 18"></path>
+                            </svg>
+                        </button>
+                    </form>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <aside class="cart-panel" data-cart-summary aria-label="خلاصه سبد خرید">
+            <div class="cart-panel__header">
+                <div class="cart-panel__title">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 6h2l1.5 9.2a2 2 0 0 0 2 1.8h7.2a2 2 0 0 0 1.9-1.5L20 9H7"></path>
+                        <path d="M9 19.5h.01M18 19.5h.01"></path>
+                    </svg>
+                    <h2>سبد خرید <span data-cart-count data-cart-count-value="{{ item_count }}">({{ item_count }})</span></h2>
+                </div>
+                <form method="post" action="{% url 'orders:cart_clear' %}" data-cart-action="clear">
+                    {% csrf_token %}
+                    <button class="cart-panel__clear" type="submit">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M6.5 7.5h11"></path>
+                            <path d="M9 7.5V5.8h6v1.7"></path>
+                            <path d="m8 7.5.7 11h6.6l.7-11"></path>
+                        </svg>
+                        <span>پاک کردن همه</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="cart-panel__items" data-cart-items>
+                {% for item in items %}
+                <article class="cart-line" data-cart-item data-cart-id="{{ item.id }}" data-stock="{% if item.variant %}{{ item.variant.stock_quantity }}{% endif %}">
+                    <div class="cart-line__visual">
+                        {% if item.custom_design %}
+                        <div class="cart-line__image cart-preview-pair" aria-label="پیش‌نمایش جلو و پشت طراحی {{ item.custom_design.design_code }}">
+                            <div class="cart-preview-pair__side">
+                                <span>جلو</span>
+                                {% if item.custom_design.preview_front %}
+                                <img src="{{ item.custom_design.preview_front.url }}" alt="نمای جلو طراحی {{ item.custom_design.design_code }}" loading="lazy" decoding="async">
+                                {% else %}
+                                <div class="cart-line__image-placeholder" aria-hidden="true"></div>
+                                {% endif %}
+                            </div>
+                            <div class="cart-preview-pair__side">
+                                <span>پشت</span>
+                                {% if item.custom_design.preview_back %}
+                                <img src="{{ item.custom_design.preview_back.url }}" alt="نمای پشت طراحی {{ item.custom_design.design_code }}" loading="lazy" decoding="async">
+                                {% elif item.custom_design.preview_front %}
+                                <img src="{{ item.custom_design.preview_front.url }}" alt="نمای پشت طراحی {{ item.custom_design.design_code }}" loading="lazy" decoding="async">
+                                {% else %}
+                                <div class="cart-line__image-placeholder" aria-hidden="true"></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <a href="{{ item.product.get_absolute_url }}" class="cart-line__image" aria-label="{{ item.product.name }}">
+                            {% if item.primary_image_url %}
+                            <img src="{{ item.primary_image_url }}" alt="{{ item.primary_image_alt|default:item.product.name }}" loading="lazy" decoding="async">
+                            {% else %}
+                            <img src="{% static 'images/home/Tshirt.png' %}" alt="{{ item.product.name }}" loading="lazy" decoding="async">
+                            {% endif %}
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    <div class="cart-line__content">
+                        <div class="cart-line__top">
+                            <div class="cart-line__identity">
+                                <span class="cart-line__name">{% if item.custom_design %}طراحی سفارشی{% else %}{{ item.product.name }}{% endif %}</span>
+                                <span class="cart-line__category">{% if item.custom_design %}{{ item.custom_design.design_code }}{% else %}{{ item.product.category.name }}{% endif %}</span>
+                            </div>
+                        </div>
+
+                        <div class="cart-line__meta">
+                            {% if item.variant and item.variant.color %}
+                            <span class="cart-line__color"><i style="--cart-color: {{ item.variant.color.hex_code }}" aria-hidden="true"></i>{{ item.variant.color.name }}</span>
+                            {% endif %}
+                            {% if item.variant and item.variant.size %}<span>{{ item.variant.size.name }}</span>{% endif %}
+                        </div>
+
+                        <div class="cart-line__bottom">
+                            <form method="post" action="{% url 'orders:cart_update' item.id %}" class="cart-quantity" data-cart-action="update" aria-label="تعداد {{ item.product.name }}">
+                                {% csrf_token %}
+                                <input type="hidden" name="quantity" value="{{ item.quantity }}">
+                                <button type="submit" data-quantity-button="-1" data-quantity-minus aria-label="کاهش تعداد" {% if item.quantity <= 1 %}disabled{% endif %}>−</button>
+                                <span class="cart-quantity__value" data-quantity-value data-value="{{ item.quantity }}">{{ item.quantity }}</span>
+                                <button type="submit" data-quantity-button="1" data-quantity-plus aria-label="افزایش تعداد" {% if item.variant and item.quantity >= item.variant.stock_quantity %}disabled{% endif %}>+</button>
+                            </form>
+                            <span class="cart-line__price" data-line-total data-line-value="{{ item.line_total }}">{{ item.line_total|price }} تومان</span>
+                        </div>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+
+            <div class="cart-panel__footer">
+                <div class="cart-total">
+                    <span>مبلغ کل</span>
+                    <strong><span data-cart-subtotal data-cart-number="{{ subtotal }}">{{ subtotal|price }}</span> <small>تومان</small></strong>
+                </div>
+
+                <a class="cart-checkout cart-checkout--link" href="{% url 'orders:checkout' %}">
+                    <span>ادامه ثبت سفارش</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
+                </a>
+
+                <a class="cart-continue" href="{% url 'shop:index' %}">ادامه خرید</a>
+            </div>
+        </aside>
+    </div>
+    {% endif %}
+
+    <section class="cart-empty" data-cart-empty{% if items %} hidden{% endif %}>
+        <div class="cart-empty__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 6h2l1.5 9.2a2 2 0 0 0 2 1.8h7.2a2 2 0 0 0 1.9-1.5L20 9H7"></path><path d="M9 19.5h.01M18 19.5h.01"></path></svg>
+        </div>
+        <span class="cart-empty__eyebrow">YOUR BAG IS EMPTY</span>
+        <h2>سبد خریدت خالیه</h2>
+        <p>محصولی در سبد خریدت نیست.</p>
+        <a href="{% url 'shop:index' %}" class="cart-checkout cart-checkout--link">مشاهده محصولات</a>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/cart.js' %}?v=5" defer></script>
+{% endblock %}

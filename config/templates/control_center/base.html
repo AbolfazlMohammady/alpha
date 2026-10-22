@@ -1,0 +1,122 @@
+{% load static %}
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}BABAEI Control Center{% endblock %}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/AmirAbbasVafaee/persian-fonts-cdn@main/css/peyda.css">
+<link rel="stylesheet" href="{% static 'css/control-center.css' %}?v=17">
+</head>
+<body>
+<header class="cc-topbar">
+  <button class="cc-menu" type="button" data-sidebar-toggle aria-label="منو">☰</button>
+  <a class="cc-brand" href="{% url 'control:dashboard' %}"><span class="cc-mark">B</span><span><b>BABAEI</b><small>CONTROL CENTER</small></span></a>
+  <div class="cc-top-actions">
+    <a href="/" target="_blank" class="cc-top-link">مشاهده فروشگاه ↗</a>
+    <span class="cc-role">{{ request.user.get_role_display }}</span>
+    <form method="post" action="{% url 'users:logout' %}">{% csrf_token %}<button class="cc-logout">خروج</button></form>
+  </div>
+</header>
+<div class="cc-shell">
+  <div class="cc-overlay" data-sidebar-overlay></div>
+  <aside class="cc-sidebar" data-sidebar>
+    <div class="cc-sidebar-head"><div><span class="cc-mark cc-mark-sm">B</span><div><b>مرکز کنترل</b><small>BABAEI ADMIN</small></div></div><button class="cc-collapse" type="button" data-sidebar-collapse aria-label="جمع کردن منو">‹</button><button class="cc-close" data-sidebar-close>×</button></div>
+    <nav class="cc-nav" aria-label="منوی مرکز کنترل">
+      <div class="cc-nav-primary">
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'control:dashboard' %}">
+          <span>⌂</span><em>داشبورد</em>
+        </a>
+      </div>
+
+      {% if request.user.is_superuser or request.user.role in 'admin,support_manager' %}
+      <div class="cc-section">مدیریت کاربران</div>
+      <div class="cc-nav-group">
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'users' or request.resolver_match.url_name == 'user_create' or request.resolver_match.url_name == 'user_edit' %}active{% endif %}" href="{% url 'control:users' %}">
+          <span>♙</span><em>کاربران</em>
+        </a>
+      </div>
+      {% endif %}
+
+      {% if request.user.is_superuser or request.user.role in 'admin,store_manager' %}
+      <div class="cc-section">فروشگاه</div>
+      <div class="cc-nav-group">
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'products' or request.resolver_match.url_name == 'product_create' or request.resolver_match.url_name == 'product_edit' %}active{% endif %}" href="{% url 'control:products' %}">
+          <span>▣</span><em>محصولات</em>
+        </a>
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'categories' or request.resolver_match.url_name == 'category_create' or request.resolver_match.url_name == 'category_edit' %}active{% endif %}" href="{% url 'control:categories' %}">
+          <span>◫</span><em>دسته‌بندی‌ها</em>
+        </a>
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'catalog' or request.resolver_match.url_name == 'color_create' or request.resolver_match.url_name == 'color_edit' or request.resolver_match.url_name == 'size_create' or request.resolver_match.url_name == 'size_edit' %}active{% endif %}" href="{% url 'control:catalog' %}">
+          <span>●</span><em>رنگ و سایزها</em>
+        </a>
+      </div>
+      {% endif %}
+
+      {% if request.user.is_superuser or request.user.role in 'admin,order_manager' %}
+      <div class="cc-section">سفارش و ارسال</div>
+      <div class="cc-nav-group">
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'orders' or request.resolver_match.url_name == 'order_detail' %}active{% endif %}" href="{% url 'control:orders' %}">
+          <span>⌑</span><em>سفارش‌ها</em>
+        </a>
+      </div>
+      {% endif %}
+
+      {% if request.user.is_superuser or request.user.role in 'admin,store_manager,design_manager' %}
+      <div class="cc-section">طراحی سه‌بعدی</div>
+      <div class="cc-nav-group cc-nav-group-3d">
+        <a class="cc-nav-item {% if request.resolver_match.url_name == '3d_dashboard' or request.resolver_match.url_name == '3d_pricing' or request.resolver_match.url_name == 'artwork_library' or request.resolver_match.url_name == 'artwork_create' or request.resolver_match.url_name == 'artwork_edit' or request.resolver_match.url_name == 'artwork_delete' or request.resolver_match.url_name == 'customer_artworks' or request.resolver_match.url_name == 'design_detail' %}active{% endif %}" href="{% url 'control:3d_dashboard' %}">
+          <span>◇</span><em>طراحی‌های سه‌بعدی</em><b class="cc-nav-chevron">⌄</b>
+        </a>
+        <div class="cc-nav-sub">
+          <a class="{% if request.resolver_match.url_name == '3d_dashboard' %}active{% endif %}" href="{% url 'control:3d_dashboard' %}">نمای کلی</a>
+          <a class="{% if request.resolver_match.url_name == 'artwork_library' or request.resolver_match.url_name == 'artwork_create' or request.resolver_match.url_name == 'artwork_edit' or request.resolver_match.url_name == 'artwork_delete' %}active{% endif %}" href="{% url 'control:artwork_library' %}">کتابخانه لیبل‌ها</a>
+          <a class="{% if request.resolver_match.url_name == 'customer_artworks' %}active{% endif %}" href="{% url 'control:customer_artworks' %}">لیبل‌های مشتریان</a>
+          <a class="{% if request.resolver_match.url_name == '3d_pricing' %}active{% endif %}" href="{% url 'control:3d_pricing' %}">قیمت‌گذاری طراحی</a>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if request.user.is_superuser %}
+      <div class="cc-section">سیستم</div>
+      <div class="cc-nav-group">
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'backups' or request.resolver_match.url_name == 'backup_settings' %}active{% endif %}" href="{% url 'control:backups' %}">
+          <span>▧</span><em>پشتیبان‌گیری</em>
+        </a>
+      </div>
+      <div class="cc-nav-group">
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'reports' %}active{% endif %}" href="{% url 'control:reports' %}">
+          <span>◷</span><em>گزارش فعالیت‌ها</em>
+        </a>
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'contact_settings' %}active{% endif %}" href="{% url 'control:contact_settings' %}">
+          <span>☎</span><em>تنظیمات تماس با ما</em>
+        </a>
+      </div>
+      {% endif %}
+
+      {% if request.user.is_superuser or request.user.role in 'admin,support_manager' %}
+      <div class="cc-section">پشتیبانی</div>
+      <div class="cc-nav-group">
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'comments' or request.resolver_match.url_name == 'comment_moderation' %}active{% endif %}" href="{% url 'control:comments' %}">
+          <span>♡</span><em>نظرات کاربران</em>
+        </a>
+      </div>
+      {% endif %}
+    </nav>
+  </aside>
+  <main class="cc-main">
+    {% if messages %}<div class="cc-messages">{% for message in messages %}<div class="cc-message">{{ message }}</div>{% endfor %}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script>
+const sidebar=document.querySelector('[data-sidebar]');
+document.querySelector('[data-sidebar-collapse]')?.addEventListener('click',()=>{document.body.classList.toggle('cc-collapsed');localStorage.setItem('cc-collapsed',document.body.classList.contains('cc-collapsed')?'1':'0')});
+if(localStorage.getItem('cc-collapsed')==='1')document.body.classList.add('cc-collapsed');
+document.querySelector('[data-sidebar-toggle]')?.addEventListener('click',()=>sidebar?.classList.add('open'));
+document.querySelector('[data-sidebar-close]')?.addEventListener('click',()=>sidebar?.classList.remove('open'));
+document.querySelector('[data-sidebar-overlay]')?.addEventListener('click',()=>sidebar?.classList.remove('open'));
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

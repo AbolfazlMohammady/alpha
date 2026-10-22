@@ -1,0 +1,44 @@
+{% if is_paginated %}
+<nav class="cc-pagination cc-pagination-v2" aria-label="صفحه‌بندی">
+  <div class="cc-pagination-summary">
+    <span>نمایش</span>
+    <b>{{ page_obj.start_index }}–{{ page_obj.end_index }}</b>
+    <span>از</span>
+    <b>{{ page_obj.paginator.count }}</b>
+  </div>
+
+  <div class="cc-pagination-pages">
+    {% if page_obj.has_previous %}
+      <a class="cc-page-btn cc-page-prev" href="?{{ request.GET.urlencode }}&page={{ page_obj.previous_page_number }}" aria-label="صفحه قبل">→</a>
+    {% else %}
+      <span class="cc-page-btn is-disabled">→</span>
+    {% endif %}
+
+    {% if page_obj.number > 2 %}
+      <a class="cc-page-btn" href="?{{ request.GET.urlencode }}&page=1">1</a>
+      {% if page_obj.number > 3 %}<span class="cc-page-dots">…</span>{% endif %}
+    {% endif %}
+
+    {% if page_obj.number > 1 %}
+      <a class="cc-page-btn" href="?{{ request.GET.urlencode }}&page={{ page_obj.number|add:"-1" }}">{{ page_obj.number|add:"-1" }}</a>
+    {% endif %}
+
+    <span class="cc-page-btn is-current" aria-current="page">{{ page_obj.number }}</span>
+
+    {% if page_obj.number < page_obj.paginator.num_pages %}
+      <a class="cc-page-btn" href="?{{ request.GET.urlencode }}&page={{ page_obj.number|add:"1" }}">{{ page_obj.number|add:"1" }}</a>
+    {% endif %}
+
+    {% if page_obj.number < page_obj.paginator.num_pages|add:"-1" %}
+      {% if page_obj.number < page_obj.paginator.num_pages|add:"-2" %}<span class="cc-page-dots">…</span>{% endif %}
+      <a class="cc-page-btn" href="?{{ request.GET.urlencode }}&page={{ page_obj.paginator.num_pages }}">{{ page_obj.paginator.num_pages }}</a>
+    {% endif %}
+
+    {% if page_obj.has_next %}
+      <a class="cc-page-btn cc-page-next" href="?{{ request.GET.urlencode }}&page={{ page_obj.next_page_number }}" aria-label="صفحه بعد">←</a>
+    {% else %}
+      <span class="cc-page-btn is-disabled">←</span>
+    {% endif %}
+  </div>
+</nav>
+{% endif %}

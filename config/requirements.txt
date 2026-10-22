@@ -1,0 +1,43 @@
+Django==4.2
+
+# Database
+psycopg2-binary
+dj-database-url
+
+# Configuration
+python-dotenv
+
+# Image Processing
+Pillow==12.3.0
+# TEMP DEBUG: temporarily disabled to isolate slow/failed downloads.
+rembg[cpu]==2.0.85
+onnxruntime==1.30.0
+protobuf==7.36.2
+jsonschema==4.25.1
+rpds-py==0.27.1
+
+# Cache / Queue
+redis==6.4.0
+django-redis==6.0.0
+celery==5.4.0
+
+# Phone / Location / Content
+django-phonenumber-field[phonenumbers]
+django-countries
+django-tinymce
+
+# Security
+django-axes==8.3.1
+
+# Utilities
+Unidecode
+
+# Development toolbar (required by current Django settings)
+django-debug-toolbar==4.3.0
+
+# Production
+whitenoise==6.9.0
+gunicorn
+
+# Remote backup storage
+boto3

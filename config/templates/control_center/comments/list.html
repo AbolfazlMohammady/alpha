@@ -1,0 +1,147 @@
+{% extends "control_center/base.html" %}
+{% block title %}مدیریت نظرات | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head cc-comments-head">
+  <div>
+    <span class="cc-eyebrow">CUSTOMER FEEDBACK</span>
+    <h1>مدیریت نظرات</h1>
+    <p>نظرات مشتریان را بررسی کنید و فقط موارد مناسب را در فروشگاه منتشر کنید.</p>
+  </div>
+</div>
+
+<section class="cc-comment-stats" aria-label="آمار نظرات">
+  <a class="cc-comment-stat {% if not request.GET.status %}is-current{% endif %}" href="{% url 'control:comments' %}">
+    <span>همه نظرات</span><strong>{{ stats.total }}</strong>
+  </a>
+  <a class="cc-comment-stat is-pending {% if request.GET.status == 'pending' %}is-current{% endif %}" href="?status=pending">
+    <span>در انتظار بررسی</span><strong>{{ stats.pending }}</strong>
+  </a>
+  <a class="cc-comment-stat is-approved {% if request.GET.status == 'approved' %}is-current{% endif %}" href="?status=approved">
+    <span>تأییدشده</span><strong>{{ stats.approved }}</strong>
+  </a>
+  <a class="cc-comment-stat is-rejected {% if request.GET.status == 'rejected' %}is-current{% endif %}" href="?status=rejected">
+    <span>ردشده</span><strong>{{ stats.rejected }}</strong>
+  </a>
+</section>
+
+<form class="cc-card cc-comments-toolbar" method="get">
+  <div class="cc-comments-search">
+    <label class="cc-comment-searchbox">
+      <span>⌕</span>
+      <input class="cc-input" type="search" name="q" value="{{ request.GET.q }}" placeholder="جستجو در متن نظر، محصول، نام یا شماره کاربر...">
+    </label>
+    <select class="cc-input" name="status" aria-label="فیلتر وضعیت">
+      <option value="">همه وضعیت‌ها</option>
+      {% for value,label in status_choices %}
+        <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select class="cc-input" name="rating" aria-label="فیلتر امتیاز">
+      <option value="">همه امتیازها</option>
+      {% for value in "12345" %}
+        <option value="{{ value }}" {% if request.GET.rating == value %}selected{% endif %}>{{ value }} ستاره</option>
+      {% endfor %}
+    </select>
+    <button class="cc-btn primary" type="submit">اعمال فیلتر</button>
+    {% if request.GET.q or request.GET.status or request.GET.rating %}<a class="cc-comments-clear" href="{% url 'control:comments' %}">↺ پاک کردن فیلترها</a>{% endif %}
+  </div>
+</form>
+
+<section class="cc-card cc-comments-list">
+  <header class="cc-list-card-head cc-comments-list-head">
+    <div>
+      <strong>نظرات مشتریان</strong>
+      <small>{% if page_obj.paginator.count %}{{ page_obj.paginator.count }} مورد مطابق فیلتر فعلی{% else %}نظری برای نمایش وجود ندارد{% endif %}</small>
+    </div>
+    <span class="cc-badge gold">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages|default:1 }}</span>
+  </header>
+
+  {% if comments %}
+  <div class="cc-comment-items">
+    {% for comment in comments %}
+    <article class="cc-comment-item status-{{ comment.status }}">
+      <div class="cc-comment-main">
+        <div class="cc-comment-meta">
+          <div class="cc-comment-user">
+            <span class="cc-comment-avatar">{{ comment.display_name|slice:":1"|upper }}</span>
+            <div>
+              <strong>{{ comment.display_name }}</strong>
+              <small>{{ comment.user.phone }}</small>
+            </div>
+          </div>
+
+          <div class="cc-comment-product">
+            <span>محصول</span>
+            <strong>{{ comment.product.name }}</strong>
+          </div>
+
+          <div class="cc-comment-rating" aria-label="امتیاز {{ comment.rating|default:'ثبت نشده' }} از ۵">
+            {% if comment.rating %}
+              <span class="stars">{% if comment.rating >= 1 %}★{% endif %}{% if comment.rating >= 2 %}★{% endif %}{% if comment.rating >= 3 %}★{% endif %}{% if comment.rating >= 4 %}★{% endif %}{% if comment.rating >= 5 %}★{% endif %}</span>
+              <b>{{ comment.rating }}/۵</b>
+            {% else %}
+              <span class="no-rating">بدون امتیاز</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="cc-comment-body">{{ comment.body|linebreaksbr }}</div>
+
+        <div class="cc-comment-footer">
+          <div class="cc-comment-tags">
+            {% if comment.verified_purchase %}
+              <span class="cc-comment-tag verified">✓ خرید تأییدشده</span>
+            {% endif %}
+            {% if comment.status == 'pending' %}
+              <span class="cc-comment-tag pending">در انتظار بررسی</span>
+            {% elif comment.status == 'approved' %}
+              <span class="cc-comment-tag approved">تأییدشده</span>
+            {% else %}
+              <span class="cc-comment-tag rejected">ردشده</span>
+            {% endif %}
+            <time datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:'Y/m/d - H:i' }}</time>
+          </div>
+
+          <div class="cc-comment-actions">
+            {% if comment.status != 'approved' %}
+            <form method="post" action="{% url 'control:comment_moderation' comment.pk 'approve' %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="cc-comment-action approve" type="submit">✓ تأیید نظر</button>
+            </form>
+            {% endif %}
+            {% if comment.status != 'rejected' %}
+            <form method="post" action="{% url 'control:comment_moderation' comment.pk 'reject' %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.get_full_path }}">
+              <button class="cc-comment-action reject" type="submit">× رد نظر</button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+    <div class="cc-comment-empty">
+      <span>♡</span>
+      <strong>نظری پیدا نشد</strong>
+      <small>فیلترها یا عبارت جستجو را تغییر دهید.</small>
+    </div>
+  {% endif %}
+
+  {% if page_obj.has_other_pages %}
+  <nav class="cc-comments-pagination" aria-label="صفحه‌بندی نظرات">
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status|urlencode }}{% endif %}{% if request.GET.rating %}&rating={{ request.GET.rating|urlencode }}{% endif %}">← قبلی</a>
+    {% endif %}
+    <span>صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status|urlencode }}{% endif %}{% if request.GET.rating %}&rating={{ request.GET.rating|urlencode }}{% endif %}">بعدی →</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}

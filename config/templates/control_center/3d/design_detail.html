@@ -1,0 +1,252 @@
+{% extends "control_center/base.html" %}
+
+{% block title %}{{ design.design_code }} | طراحی خریداری‌شده | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head cc-3d-page-head cc-purchased-detail-head">
+  <div>
+    <div class="cc-eyebrow">PURCHASED 3D DESIGN</div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:3d_dashboard' %}">طراحی سه‌بعدی</a>
+      <span>/</span>
+      <strong dir="ltr">{{ design.design_code }}</strong>
+    </div>
+    <h1 dir="ltr">{{ design.design_code }}</h1>
+    <p>{{ design.product.name }} · طراحی ثبت‌شده برای یک خرید موفق</p>
+  </div>
+  <div class="cc-purchased-detail-actions">
+    {% if purchase_item %}
+      <a class="cc-btn" href="{% url 'control:order_detail' purchase_item.order.pk %}">مشاهده سفارش ↗</a>
+    {% endif %}
+    <a class="cc-btn primary" href="{% url 'control:3d_dashboard' %}">بازگشت به طراحی‌ها</a>
+  </div>
+</div>
+
+<section class="cc-card cc-design-summary">
+  <div class="cc-design-summary-main">
+    <div>
+      <span class="cc-eyebrow">DESIGN ID</span>
+      <strong dir="ltr">{{ design.design_code }}</strong>
+      <small>{{ design.product.name }}</small>
+    </div>
+    <span class="cc-design-paid-badge">پرداخت موفق</span>
+  </div>
+
+  <div class="cc-design-summary-grid">
+    <div>
+      <span>رنگ</span>
+      <b>{% if purchase_item.color_name %}{{ purchase_item.color_name }}{% else %}{{ design.shirt_color|default:"—" }}{% endif %}</b>
+    </div>
+    <div>
+      <span>سایز</span>
+      <b>{{ purchase_item.size_name|default:"—" }}</b>
+    </div>
+    <div>
+      <span>تعداد لباس</span>
+      <b>{{ purchase_item.quantity|default:"—" }} عدد</b>
+    </div>
+    <div>
+      <span>تعداد لیبل</span>
+      <b>{{ label_count }} مورد</b>
+    </div>
+    <div>
+      <span>مشتری</span>
+      <b>
+        {% if purchase_item.order.user %}
+          {{ purchase_item.order.user.get_full_name|default:purchase_item.order.user.phone }}
+        {% else %}
+          مشتری
+        {% endif %}
+      </b>
+    </div>
+    <div>
+      <span>سفارش</span>
+      <b><a href="{% url 'control:order_detail' purchase_item.order.pk %}" dir="ltr">{{ purchase_item.order.number }}</a></b>
+    </div>
+    <div>
+      <span>زمان پرداخت</span>
+      <b>{{ purchase_item.order.paid_at|default:purchase_item.order.created_at|date:"Y/m/d H:i" }}</b>
+    </div>
+  </div>
+</section>
+
+<section class="cc-design-preview-grid">
+  <article class="cc-card cc-design-garment-card">
+    <div class="cc-design-card-head">
+      <div>
+        <span class="cc-eyebrow">FRONT</span>
+        <h2>نمای جلو لباس</h2>
+        <p>مختصات لیبل‌ها مستقیماً روی پیش‌نمایش خرید نمایش داده شده‌اند.</p>
+      </div>
+      <span>{{ front_label_count }} لیبل{% if front_layers|length > front_label_count %} · {{ front_layers|length|add:"-1" }} متن{% endif %}</span>
+    </div>
+
+    <div class="cc-garment-preview">
+      {% if design.preview_front %}
+        <img src="{{ design.preview_front.url }}" alt="نمای جلو {{ design.design_code }}" loading="eager">
+        {% for layer in front_layers %}
+          <div class="cc-garment-label-marker" style="{{ layer.overlay_style }}" title="{{ layer.artwork.name }}">
+            <span>{{ forloop.counter }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="cc-garment-preview-empty">
+          <strong>پیش‌نمایش جلو ذخیره نشده</strong>
+          <small>اطلاعات مختصات لیبل‌ها همچنان در بخش جزئیات پایین موجود است.</small>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if front_layers %}
+      <div class="cc-garment-marker-legend">
+        {% for layer in front_layers %}
+          {% if layer.is_text_layer %}
+            <span class="cc-garment-text-legend">
+              <b>متن</b>
+              <i style="font-family:{{ layer.text_font_family }};font-weight:{{ layer.text_font_weight }};font-style:{{ layer.text_font_style }};letter-spacing:{{ layer.text_letter_spacing }}px;">{{ layer.display_text }}</i>
+            </span>
+          {% else %}
+            <span><b>{{ forloop.counter }}</b>{{ layer.artwork.name }}</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </article>
+
+  <article class="cc-card cc-design-garment-card">
+    <div class="cc-design-card-head">
+      <div>
+        <span class="cc-eyebrow">BACK</span>
+        <h2>نمای پشت لباس</h2>
+        <p>همان طراحی خریداری‌شده، با لیبل‌های سمت پشت.</p>
+      </div>
+      <span>{{ back_label_count }} لیبل{% if back_layers|length > back_label_count %} · {{ back_layers|length|add:"-1" }} متن{% endif %}</span>
+    </div>
+
+    <div class="cc-garment-preview">
+      {% if design.preview_back %}
+        <img src="{{ design.preview_back.url }}" alt="نمای پشت {{ design.design_code }}" loading="lazy">
+        {% for layer in back_layers %}
+          <div class="cc-garment-label-marker" style="{{ layer.overlay_style }}" title="{{ layer.artwork.name }}">
+            <span>{{ forloop.counter }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="cc-garment-preview-empty">
+          <strong>پیش‌نمایش پشت ذخیره نشده</strong>
+          <small>اگر لیبلی روی پشت نباشد، همین بخش خالی است.</small>
+        </div>
+      {% endif %}
+    </div>
+
+    {% if back_layers %}
+      <div class="cc-garment-marker-legend">
+        {% for layer in back_layers %}
+          {% if layer.is_text_layer %}
+            <span class="cc-garment-text-legend">
+              <b>متن</b>
+              <i style="font-family:{{ layer.text_font_family }};font-weight:{{ layer.text_font_weight }};font-style:{{ layer.text_font_style }};letter-spacing:{{ layer.text_letter_spacing }}px;">{{ layer.display_text }}</i>
+            </span>
+          {% else %}
+            <span><b>{{ forloop.counter }}</b>{{ layer.artwork.name }}</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endif %}
+  </article>
+</section>
+
+<section class="cc-card cc-design-labels-card">
+  <div class="cc-design-labels-head">
+    <div>
+      <span class="cc-eyebrow">DESIGN ELEMENTS & PLACEMENT</span>
+      <h2>لیبل‌ها، متن‌ها و مختصات چاپ</h2>
+      <p>همه عناصر ثبت‌شده طراحی را می‌بینی؛ لیبل‌ها قابل دانلودند و استایل متن هم عین اطلاعات ثبت‌شده نمایش داده می‌شود.</p>
+    </div>
+    <strong>{{ label_count }} لیبل · {{ text_count }} متن</strong>
+  </div>
+
+  {% if label_layers %}
+    <div class="cc-design-label-list">
+      {% for layer in label_layers %}
+        <article class="cc-design-label-row">
+          <div class="cc-design-label-thumb">
+            {% if layer.artwork.image %}<img src="{{ layer.artwork.image.url }}" alt="{{ layer.artwork.name }}" loading="lazy">{% endif %}
+          </div>
+
+          <div class="cc-design-label-info">
+            <div class="cc-design-label-title">
+              <strong>{{ layer.artwork.name }}</strong>
+              <span dir="ltr">{{ layer.artwork.code }}</span>
+            </div>
+            <small>{{ layer.area.name }} · {% if layer.side == "front" %}جلو{% else %}پشت{% endif %}</small>
+          </div>
+
+          <div class="cc-design-label-metrics">
+            <div><span>X</span><b>{{ layer.x|floatformat:4 }}</b></div>
+            <div><span>Y</span><b>{{ layer.y|floatformat:4 }}</b></div>
+            <div><span>W</span><b>{{ layer.width|floatformat:4 }}</b></div>
+            <div><span>H</span><b>{{ layer.height|floatformat:4 }}</b></div>
+            <div><span>°</span><b>{{ layer.rotation|floatformat:2 }}</b></div>
+          </div>
+
+          <div class="cc-design-label-actions">
+            <a class="cc-btn primary" href="{% url 'control:design_artwork_download' design.uuid layer.artwork.id %}">دانلود لیبل</a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="cc-label-empty">
+      <span>◇</span>
+      <strong>این طراحی لیبل چاپی ندارد.</strong>
+      <small>اطلاعات طراحی در سفارش همچنان ثبت شده است.</small>
+    </div>
+  {% endif %}  
+  {% if text_layers %}
+    <div class="cc-design-text-section">
+      <div class="cc-design-text-section-head">
+        <div>
+          <span class="cc-eyebrow">TEXT ELEMENTS</span>
+          <strong>متن‌های روی لباس</strong>
+          <small>فونت، وزن، حالت، اندازه، فاصله حروف و خمیدگی متن از استایل ذخیره‌شده طراحی خوانده شده است.</small>
+        </div>
+      </div>
+
+      <div class="cc-design-text-list">
+        {% for layer in text_layers %}
+          <article class="cc-design-text-row">
+            <div class="cc-design-text-preview">
+              <span style="font-family:{{ layer.text_font_family }};font-weight:{{ layer.text_font_weight }};font-style:{{ layer.text_font_style }};letter-spacing:{{ layer.text_letter_spacing }}px;">
+                {{ layer.display_text }}
+              </span>
+            </div>
+
+            <div class="cc-design-text-main">
+              <strong>{{ layer.display_text }}</strong>
+              <small>{% if layer.side == "front" %}جلو{% else %}پشت{% endif %} · {{ layer.area.name }}</small>
+            </div>
+
+            <div class="cc-design-text-style">
+              <div><span>فونت</span><b style="font-family:{{ layer.text_font_family }};">{{ layer.text_font_family }}</b></div>
+              <div><span>وزن</span><b>{{ layer.text_font_weight }}</b></div>
+              <div><span>حالت</span><b>{% if layer.text_font_style == "italic" %}Italic{% else %}Normal{% endif %}</b></div>
+              <div><span>اندازه</span><b>{{ layer.text_font_size }}%</b></div>
+              <div><span>خمیدگی</span><b>{{ layer.text_style_data.curve|default:"0" }}</b></div>
+              <div><span>فاصله حروف</span><b>{{ layer.text_letter_spacing }}px</b></div>
+            </div>
+
+            <div class="cc-design-text-placement">
+              <span>مختصات</span>
+              <b>{{ layer.position_summary }}</b>
+              <small>{{ layer.size_summary }} · چرخش {{ layer.rotation|floatformat:2 }}°</small>
+              <a class="cc-design-text-download" href="{% url 'control:design_text_download' design.uuid layer.id %}">دانلود متن SVG بدون پس‌زمینه</a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
+</section>
+{% endblock %}

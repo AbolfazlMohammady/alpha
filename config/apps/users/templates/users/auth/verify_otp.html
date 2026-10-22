@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}تأیید شماره | BABAEI{% endblock %}
+{% block meta_description %}تأیید شماره موبایل در BABAEI.{% endblock %}
+{% block body_class %}auth-body shop-page{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/pages/auth.css' %}?v=10">
+{% endblock %}
+
+{% block content %}
+<section class="auth-page auth-page--verify" aria-label="تأیید شماره موبایل">
+    <div class="auth-liquid" aria-hidden="true">
+        <div class="auth-blob auth-blob--1"></div>
+        <div class="auth-blob auth-blob--2"></div>
+        <div class="auth-blob auth-blob--3"></div>
+        <div class="auth-blob auth-blob--4"></div>
+        <div class="auth-blob auth-blob--5"></div>
+        <div class="auth-blob auth-blob--6"></div>
+    </div>
+
+    <div class="auth-grid" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+    </div>
+
+    <main class="auth-container">
+        <header class="auth-header">
+            <span class="auth-brand-id">BABAEI // VERIFY</span>
+            <h1>ENTER <strong>CODE.</strong></h1>
+            <p>
+                کد ارسال‌شده به <b dir="ltr">{{ phone }}</b> را وارد کنید.
+            </p>
+        </header>
+
+        <form method="post" class="auth-form" novalidate data-auth-verify-form autocomplete="off">
+            {% csrf_token %}
+
+            <div class="auth-form-group auth-form-group--otp">
+                <div class="auth-otp-line" aria-label="کد تأیید شش رقمی">
+                    <div class="auth-otp-cell"><input class="otp-digit" type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code" data-otp-digit="0" aria-label="رقم اول"><span></span></div>
+                    <div class="auth-otp-cell"><input class="otp-digit" type="text" inputmode="numeric" maxlength="1" autocomplete="off" data-otp-digit="1" aria-label="رقم دوم"><span></span></div>
+                    <div class="auth-otp-cell"><input class="otp-digit" type="text" inputmode="numeric" maxlength="1" autocomplete="off" data-otp-digit="2" aria-label="رقم سوم"><span></span></div>
+                    <div class="auth-otp-cell"><input class="otp-digit" type="text" inputmode="numeric" maxlength="1" autocomplete="off" data-otp-digit="3" aria-label="رقم چهارم"><span></span></div>
+                    <div class="auth-otp-cell"><input class="otp-digit" type="text" inputmode="numeric" maxlength="1" autocomplete="off" data-otp-digit="4" aria-label="رقم پنجم"><span></span></div>
+                    <div class="auth-otp-cell"><input class="otp-digit" type="text" inputmode="numeric" maxlength="1" autocomplete="off" data-otp-digit="5" aria-label="رقم ششم"><span></span></div>
+                </div>
+
+                <input id="code" name="code" type="hidden">
+
+                <small>کد ۶ رقمی را وارد کنید یا یکجا Paste کنید.</small>
+            </div>
+
+            <div class="auth-submit-wrap">
+                <span class="auth-submit-liquid" aria-hidden="true"></span>
+                <button type="submit" class="auth-submit">
+                    <span>تأیید و ورود</span>
+                    <strong>↗</strong>
+                </button>
+            </div>
+        </form>
+
+        <div class="auth-footer-nav">
+            <a class="auth-store-link auth-store-link--secondary" href="{% url 'shop:index' %}">
+                <span>بازگشت به فروشگاه</span>
+                <strong aria-hidden="true">←</strong>
+            </a>
+            <a class="auth-change-link" href="{% url 'users:login' %}">
+                تغییر شماره
+            </a>
+        </div>
+    </main>
+
+    <svg class="auth-svg-filter" aria-hidden="true" focusable="false">
+        <defs>
+            <filter id="auth-gooey">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur"></feGaussianBlur>
+                <feColorMatrix
+                    in="blur"
+                    mode="matrix"
+                    values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9"
+                    result="goo"
+                ></feColorMatrix>
+                <feComposite in="SourceGraphic" in2="goo" operator="atop"></feComposite>
+            </filter>
+        </defs>
+    </svg>
+
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/auth-switch.js' %}?v=5" defer></script>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "admin/base.html" %}
+{% load static %}
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{% if title %}{{ title }} | {% endif %}BABAEI{% endblock %}
+{% block extrastyle %}<link rel="stylesheet" href="{% static 'css/admin/admin.css' %}?v=3">{% endblock %}
+{% block branding %}
+<a href="{% url 'admin:index' %}" class="ba-brand"><span class="ba-brand__mark">B</span><span><b>BABAEI</b><small>CONTROL CENTER</small></span></a>
+{% endblock %}
+{% block nav-global %}
+<a href="{% url 'admin:index' %}" class="ba-topbar__link">داشبورد</a>
+<a href="/" target="_blank" rel="noopener" class="ba-topbar__store">مشاهده فروشگاه <span>↗</span></a>
+{% endblock %}

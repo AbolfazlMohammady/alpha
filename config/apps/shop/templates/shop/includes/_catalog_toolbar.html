@@ -1,0 +1,95 @@
+{% comment %}
+=============================================================================
+ Catalog toolbar.
+-----------------------------------------------------------------------------
+ Expects: catalog_heading (optional), paginator, filter_*, categories, request
+
+ New here: the result count and the active-filter chips. Previously the toolbar
+ held only the sort control, so there was no way to see what was filtered, and
+ no way to drop one filter without clearing all of them.
+
+ Each chip is a real link that keeps every other filter and drops only its own
+ (shop_tags.query_without), which also means each state is a crawlable URL and
+ needs no JavaScript.
+
+ The sort dropdown keeps [data-sort-dropdown], [data-sort-trigger],
+ [data-sort-menu], [data-sort-option] and .is-open, which is what
+ js/pages/shop-reference.js toggles.
+=============================================================================
+{% endcomment %}
+{% load shop_tags %}
+<header class="shop-reference__toolbar">
+    <div class="shop-reference__toolbar-title">
+        <span class="shop-reference__toolbar-label">BABAEI / CATALOG</span>
+        <h2 id="products-title">{% firstof catalog_heading category.name "همه محصولات" %}</h2>
+
+        <p class="shop-reference__count">
+            <b>{{ paginator.count|price }}</b> محصول
+            {% if filter_category or filter_size or filter_min_price or filter_max_price or filter_discount %}
+                با فیلترهای فعال
+            {% endif %}
+        </p>
+
+        {% if filter_category or filter_size or filter_min_price or filter_max_price or filter_discount %}
+            <div class="shop-reference__chips" aria-label="فیلترهای فعال">
+                {% if filter_category %}
+                    {% for category in categories %}
+                        {% if category.slug == filter_category %}
+                            <a class="shop-reference__chip" href="{% query_without 'category' %}"
+                               aria-label="حذف فیلتر دسته‌بندی {{ category.name }}">
+                                <b>{{ category.name }}</b><i aria-hidden="true">×</i>
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+
+                {% if filter_size %}
+                    <a class="shop-reference__chip" href="{% query_without 'size' %}"
+                       aria-label="حذف فیلتر سایز {{ filter_size|upper }}">
+                        <b>سایز {{ filter_size|upper }}</b><i aria-hidden="true">×</i>
+                    </a>
+                {% endif %}
+
+                {% if filter_min_price or filter_max_price %}
+                    <a class="shop-reference__chip" href="{% query_without 'min_price' 'max_price' %}"
+                       aria-label="حذف فیلتر قیمت">
+                        <b>قیمت {{ filter_min_price|default:price_min|price }} تا {{ filter_max_price|default:price_max|price }}</b><i aria-hidden="true">×</i>
+                    </a>
+                {% endif %}
+
+                {% if filter_discount %}
+                    <a class="shop-reference__chip" href="{% query_without 'discount' %}"
+                       aria-label="حذف فیلتر تخفیف‌دار">
+                        <b>فقط تخفیف‌دار</b><i aria-hidden="true">×</i>
+                    </a>
+                {% endif %}
+
+                <a class="shop-reference__chip shop-reference__chip--clear" href="{{ request.path }}">پاک کردن همه</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <section class="shop-reference__sort-section" data-sort-dropdown>
+        <button type="button" class="shop-reference__sort-trigger" data-sort-trigger aria-expanded="false" aria-haspopup="listbox">
+            <span>مرتب‌سازی</span>
+            <strong data-sort-current>
+                {% if filter_sort == "newest" %}جدیدترین{% elif filter_sort == "price_asc" %}ارزان‌ترین{% elif filter_sort == "price_desc" %}گران‌ترین{% else %}پیشنهاد شده{% endif %}
+            </strong>
+            <span class="shop-reference__sort-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="shop-reference__sort-menu" data-sort-menu role="listbox" aria-label="مرتب‌سازی محصولات">
+            <button type="button" role="option" data-sort-option data-value="featured" class="{% if filter_sort == 'featured' %}is-active{% endif %}" aria-selected="{% if filter_sort == 'featured' %}true{% else %}false{% endif %}">
+                <span>پیشنهاد شده</span>{% if filter_sort == "featured" %}<b>✓</b>{% endif %}
+            </button>
+            <button type="button" role="option" data-sort-option data-value="newest" class="{% if filter_sort == 'newest' %}is-active{% endif %}" aria-selected="{% if filter_sort == 'newest' %}true{% else %}false{% endif %}">
+                <span>جدیدترین</span>{% if filter_sort == "newest" %}<b>✓</b>{% endif %}
+            </button>
+            <button type="button" role="option" data-sort-option data-value="price_asc" class="{% if filter_sort == 'price_asc' %}is-active{% endif %}" aria-selected="{% if filter_sort == 'price_asc' %}true{% else %}false{% endif %}">
+                <span>ارزان‌ترین</span>{% if filter_sort == "price_asc" %}<b>✓</b>{% endif %}
+            </button>
+            <button type="button" role="option" data-sort-option data-value="price_desc" class="{% if filter_sort == 'price_desc' %}is-active{% endif %}" aria-selected="{% if filter_sort == 'price_desc' %}true{% else %}false{% endif %}">
+                <span>گران‌ترین</span>{% if filter_sort == "price_desc" %}<b>✓</b>{% endif %}
+            </button>
+        </div>
+    </section>
+</header>

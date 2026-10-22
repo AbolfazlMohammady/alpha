@@ -1,0 +1,80 @@
+{% extends "control_center/base.html" %}
+
+{% block title %}کتابخانه لیبل‌ها | طراحی سه‌بعدی | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head cc-3d-page-head">
+  <div>
+    <div class="cc-eyebrow">LABEL LIBRARY</div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:3d_dashboard' %}">طراحی سه‌بعدی</a>
+      <span>/</span>
+      <strong>کتابخانه لیبل‌ها</strong>
+    </div>
+    <h1>کتابخانه لیبل‌ها</h1>
+    <p>لیبل‌های دائمی فروشگاه را اینجا اضافه، ویرایش، فعال یا غیرفعال کن.</p>
+  </div>
+  <a class="cc-btn primary cc-3d-add-label" href="{% url 'control:artwork_create' %}"><span>+</span> افزودن لیبل</a>
+</div>
+
+<div class="cc-3d-simple-stats">
+  <div><span>کل لیبل‌ها</span><b>{{ library_count }}</b></div>
+  <div><span>لیبل فعال</span><b>{{ library_active_count }}</b></div>
+  <div><span>لیبل غیرفعال</span><b>{{ library_inactive_count }}</b></div>
+  <div><span>صفحه</span><b>{{ page_obj.number }}</b></div>
+</div>
+
+<section class="cc-card cc-label-library">
+  <div class="cc-label-library-head">
+    <div>
+      <span class="cc-eyebrow">PERMANENT STORE LABELS</span>
+      <h2>لیبل‌های کتابخانه</h2>
+      <p>فقط لیبل‌های مدیریتی و دائمی فروشگاه در اینجا قرار می‌گیرند. آپلود مشتری از این بخش جداست.</p>
+    </div>
+    <a class="cc-btn" href="{% url 'control:customer_artworks' %}">مشاهده لیبل‌های مشتریان</a>
+  </div>
+
+  {% if library %}
+    <div class="cc-label-grid">
+      {% for item in library %}
+        <article class="cc-label-item">
+          <div class="cc-label-preview">
+            {% if item.image %}<img src="{{ item.image.url }}" alt="{{ item.name }}">{% endif %}
+          </div>
+          <div class="cc-label-body">
+            <div class="cc-label-title-row">
+              <strong>{{ item.name }}</strong>
+              {% if item.is_active %}<span class="cc-label-status is-active">فعال</span>{% else %}<span class="cc-label-status">غیرفعال</span>{% endif %}
+            </div>
+            <div class="cc-label-meta">
+              <span>{{ item.base_price }} تومان</span>
+              <span>{{ item.min_width_px }}px</span>
+              <span>{{ item.confirmed_usage_count }} استفاده</span>
+            </div>
+            <div class="cc-label-actions">
+              <a href="{% url 'control:artwork_edit' item.pk %}">ویرایش</a>
+              {% if item.has_design_layers %}
+                <span class="cc-label-used">استفاده‌شده</span>
+              {% else %}
+                <form method="post" action="{% url 'control:artwork_delete' item.pk %}">
+                  {% csrf_token %}
+                  <button class="cc-link-button danger-link" type="submit">حذف</button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="cc-label-empty">
+      <span>◇</span>
+      <strong>هنوز لیبلی در کتابخانه وجود ندارد.</strong>
+      <small>اولین لیبل دائمی فروشگاه را اضافه کن.</small>
+      <a class="cc-btn primary" href="{% url 'control:artwork_create' %}">افزودن اولین لیبل</a>
+    </div>
+  {% endif %}
+</section>
+
+{% include "control_center/pagination.html" %}
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "control_center/base.html" %}
+
+{% block title %}{% if object %}ویرایش لیبل{% else %}افزودن لیبل{% endif %} | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head cc-label-form-head">
+  <div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:artwork_library' %}">طراحی سه‌بعدی</a>
+      <span>/</span>
+      <strong>کتابخانه لیبل</strong>
+    </div>
+    <h1>{% if object %}ویرایش لیبل{% else %}افزودن لیبل جدید{% endif %}</h1>
+    <p>این لیبل به کتابخانه دائمی فروشگاه اضافه می‌شود و برای مشتری‌ها قابل انتخاب خواهد بود.</p>
+  </div>
+  <a class="cc-btn" href="{% url 'control:artwork_library' %}">بازگشت</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="cc-card cc-label-form">
+  {% csrf_token %}
+
+  <div class="cc-label-form-grid">
+    <div class="cc-label-form-preview">
+      {% if object and object.image %}
+        <img src="{{ object.image.url }}" alt="">
+      {% else %}
+        <span>LABEL</span>
+      {% endif %}
+    </div>
+
+    <div class="cc-label-form-fields">
+      <div>
+        <label for="{{ form.name.id_for_label }}">نام لیبل</label>
+        {{ form.name }}
+        {% if form.name.errors %}<small class="cc-error">{{ form.name.errors|striptags }}</small>{% endif %}
+      </div>
+
+      <div>
+        <label for="{{ form.slug.id_for_label }}">شناسه فنی</label>
+        {{ form.slug }}
+        {% if form.slug.errors %}<small class="cc-error">{{ form.slug.errors|striptags }}</small>{% endif %}
+      </div>
+
+      <div>
+        <label for="{{ form.image.id_for_label }}">تصویر لیبل</label>
+        {{ form.image }}
+        {% if object %}<small class="cc-label-form-help">برای حفظ تصویر فعلی، این فیلد را خالی بگذار.</small>{% endif %}
+        {% if form.image.errors %}<small class="cc-error">{{ form.image.errors|striptags }}</small>{% endif %}
+      </div>
+
+      <div class="cc-label-form-two">
+        <div>
+          <label for="{{ form.base_price.id_for_label }}">قیمت پایه</label>
+          {{ form.base_price }}
+          {% if form.base_price.errors %}<small class="cc-error">{{ form.base_price.errors|striptags }}</small>{% endif %}
+        </div>
+        <div>
+          <label for="{{ form.min_width_px.id_for_label }}">حداقل عرض فایل</label>
+          {{ form.min_width_px }}
+          {% if form.min_width_px.errors %}<small class="cc-error">{{ form.min_width_px.errors|striptags }}</small>{% endif %}
+        </div>
+      </div>
+
+      <label class="cc-label-toggle">
+        {{ form.is_active }}
+        <span>
+          <strong>لیبل فعال باشد</strong>
+          <small>لیبل در کتابخانه مشتری نمایش داده شود.</small>
+        </span>
+      </label>
+      {% if form.is_active.errors %}<small class="cc-error">{{ form.is_active.errors|striptags }}</small>{% endif %}
+    </div>
+  </div>
+
+  <div class="cc-label-form-actions">
+    <a class="cc-btn" href="{% url 'control:3d_dashboard' %}">انصراف</a>
+    <button class="cc-btn primary" type="submit">{% if object %}ذخیره تغییرات{% else %}افزودن لیبل{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

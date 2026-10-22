@@ -1,0 +1,200 @@
+{% extends "control_center/base.html" %}
+{% load static %}
+{% block title %}{% if object %}ویرایش کاربر{% else %}کاربر جدید{% endif %} | BABAEI{% endblock %}
+
+{% block content %}
+<div class="cc-page-head cc-user-page-head">
+  <div>
+    <div class="cc-eyebrow">CUSTOMERS & ACCESS</div>
+    <div class="cc-breadcrumb">
+      <a href="{% url 'control:users' %}">کاربران</a>
+      <span>/</span>
+      <strong>{% if object %}ویرایش کاربر{% else %}کاربر جدید{% endif %}</strong>
+    </div>
+    <h1>{% if object %}ویرایش کاربر{% else %}ایجاد کاربر جدید{% endif %}</h1>
+    <p>اطلاعات فردی، شماره تماس و سطح دسترسی این حساب را یکجا مدیریت کن.</p>
+  </div>
+  <a class="cc-btn" href="{% url 'control:users' %}">بازگشت به کاربران</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="cc-editor-form cc-user-editor" id="user-editor">
+  {% csrf_token %}
+
+  {% if form.non_field_errors %}
+    <div class="cc-form-alert">{{ form.non_field_errors|striptags }}</div>
+  {% endif %}
+
+  <div class="cc-editor-layout">
+    <div class="cc-editor-main">
+      <section class="cc-form-section cc-user-section">
+        <div class="cc-section-heading">
+          <div class="cc-section-icon">01</div>
+          <div>
+            <h2>اطلاعات شخصی</h2>
+            <p>مشخصات پایه و تاریخ تولد کاربر</p>
+          </div>
+        </div>
+
+        <div class="cc-field-grid">
+          <div class="cc-field">
+            {{ form.first_name.label_tag }}
+            {{ form.first_name }}
+            {% if form.first_name.errors %}<small class="cc-error">{{ form.first_name.errors|striptags }}</small>{% endif %}
+          </div>
+
+          <div class="cc-field">
+            {{ form.last_name.label_tag }}
+            {{ form.last_name }}
+            {% if form.last_name.errors %}<small class="cc-error">{{ form.last_name.errors|striptags }}</small>{% endif %}
+          </div>
+
+          <div class="cc-field">
+            <label for="{{ form.gender.id_for_label }}">جنسیت</label>
+            <div class="cc-user-select-wrap">
+              {{ form.gender }}
+            </div>
+            {% if form.gender.errors %}<small class="cc-error">{{ form.gender.errors|striptags }}</small>{% endif %}
+          </div>
+
+          <div class="cc-field jalali-picker-field cc-user-date-field">
+            <label for="user-birth-date-display">تاریخ تولد</label>
+            <div class="cc-user-date-input-wrap">
+              <input
+                id="user-birth-date-display"
+                class="cc-input jalali-date-input cc-user-date-input"
+                type="text"
+                value=""
+                placeholder="سال / ماه / روز"
+                readonly
+                autocomplete="off"
+                aria-haspopup="dialog"
+                aria-expanded="false"
+                data-jalali-picker
+              >
+              <span class="cc-user-date-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4.5 6.5h15v13h-15z"></path>
+                  <path d="M8 4v4M16 4v4M4.5 11h15"></path>
+                </svg>
+              </span>
+            </div>
+            {{ form.birth_date }}
+            <span class="cc-help">برای انتخاب تاریخ، روی کادر بزن.</span>
+            {% if form.birth_date.errors %}<small class="cc-error">{{ form.birth_date.errors|striptags }}</small>{% endif %}
+            <div class="jalali-picker cc-user-jalali-picker" data-jalali-calendar hidden></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cc-form-section cc-user-section">
+        <div class="cc-section-heading">
+          <div class="cc-section-icon">02</div>
+          <div>
+            <h2>اطلاعات تماس</h2>
+            <p>شماره موبایل و ایمیل حساب</p>
+          </div>
+        </div>
+
+        <div class="cc-field-grid">
+          <div class="cc-field cc-user-phone-field">
+            <label for="{{ form.phone.id_for_label }}">شماره تلفن</label>
+            <div class="cc-phone-input">
+              <div class="cc-phone-prefix" aria-hidden="true">
+                <strong>+98</strong>
+                <span>ایران</span>
+              </div>
+              {{ form.phone }}
+            </div>
+            <span class="cc-help">شماره با پیش‌شماره ایران ذخیره می‌شود؛ مثلاً 0912… به شکل +98912… ثبت خواهد شد.</span>
+            {% if form.phone.errors %}<small class="cc-error">{{ form.phone.errors|striptags }}</small>{% endif %}
+          </div>
+
+          <div class="cc-field">
+            {{ form.email.label_tag }}
+            {{ form.email }}
+            {% if form.email.errors %}<small class="cc-error">{{ form.email.errors|striptags }}</small>{% endif %}
+          </div>
+        </div>
+      </section>
+
+      <section class="cc-form-section cc-user-section">
+        <div class="cc-section-heading">
+          <div class="cc-section-icon">03</div>
+          <div>
+            <h2>دسترسی و وضعیت</h2>
+            <p>نقش کاربر سطح دسترسی او در پنل را تعیین می‌کند.</p>
+          </div>
+        </div>
+
+        <div class="cc-field-grid">
+          <div class="cc-field">
+            <label for="{{ form.role.id_for_label }}">نقش کاربر</label>
+            <div class="cc-user-select-wrap">
+              {{ form.role }}
+            </div>
+            {% if form.role.errors %}<small class="cc-error">{{ form.role.errors|striptags }}</small>{% endif %}
+          </div>
+
+          <div class="cc-field cc-toggle-field cc-user-active-field">
+            <div>
+              <strong>حساب فعال</strong>
+              <small>کاربر بتواند وارد حساب خود شود.</small>
+            </div>
+            <label class="cc-switch">
+              {{ form.is_active }}
+              <span></span>
+            </label>
+            {% if form.is_active.errors %}<small class="cc-error">{{ form.is_active.errors|striptags }}</small>{% endif %}
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <aside class="cc-editor-side">
+      <section class="cc-side-card cc-user-profile-card">
+        <div class="cc-side-title">پروفایل کاربر</div>
+        <div class="cc-avatar-upload">
+          {% if object and object.image %}
+            <img src="{{ object.image.url }}" alt="">
+          {% else %}
+            <div class="cc-avatar-placeholder">B</div>
+          {% endif %}
+          <div>
+            <strong>تصویر کاربر</strong>
+            <small>JPG، PNG یا WebP</small>
+            <label class="cc-upload-btn" for="{{ form.image.id_for_label }}">انتخاب تصویر</label>
+            <div class="cc-hidden-file">{{ form.image }}</div>
+          </div>
+        </div>
+        {% if form.image.errors %}<small class="cc-error">{{ form.image.errors|striptags }}</small>{% endif %}
+      </section>
+
+      <section class="cc-side-card cc-info-card">
+        <div class="cc-side-title">نقش‌های مدیریتی</div>
+        <div class="cc-role-help"><b>مدیر</b><span>دسترسی کامل مدیریتی</span></div>
+        <div class="cc-role-help"><b>مدیر فروشگاه</b><span>محصولات و کاتالوگ</span></div>
+        <div class="cc-role-help"><b>مسئول سفارش‌ها</b><span>مدیریت سفارش‌ها</span></div>
+        <div class="cc-role-help"><b>پشتیبانی</b><span>کاربران و پشتیبانی</span></div>
+      </section>
+
+      <section class="cc-side-card cc-user-note-card">
+        <div class="cc-side-title">نکته</div>
+        <p>تاریخ تولد با تقویم شمسی انتخاب می‌شود و در دیتابیس به تاریخ استاندارد میلادی ذخیره خواهد شد.</p>
+      </section>
+    </aside>
+  </div>
+
+  <div class="cc-editor-actions cc-user-actions">
+    <a class="cc-btn" href="{% url 'control:users' %}">انصراف</a>
+    <button class="cc-btn primary cc-save-btn" type="submit">
+      {% if object %}ذخیره تغییرات{% else %}ایجاد کاربر{% endif %}
+      <span>→</span>
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/pages/profile.js' %}?v=10" defer></script>
+<script src="{% static 'js/pages/control-user-form.js' %}?v=3" defer></script>
+{% endblock %}

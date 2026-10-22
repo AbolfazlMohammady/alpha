@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% load static shop_tags %}
+
+{% block title %}{{ category.seo_title|default:category.name }} | BABAEI{% endblock %}
+{% block meta_description %}{{ category.seo_description|default:category.description|default:category.name|truncatechars:160 }}{% endblock %}
+{% block canonical %}<link rel="canonical" href="{{ canonical_url }}">{% endblock %}
+{% block common_page_css %}{% endblock %}
+{% block body_class %}shop-page{% endblock %}
+{% block og_title %}{{ category.seo_title|default:category.name }} | BABAEI{% endblock %}
+{% block og_description %}{{ category.seo_description|default:category.description|default:category.name|truncatechars:160 }}{% endblock %}
+{% block og_image %}{% if og_image_url %}<meta property="og:image" content="{{ og_image_url }}">{% endif %}{% endblock %}
+{% block extra_head %}<script type="application/ld+json">{{ category_schema }}</script>{% endblock %}
+{% block extra_css %}{% endblock %}
+{% block site_optional_css %}
+<link rel="stylesheet" href="{% static 'css/storefront.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/pages/shop-reference.css' %}?v=8">
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/pages/shop-cards.js' %}?v=4" defer></script>
+<script src="{% static 'js/pages/shop-reference.js' %}?v=7" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="shop-reference shop-reference--category">
+    <header class="shop-reference__category-hero">
+        <nav class="shop-reference__crumbs" aria-label="مسیر صفحه">
+            <a href="{% url 'shop:index' %}">فروشگاه</a><span>‹</span><span aria-current="page">{{ category.name }}</span>
+        </nav>
+        <span class="shop-reference__eyebrow">BABAEI / CATEGORY</span>
+        <h1>{{ category.name }}</h1>
+        {% if category.description %}<p>{{ category.description }}</p>{% endif %}
+    </header>
+
+    {% include "shop/includes/_catalog.html" %}
+</div>
+{% endblock %}

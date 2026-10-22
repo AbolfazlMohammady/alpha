@@ -1,0 +1,116 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_dashboard %}
+
+{% block content %}
+{% get_admin_dashboard as dashboard %}
+
+<div class="babaei-admin-dashboard">
+    <section class="babaei-admin-hero">
+        <div>
+            <span class="babaei-admin-eyebrow">BABAEI / CONTROL CENTER</span>
+            <h1>داشبورد مدیریت</h1>
+            <p>مدیریت فروشگاه، سفارش‌ها، کاربران و استودیو طراحی از یک نقطه.</p>
+        </div>
+        <div class="babaei-admin-hero__actions">
+            <a href="{% url 'admin:shop_product_add' %}" class="babaei-admin-button babaei-admin-button--gold">+ محصول جدید</a>
+            <a href="{% url 'admin:orders_order_changelist' %}" class="babaei-admin-button">مشاهده سفارش‌ها</a>
+        </div>
+    </section>
+
+    <section class="babaei-admin-kpis">
+        <a href="{% url 'admin:shop_product_changelist' %}" class="babaei-admin-kpi">
+            <span>محصولات فعال</span><strong>{{ dashboard.products|default:0 }}</strong><small>محصولات و تنوع‌ها</small>
+        </a>
+        <a href="{% url 'admin:orders_order_changelist' %}" class="babaei-admin-kpi">
+            <span>کل سفارش‌ها</span><strong>{{ dashboard.orders|default:0 }}</strong><small>{{ dashboard.pending_orders|default:0 }} در انتظار پرداخت</small>
+        </a>
+        <a href="{% url 'admin:orders_order_changelist' %}?status__exact=pending" class="babaei-admin-kpi">
+            <span>سفارش امروز</span><strong>{{ dashboard.today_orders|default:0 }}</strong><small>ثبت‌شده در ۲۴ ساعت اخیر</small>
+        </a>
+        <a href="{% url 'admin:users_user_changelist' %}" class="babaei-admin-kpi">
+            <span>کاربران فعال</span><strong>{{ dashboard.users|default:0 }}</strong><small>حساب‌های فعال فروشگاه</small>
+        </a>
+        <a href="{% url 'admin:customizer_designdraft_changelist' %}" class="babaei-admin-kpi">
+            <span>طرح‌های ذخیره‌شده</span><strong>{{ dashboard.drafts|default:0 }}</strong><small>Design Studio</small>
+        </a>
+        <div class="babaei-admin-kpi babaei-admin-kpi--static">
+            <span>پرداخت‌های موفق</span><strong>{{ dashboard.sales|floatformat:0|default:0 }}</strong><small>تومان</small>
+        </div>
+    </section>
+
+    <section class="babaei-admin-panel babaei-admin-pipeline">
+        <div class="babaei-admin-panel__head">
+            <div><span>ORDER PIPELINE</span><h2>جریان سفارش‌ها</h2></div>
+            <a href="{% url 'admin:orders_order_changelist' %}">مدیریت سفارش‌ها ↗</a>
+        </div>
+        <div class="babaei-admin-pipeline__track">
+            <a href="{% url 'admin:orders_order_changelist' %}?status__exact=pending"><b>{{ dashboard.pending_orders }}</b><span>در انتظار پرداخت</span></a>
+            <a href="{% url 'admin:orders_order_changelist' %}?status__exact=processing"><b>{{ dashboard.processing_orders }}</b><span>آماده‌سازی</span></a>
+            <a href="{% url 'admin:orders_order_changelist' %}?status__exact=shipped"><b>{{ dashboard.shipped_orders }}</b><span>ارسال‌شده</span></a>
+            <a href="{% url 'admin:orders_order_changelist' %}?status__exact=delivered"><b>{{ dashboard.delivered_orders }}</b><span>تحویل‌شده</span></a>
+            <a href="{% url 'admin:orders_order_changelist' %}?status__exact=cancelled"><b>{{ dashboard.cancelled_orders }}</b><span>لغوشده</span></a>
+        </div>
+    </section>
+    <div class="babaei-admin-grid">
+        <section class="babaei-admin-panel babaei-admin-panel--wide">
+            <div class="babaei-admin-panel__head">
+                <div><span>ORDERS</span><h2>آخرین سفارش‌ها</h2></div>
+                <a href="{% url 'admin:orders_order_changelist' %}">همه سفارش‌ها ↗</a>
+            </div>
+            <div class="babaei-admin-orders">
+                {% for order in dashboard.recent_orders %}
+                <a href="{% url 'admin:orders_order_change' order.pk %}" class="babaei-admin-order">
+                    <div>
+                        <strong>{{ order.number }}</strong>
+                        <span>{{ order.user.phone }}</span>
+                    </div>
+                    <div>
+                        <b>{{ order.total_amount|floatformat:0 }} تومان</b>
+                        <span class="babaei-admin-status babaei-admin-status--{{ order.status }}">{{ order.get_status_display }}</span>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="babaei-admin-empty">هنوز سفارشی ثبت نشده است.</div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="babaei-admin-panel">
+            <div class="babaei-admin-panel__head">
+                <div><span>QUICK ACCESS</span><h2>دسترسی سریع</h2></div>
+            </div>
+            <div class="babaei-admin-links">
+                <a href="{% url 'admin:shop_product_add' %}">افزودن محصول <b>↗</b></a>
+                <a href="{% url 'admin:shop_category_changelist' %}">دسته‌بندی‌ها <b>↗</b></a>
+                <a href="{% url 'admin:shop_productvariant_changelist' %}">تنوع و موجودی <b>↗</b></a>
+                <a href="{% url 'admin:customizer_artwork_changelist' %}">کتابخانه طرح‌ها <b>↗</b></a>
+                <a href="{% url 'admin:users_user_changelist' %}">کاربران <b>↗</b></a>
+            </div>
+        </section>
+    </div>
+
+    <section class="babaei-admin-modules">
+        <div class="babaei-admin-panel__head">
+            <div><span>MANAGEMENT</span><h2>مدیریت بخش‌ها</h2></div>
+        </div>
+        <div class="babaei-admin-apps">
+            {% for app in app_list %}
+            <section class="babaei-admin-app">
+                <div class="babaei-admin-app__head">
+                    <h3>{{ app.name }}</h3>
+                </div>
+                {% for model in app.models %}
+                <div class="babaei-admin-model">
+                    <a href="{{ model.admin_url }}" class="babaei-admin-model__name">{{ model.name }}</a>
+                    <div>
+                        {% if model.add_url %}<a href="{{ model.add_url }}" title="افزودن">+</a>{% endif %}
+                        <a href="{{ model.admin_url }}" title="مدیریت">↗</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </section>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

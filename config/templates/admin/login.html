@@ -1,0 +1,43 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% if site_title %}{{ site_title }}{% else %}ورود به مدیریت{% endif %}</title>
+    <link rel="stylesheet" href="{% static 'css/admin/admin.css' %}?v=3">
+</head>
+<body class="login">
+    <main class="ba-login">
+        <section class="ba-login__visual">
+            <div class="ba-login__brand"><span>B</span><b>BABAEI</b></div>
+            <div>
+                <span class="ba-eyebrow">CONTROL CENTER</span>
+                <h1>مدیریت هوشمند<br>فروشگاه</h1>
+            </div>
+        </section>
+        <section class="ba-login__form">
+            <div class="ba-login__head">
+                <span class="ba-eyebrow">WELCOME BACK</span>
+                <h1>ورود به پنل</h1>
+                <p>برای ادامه اطلاعات حساب مدیریت را وارد کنید.</p>
+            </div>
+            {% if form.errors %}<div class="ba-login-error">نام کاربری یا رمز عبور صحیح نیست.</div>{% endif %}
+            <form method="post" action="{{ app_path }}" id="login-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}">
+                <div class="ba-field">
+                    <label for="id_username">نام کاربری</label>
+                    {{ form.username }}
+                </div>
+                <div class="ba-field">
+                    <label for="id_password">رمز عبور</label>
+                    {{ form.password }}
+                </div>
+                <button type="submit" class="ba-login-submit">ورود به مرکز کنترل <span>←</span></button>
+            </form>
+            <a href="/" class="ba-login-back">بازگشت به فروشگاه</a>
+        </section>
+    </main>
+</body>
+</html>

@@ -1,0 +1,53 @@
+{% comment %}
+=============================================================================
+ The whole catalog: mobile filter launcher, filter rail, toolbar, grid,
+ pagination.
+
+ index.html and category.html render the same catalog, and the two templates
+ used to carry their own copy of all of it — so every card or filter change had
+ to be made twice, and the two had already drifted apart. Both now include this
+ file.
+
+ Expects: products, categories, paginator, page_obj, is_paginated, filter_*,
+          price_min, price_max, request, and optionally category /
+          catalog_heading.
+=============================================================================
+{% endcomment %}
+{% load shop_tags %}
+<section class="shop-reference__catalog" id="products" aria-labelledby="products-title">
+
+    <button type="button"
+            class="shop-reference__mobile-filter"
+            data-shop-filter-toggle
+            aria-expanded="false"
+            aria-controls="shop-reference-sidebar">
+        <span class="shop-reference__mobile-filter-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"></path><circle cx="8" cy="6" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="12" cy="18" r="1.5"></circle></svg>
+        </span>
+        فیلتر و مرتب‌سازی
+        <span data-filter-count>{% filter_count %}</span>
+    </button>
+
+    {% include "shop/includes/_catalog_sidebar.html" %}
+
+    <div class="shop-reference__results">
+        {% comment %}
+        The section is labelled by the toolbar's own h2 (#products-title) rather
+        than by a second, visually hidden heading — one visible heading, one
+        accessible name.
+        {% endcomment %}
+        {% include "shop/includes/_catalog_toolbar.html" %}
+
+        <div class="shop-reference__products" data-shop-products>
+            {% for product in products %}
+                {% include "shop/includes/_catalog_card.html" %}
+            {% empty %}
+                <p class="shop-reference__empty">
+                    محصولی با این فیلترها پیدا نشد. فیلترها را پاک کن تا همه محصولات را ببینی.
+                </p>
+            {% endfor %}
+        </div>
+
+        {% include "shop/includes/_catalog_pagination.html" %}
+    </div>
+</section>

@@ -1,0 +1,110 @@
+{% comment %}
+=============================================================================
+ Filter rail.
+-----------------------------------------------------------------------------
+ Expects: categories, filter_*, price_min, price_max, request
+
+ Contract kept from the previous markup so js/pages/shop-reference.js works
+ untouched: [data-shop-filter-panel], [data-shop-filter-close],
+ [data-min-range]/[data-max-range], [data-min-price-input]/[data-max-price-input],
+ [data-min-price-label]/[data-max-price-label], and the is-active class on the
+ size labels and the discount row. The JS toggles .is-open on this panel and on
+ the sort dropdown, which is exactly what the CSS expects.
+
+ Accessibility change: the groups are now <section role="group"> with an h3 and
+ aria-labelledby, so the rail no longer pushes three h2 headings into the
+ document outline ahead of the product names.
+
+ Price filter semantics are unchanged (still ?category= query parameters), but
+ the range now renders an honest filled segment instead of a fixed pseudo
+ element that never moved.
+=============================================================================
+{% endcomment %}
+{% load shop_tags %}
+<aside class="shop-reference__sidebar" id="shop-reference-sidebar" data-shop-filter-panel>
+    <div class="shop-reference__sidebar-head">
+        <strong>فیلتر محصولات</strong>
+        <button type="button" class="shop-reference__sidebar-close" data-shop-filter-close aria-label="بستن فیلتر">×</button>
+    </div>
+
+    <form method="get" class="shop-reference__filter-form" data-shop-filter-form>
+
+        <section class="shop-reference__filter-section" role="group" aria-labelledby="filter-categories">
+            <h3 id="filter-categories">دسته‌بندی‌ها</h3>
+            {% comment %}
+            These were `?category=slug` links on the index but canonical
+            /shop/category/<slug>/ links on the category page, so the same
+            category had two URLs competing for the same content. They are now
+            canonical everywhere. CategoryDetailView already reads size,
+            min_price, max_price, discount and sort, so the other filters stack
+            on the category page exactly as they did on the index.
+            {% endcomment %}
+            {% comment %}
+            current_category_slug is supplied by both views (the filtered slug on
+            the index, self.category.slug on a category page). It is not derived
+            from `category` here because that variable only exists on one of the
+            two callers, and a failed lookup inside {% with %} raises.
+            {% endcomment %}
+            <div class="shop-reference__category-list">
+                <a href="{% url 'shop:index' %}" class="{% if not current_category_slug %}is-active{% endif %}"
+                   {% if not current_category_slug %}aria-current="true"{% endif %}>
+                    <span>همه محصولات</span><small>{{ paginator.count|price }}</small>
+                </a>
+                {% comment %}
+                On the index these refine the grid in place (the user asked for
+                that explicitly); on a category page they stay canonical links,
+                because there the category is the page path, not a filter.
+                {% endcomment %}
+                {% for item in categories %}
+                    <a href="{% if catalog_in_page_filter %}?category={{ item.slug }}{% else %}{% url 'shop:category' item.slug %}{% endif %}"
+                       class="{% if item.slug == current_category_slug %}is-active{% endif %}"
+                       {% if item.slug == current_category_slug %}aria-current="true"{% endif %}>
+                        <span>{{ item.name }}</span><small>{{ item.product_count|price }}</small>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="shop-reference__filter-section" role="group" aria-labelledby="filter-price">
+            <h3 id="filter-price">محدوده قیمت</h3>
+            <div class="shop-reference__price-labels">
+                <span><small>از</small> <b data-min-price-label>{{ filter_min_price|default:price_min|price }}</b> تومان</span>
+                <span><small>تا</small> <b data-max-price-label>{{ filter_max_price|default:price_max|price }}</b> تومان</span>
+            </div>
+            <div class="shop-reference__range">
+                <div class="shop-reference__range-track"></div>
+                <div class="shop-reference__range-fill" aria-hidden="true"></div>
+                <input type="range" min="{{ price_min|default:0 }}" max="{{ price_max|default:5000000 }}" step="50000"
+                       value="{{ filter_min_price|default:price_min }}" data-min-range aria-label="حداقل قیمت">
+                <input type="range" min="{{ price_min|default:0 }}" max="{{ price_max|default:5000000 }}" step="50000"
+                       value="{{ filter_max_price|default:price_max }}" data-max-range aria-label="حداکثر قیمت">
+            </div>
+            <input type="hidden" name="min_price" value="{{ filter_min_price }}" data-min-price-input>
+            <input type="hidden" name="max_price" value="{{ filter_max_price }}" data-max-price-input>
+        </section>
+
+        <section class="shop-reference__filter-section" role="group" aria-labelledby="filter-size">
+            <h3 id="filter-size">سایز</h3>
+            <div class="shop-reference__sizes" role="radiogroup" aria-labelledby="filter-size">
+                {% for size in sizes %}
+                    <label class="{% if filter_size == size.slug %}is-active{% endif %}">
+                        <input type="radio" name="size" value="{{ size.slug }}" {% if filter_size == size.slug %}checked{% endif %}>
+                        <span>{{ size.name }}</span>
+                    </label>
+                {% empty %}
+                    <span class="shop-reference__sizes-empty">سایزی ثبت نشده است.</span>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="shop-reference__filter-section shop-reference__filter-section--checks" role="group">
+            <label class="shop-reference__discount-check">
+                <input type="checkbox" name="discount" value="1" {% if filter_discount %}checked{% endif %}>
+                <span>فقط کالاهای تخفیف‌دار</span>
+            </label>
+        </section>
+
+        <button class="shop-reference__apply" type="submit">اعمال فیلترها <span>↗</span></button>
+        <a class="shop-reference__clear" href="{{ request.path }}">پاک کردن فیلترها ↻</a>
+    </form>
+</aside>

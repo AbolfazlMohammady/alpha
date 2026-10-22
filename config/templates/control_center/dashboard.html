@@ -1,0 +1,142 @@
+{% extends "control_center/base.html" %}
+{% block title %}داشبورد | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-page-head cc-dashboard-head">
+  <div>
+    <span class="cc-eyebrow">BABAEI / CONTROL CENTER</span>
+    <h1>مرکز کنترل</h1>
+    <p>نمای کلی فروشگاه، فروش و رفتار خرید مشتری‌ها.</p>
+  </div>
+  <span class="cc-dashboard-updated">آخرین بروزرسانی {{ dashboard_updated_at|date:"Y/m/d - H:i" }}</span>
+</div>
+
+<div class="cc-stats cc-dashboard-stats">
+  <a href="{% url 'control:users' %}" class="cc-stat cc-dashboard-stat">
+    <span>کاربران فعال</span>
+    <strong>{{ user_count }}</strong>
+    <small>مشتری و اعضای تیم</small>
+  </a>
+  <a href="{% url 'control:products' %}" class="cc-stat cc-dashboard-stat">
+    <span>محصولات فعال</span>
+    <strong>{{ product_count }}</strong>
+    <small>محصولات قابل انتشار</small>
+  </a>
+  {% if request.user.is_superuser or request.user.role == 'admin' or request.user.role == 'order_manager' %}
+  <a href="{% url 'control:orders' %}" class="cc-stat cc-dashboard-stat">
+    <span>سفارش‌های پرداخت‌شده</span>
+    <strong>{{ paid_order_count }}</strong>
+    <small>ورود به مدیریت سفارش‌ها</small>
+  </a>
+  {% else %}
+  <div class="cc-stat cc-dashboard-stat">
+    <span>سفارش‌های پرداخت‌شده</span>
+    <strong>{{ paid_order_count }}</strong>
+    <small>مبنای آمار فروش</small>
+  </div>
+  {% endif %}
+  <div class="cc-stat cc-dashboard-stat cc-dashboard-revenue-stat">
+    <span>فروش امروز</span>
+    <strong>{{ today_revenue|floatformat:0 }}</strong>
+    <small>تومان</small>
+  </div>
+</div>
+
+<div class="cc-dashboard-analytics-grid">
+  <section class="cc-card cc-dashboard-chart-card">
+    <div class="cc-dashboard-card-head">
+      <div>
+        <span class="cc-eyebrow">LAST 7 DAYS</span>
+        <h2>روند فروش روزانه</h2>
+        <p>مبلغ سفارش‌های پرداخت‌شده در ۷ روز اخیر.</p>
+      </div>
+      <span class="cc-chart-legend"><i></i> فروش</span>
+    </div>
+    <div class="cc-bar-chart">
+      {% for row in daily_sales %}
+      <div class="cc-bar-col" title="{{ row.label }} — {{ row.revenue|floatformat:0 }} تومان">
+        <span class="cc-bar-value">{{ row.revenue|floatformat:0 }}</span>
+        <div class="cc-bar-track">
+          <div class="cc-bar-fill" style="height:{{ row.width }}%"></div>
+        </div>
+        <span class="cc-bar-label">{{ row.label }}</span>
+        <small>{{ row.orders }} سفارش</small>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="cc-card cc-dashboard-chart-card">
+    <div class="cc-dashboard-card-head">
+      <div>
+        <span class="cc-eyebrow">TOP PRODUCTS</span>
+        <h2>پرفروش‌ترین لباس‌ها</h2>
+        <p>محصولاتی که بیشترین تعداد فروش را داشته‌اند.</p>
+      </div>
+      <span class="cc-chart-legend"><i></i> تعداد فروش</span>
+    </div>
+    <div class="cc-top-products">
+      {% for row in top_products %}
+      <div class="cc-top-product">
+        <div class="cc-top-product-head">
+          <strong>{{ row.items__product_name }}</strong>
+          <b>{{ row.quantity }} عدد</b>
+        </div>
+        <div class="cc-top-product-track">
+          <div class="cc-top-product-fill" style="width:{{ row.width }}%"></div>
+        </div>
+        <div class="cc-top-product-meta">
+          <span>{{ row.revenue|floatformat:0 }} تومان فروش</span>
+        </div>
+      </div>
+      {% empty %}
+      <div class="cc-dashboard-empty">
+        <span>↗</span>
+        <strong>هنوز فروش ثبت‌شده‌ای نداریم</strong>
+        <small>بعد از اولین پرداخت موفق، محصولات پرفروش اینجا نمایش داده می‌شوند.</small>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<section class="cc-card cc-dashboard-month-card">
+  <div class="cc-dashboard-card-head">
+    <div>
+      <span class="cc-eyebrow">LAST 6 MONTHS</span>
+      <h2>فروش ماهانه</h2>
+      <p>مقایسه تعداد سفارش و مبلغ فروش در شش ماه اخیر.</p>
+    </div>
+  </div>
+  <div class="cc-month-chart">
+    {% for row in monthly_sales %}
+    <div class="cc-month-row">
+      <span class="cc-month-label">{{ row.label }}</span>
+      <div class="cc-month-track"><div class="cc-month-fill" style="width:{{ row.width }}%"></div></div>
+      <span class="cc-month-orders">{{ row.orders }} سفارش</span>
+      <strong>{{ row.revenue|floatformat:0 }} <small>تومان</small></strong>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="cc-grid cc-dashboard-bottom">
+  <section class="cc-card">
+    <div class="cc-card-head">
+      <div><span class="cc-eyebrow">QUICK ACTIONS</span><h2>دسترسی سریع</h2></div>
+    </div>
+    <div class="cc-actions">
+      {% if request.user.is_superuser or request.user.role in 'admin,support_manager' %}<a href="{% url 'control:user_create' %}">+ کاربر جدید</a>{% endif %}
+      {% if request.user.is_superuser or request.user.role in 'admin,store_manager' %}<a href="{% url 'control:product_create' %}">+ محصول جدید</a><a href="{% url 'control:category_create' %}">+ دسته‌بندی جدید</a>{% endif %}
+      {% if request.user.is_superuser or request.user.role in 'admin,order_manager' %}<a href="{% url 'control:orders' %}">سفارش‌ها</a>{% endif %}
+    </div>
+  </section>
+  <section class="cc-card">
+    <div class="cc-card-head"><div><span class="cc-eyebrow">STATUS</span><h2>وضعیت سیستم</h2></div></div>
+    <div class="cc-dashboard-status-list">
+      <div><span>دسته‌بندی‌ها</span><b>{{ category_count }}</b></div>
+      <div><span>کل سفارش‌ها</span><b>{{ order_count }}</b></div>
+      <div><span>پرداخت موفق</span><b>{{ paid_order_count }}</b></div>
+    </div>
+  </section>
+</div>
+{% endblock %}

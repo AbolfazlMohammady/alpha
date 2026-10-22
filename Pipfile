@@ -1,0 +1,51 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+djangorestframework = "*"
+python-dotenv = "*"
+coverage = "==7.3.2"
+freezegun = "==1.2.2"
+responses = "==0.24.1"
+fastapi = "*"
+pydantic = "*"
+celery = "==5.4.0"
+django = "==4.2"
+uvicorn = {extras = ["standard"], version = "*"}
+gunicorn = "*"
+djangorestframework-simplejwt = "*"
+django-debug-toolbar = "*"
+pillow = "==12.3.0"
+redis = "==6.4.0"
+drf-spectacular = "*"
+drf-spectacular-sidecar = "*"
+dotenv = "*"
+django-phonenumber-field = {extras = ["phonenumbers"], version = "*"}
+django-countries = "*"
+django-cuser = "*"
+django-tinymce = "*"
+django-axes = "*"
+django-redis = "*"
+langdetect = "*"
+unidecode = "*"
+psycopg2-binary = "*"
+dj-database-url = "*"
+django-cors-headers = "*"
+pytest = "*"
+pytest-django = "*"
+pytest-cov = "*"
+factory-boy = "*"
+model-bakery = "*"
+whitenoise = "*"
+rembg = {extras = ["cpu"], version = "==2.0.85"}
+
+[dev-packages]
+coverage = "==7.3.2"
+model-bakery = "==1.17.0"
+freezegun = "==1.2.2"
+responses = "==0.24.1"
+
+[requires]
+python_version = "3.11"

@@ -1,0 +1,111 @@
+{% comment %}
+=============================================================================
+ One product card.
+-----------------------------------------------------------------------------
+ Expects: product
+
+ Performance notes
+   * The media box is a fixed 4:5 area, so the grid is uniform and there is no
+     layout shift while images load. Width/height are added only when the
+     storage layer reports the intrinsic size.
+   * <picture> advertises AVIF and WebP derivatives, but only the formats that
+     actually exist on disk (see shop_tags.image_variants). Before
+     `manage.py generate_image_variants` has run, this degrades to a single
+     <img> with the original file — never a 404.
+   * loading="lazy" is correct for every card: the hero occupies the first
+     screen, so no card image is an LCP candidate.
+
+ The class names are load-bearing: js/pages/shop-cards.js hooks
+ [data-product-card], [data-card-slide], [data-favorite-button] and
+ .shop-reference__media on the initial page load and again for every card that
+ infinite scroll appends.
+=============================================================================
+{% endcomment %}
+{% load shop_tags %}
+{% load static %}
+<article class="shop-reference__card" data-product-card>
+    <div class="shop-reference__media">
+        <a class="shop-reference__media-link" href="{% url 'shop:product' product.slug %}" aria-label="{{ product.name }}">
+            <div class="product-card__slides">
+                {% for image in product.card_images %}
+                    <div class="product-card__slide{% if forloop.first %} is-active{% endif %}" data-card-slide>
+                        {% if forloop.first %}
+                            {% image_variants image as variants %}
+                            <picture>
+                                {% if variants.avif %}
+                                    <source type="image/avif"
+                                            sizes="(max-width: 480px) 47vw, (max-width: 940px) 45vw, (max-width: 1200px) 30vw, 220px"
+                                            srcset="{{ variants.avif }}">
+                                {% endif %}
+                                {% if variants.webp %}
+                                    <source type="image/webp"
+                                            sizes="(max-width: 480px) 47vw, (max-width: 940px) 45vw, (max-width: 1200px) 30vw, 220px"
+                                            srcset="{{ variants.webp }}">
+                                {% endif %}
+                                <img src="{{ variants.src }}"
+                                     alt="{{ image.alt_text|default:product.name }}"
+                                     loading="lazy" decoding="async"
+                                     {% if variants.width %}width="{{ variants.width }}" height="{{ variants.height }}"{% endif %}>
+                            </picture>
+                        {% else %}
+                            {% comment %}
+                            Secondary slides stay single-source and lazy: they are
+                            only revealed on hover or swipe, so the derivatives
+                            would not pay for themselves.
+                            {% endcomment %}
+                            <img src="{{ image.image.url }}"
+                                 alt="{{ image.alt_text|default:product.name }}"
+                                 loading="lazy" decoding="async">
+                        {% endif %}
+                    </div>
+                {% empty %}
+                    {% comment %}
+                    Was images/home/Tshirt.png at 1,845 KB. This 32 KB WebP is
+                    the same product shot optimised, so the no-photo path no
+                    longer costs a phone ~2 MB.
+                    {% endcomment %}
+                    <div class="product-card__slide is-active" data-card-slide>
+                        <img src="{% static 'images/cards/fallback.webp' %}"
+                             alt="{{ product.name }}" loading="lazy" decoding="async">
+                    </div>
+                {% endfor %}
+            </div>
+        </a>
+
+        {% if product.is_featured %}<span class="shop-reference__badge shop-reference__badge--new">ویژه</span>{% endif %}
+        {% if product.has_discount %}<span class="shop-reference__badge shop-reference__badge--discount">{{ product.discount_percent|discount_percent }}</span>{% endif %}
+
+        <form method="post" action="{% url 'saved:toggle_favorite' product.id %}" class="shop-reference__favorite-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit"
+                    class="shop-reference__favorite{% if product.is_favorite %} is-active{% endif %}"
+                    data-favorite-button
+                    aria-label="{% if product.is_favorite %}حذف {{ product.name }} از علاقه‌مندی‌ها{% else %}افزودن {{ product.name }} به علاقه‌مندی‌ها{% endif %}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.4-8.8 10.1-8.8 10.1S3.2 14.1 3.2 8.7A4.7 4.7 0 0 1 12 6.1a4.7 4.7 0 0 1 8.8 2.6Z"></path></svg>
+            </button>
+        </form>
+    </div>
+
+    <div class="shop-reference__card-body">
+        <a href="{% url 'shop:product' product.slug %}" class="shop-reference__card-info">
+            <h3>{{ product.name }}</h3>
+            <div class="shop-reference__price-row">
+                <strong>{{ product.display_price|price }}</strong>
+                <span>تومان</span>
+                {% if product.has_discount %}<del>{{ product.display_compare_price|price }}</del>{% endif %}
+            </div>
+        </a>
+        {% if product.has_variants %}
+            <a class="shop-reference__cart" href="{% url 'shop:product' product.slug %}" aria-label="انتخاب رنگ و سایز {{ product.name }}">
+        {% else %}
+            <form method="post" action="{% url 'orders:cart_add' %}" class="shop-reference__cart-form">
+                {% csrf_token %}
+                <input type="hidden" name="product_id" value="{{ product.id }}">
+                <input type="hidden" name="quantity" value="1">
+                <button type="submit" class="shop-reference__cart" aria-label="افزودن {{ product.name }} به سبد">
+        {% endif %}
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2l1.5 9.2a2 2 0 0 0 2 1.8h7.2a2 2 0 0 0 1.9-1.5L20 9H7"></path><path d="M9 19.5h.01M18 19.5h.01"></path></svg>
+        {% if product.has_variants %}</a>{% else %}</button></form>{% endif %}
+    </div>
+</article>

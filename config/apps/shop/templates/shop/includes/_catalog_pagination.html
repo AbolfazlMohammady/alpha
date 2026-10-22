@@ -1,0 +1,34 @@
+{% comment %}
+=============================================================================
+ Pagination.
+-----------------------------------------------------------------------------
+ Expects: is_paginated, page_obj, paginator
+
+ Every link now carries the full filter state through shop_tags.query_replace,
+ instead of the three hand-written querystrings this used to repeat — those
+ dropped any filter added after they were written.
+
+ The anchors stay real <a href> elements even though shop-reference.js also
+ drives infinite scroll from them: the crawlable path is what lets page 2+ be
+ discovered, and the sentinel below is what triggers the fetch.
+=============================================================================
+{% endcomment %}
+{% load shop_tags %}
+{% if is_paginated %}
+    <nav class="shop-reference__pagination" aria-label="صفحه‌بندی محصولات" data-shop-pagination>
+        {% if page_obj.has_previous %}
+            <a href="{% query_replace page=page_obj.previous_page_number %}" aria-label="صفحه قبل">‹</a>
+        {% endif %}
+        {% for number in paginator.page_range %}
+            {% if number == page_obj.number %}
+                <span class="is-current" aria-current="page">{{ number|price }}</span>
+            {% elif number <= 4 or number == paginator.num_pages %}
+                <a href="{% query_replace page=number %}">{{ number|price }}</a>
+            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+            <a href="{% query_replace page=page_obj.next_page_number %}" aria-label="صفحه بعد">›</a>
+        {% endif %}
+    </nav>
+    <div class="shop-reference__infinite-sentinel" data-shop-infinite-sentinel aria-hidden="true"></div>
+{% endif %}

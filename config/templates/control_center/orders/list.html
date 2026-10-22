@@ -1,0 +1,327 @@
+{% extends "control_center/base.html" %}
+{% load shop_tags %}
+{% block title %}سفارش‌ها | BABAEI{% endblock %}
+{% block content %}
+<div class="cc-page-head cc-list-page-head cc-orders-head">
+  <div>
+    <span class="cc-eyebrow">STORE / ORDERS</span>
+    <h1>سفارش‌ها</h1>
+    <p>جزئیات سفارش‌ها و وضعیت واقعی پرداخت و ارسال را برای پیگیری مشاهده کن.</p>
+  </div>
+  <div class="cc-list-head-side">
+    <span class="cc-list-count"><b>{{ page_obj.paginator.count }}</b> نتیجه</span>
+  </div>
+</div>
+
+<div class="cc-order-stats">
+  <div class="cc-order-stat"><span>کل سفارش‌ها</span><strong>{{ order_total_count }}</strong><small>همه سفارش‌های ثبت‌شده</small></div>
+  <div class="cc-order-stat is-warning"><span>نیازمند پرداخت</span><strong>{{ order_pending_payment_count }}</strong><small>پرداخت‌نشده یا در انتظار</small></div>
+  <div class="cc-order-stat is-gold"><span>در صف آماده‌سازی</span><strong>{{ order_ready_count }}</strong><small>پرداخت موفق</small></div>
+  <div class="cc-order-stat is-blue"><span>در حال ارسال</span><strong>{{ order_shipping_count }}</strong><small>ارسال‌شده و منتظر تحویل</small></div>
+  <div class="cc-order-stat is-revenue"><span>فروش این ماه</span><strong>{{ order_month_revenue|price }}</strong><small>تومان / پرداخت موفق</small></div>
+</div>
+
+<form class="cc-card cc-order-filters cc-order-filters-desktop" method="get">
+  <div class="cc-order-filter-grid">
+    <div class="cc-search-wrap">
+      <span class="cc-search-icon" aria-hidden="true">⌕</span>
+      <input class="cc-input" name="q" value="{{ request.GET.q }}" placeholder="شماره سفارش، نام، موبایل یا مرجع پرداخت...">
+    </div>
+    <select class="cc-input" name="status">
+      <option value="">همه وضعیت سفارش</option>
+      {% for value,label in status_choices %}
+        <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select class="cc-input" name="payment_status">
+      <option value="">همه وضعیت پرداخت</option>
+      {% for value,label in payment_status_choices %}
+        <option value="{{ value }}" {% if request.GET.payment_status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select class="cc-input" name="shipping_status">
+      <option value="">همه وضعیت ارسال</option>
+      {% for value,label in shipping_status_choices %}
+        <option value="{{ value }}" {% if request.GET.shipping_status == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select class="cc-input" name="design">
+      <option value="">همه نوع سفارش</option>
+      <option value="3d" {% if request.GET.design == "3d" %}selected{% endif %}>سفارش‌های طراحی سه‌بعدی</option>
+      <option value="without_3d" {% if request.GET.design == "without_3d" %}selected{% endif %}>بدون طراحی سه‌بعدی</option>
+    </select>
+    <select class="cc-input" name="period">
+      <option value="">همه زمان‌ها</option>
+      <option value="today" {% if request.GET.period == "today" %}selected{% endif %}>امروز</option>
+      <option value="7" {% if request.GET.period == "7" %}selected{% endif %}>۷ روز اخیر</option>
+      <option value="30" {% if request.GET.period == "30" %}selected{% endif %}>۳۰ روز اخیر</option>
+    </select>
+  </div>
+  <div class="cc-order-filter-actions">
+    <button class="cc-btn primary" type="submit">اعمال فیلتر</button>
+    {% if request.GET.q or request.GET.status or request.GET.payment_status or request.GET.shipping_status or request.GET.design or request.GET.period %}
+      <a class="cc-btn" href="{% url 'control:orders' %}">پاک کردن</a>
+    {% endif %}
+  </div>
+</form>
+
+<button class="cc-mobile-orders-filter-trigger" type="button" data-orders-filter-open aria-expanded="false" aria-controls="cc-orders-filter-drawer">
+  <span class="cc-mobile-orders-filter-icon" aria-hidden="true">⌘</span>
+  <span>فیلتر و مرتب‌سازی</span>
+  {% with active=0 %}
+    <span class="cc-mobile-orders-filter-count" data-orders-filter-count>
+      {% if request.GET.status %}1{% endif %}{% if request.GET.payment_status %}1{% endif %}{% if request.GET.shipping_status %}1{% endif %}{% if request.GET.design %}1{% endif %}{% if request.GET.period %}1{% endif %}
+    </span>
+  {% endwith %}
+</button>
+
+<div class="cc-mobile-orders-filter-drawer" id="cc-orders-filter-drawer" data-orders-filter-drawer aria-hidden="true">
+  <div class="cc-mobile-orders-filter-backdrop" data-orders-filter-close></div>
+  <section class="cc-mobile-orders-filter-panel" role="dialog" aria-modal="true" aria-labelledby="cc-orders-filter-title">
+    <div class="cc-mobile-orders-filter-head">
+      <div>
+        <span class="cc-eyebrow">ORDERS / FILTER</span>
+        <h2 id="cc-orders-filter-title">فیلتر سفارش‌ها</h2>
+        <p>فیلترها را انتخاب کن و سپس نتایج سفارش‌ها را نمایش بده.</p>
+      </div>
+      <button type="button" class="cc-mobile-orders-filter-close" data-orders-filter-close aria-label="بستن فیلتر">×</button>
+    </div>
+
+    <form method="get" class="cc-mobile-orders-filter-form">
+      <div class="cc-search-wrap">
+        <span class="cc-search-icon" aria-hidden="true">⌕</span>
+        <input class="cc-input" name="q" value="{{ request.GET.q }}" placeholder="شماره سفارش، نام یا موبایل...">
+      </div>
+
+      <div class="cc-mobile-orders-filter-section">
+        <h3>وضعیت سفارش</h3>
+        <div class="cc-mobile-orders-filter-chips">
+          <label class="{% if not request.GET.status %}is-active{% endif %}"><input type="radio" name="status" value="" {% if not request.GET.status %}checked{% endif %}><span>همه</span></label>
+          {% for value,label in status_choices %}
+            <label class="{% if request.GET.status == value %}is-active{% endif %}"><input type="radio" name="status" value="{{ value }}" {% if request.GET.status == value %}checked{% endif %}><span>{{ label }}</span></label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="cc-mobile-orders-filter-section">
+        <h3>وضعیت پرداخت</h3>
+        <div class="cc-mobile-orders-filter-chips">
+          <label class="{% if not request.GET.payment_status %}is-active{% endif %}"><input type="radio" name="payment_status" value="" {% if not request.GET.payment_status %}checked{% endif %}><span>همه</span></label>
+          {% for value,label in payment_status_choices %}
+            <label class="{% if request.GET.payment_status == value %}is-active{% endif %}"><input type="radio" name="payment_status" value="{{ value }}" {% if request.GET.payment_status == value %}checked{% endif %}><span>{{ label }}</span></label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="cc-mobile-orders-filter-section">
+        <h3>وضعیت ارسال</h3>
+        <div class="cc-mobile-orders-filter-chips">
+          <label class="{% if not request.GET.shipping_status %}is-active{% endif %}"><input type="radio" name="shipping_status" value="" {% if not request.GET.shipping_status %}checked{% endif %}><span>همه</span></label>
+          {% for value,label in shipping_status_choices %}
+            <label class="{% if request.GET.shipping_status == value %}is-active{% endif %}"><input type="radio" name="shipping_status" value="{{ value }}" {% if request.GET.shipping_status == value %}checked{% endif %}><span>{{ label }}</span></label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="cc-mobile-orders-filter-section">
+        <h3>نوع سفارش</h3>
+        <div class="cc-mobile-orders-filter-chips">
+          <label class="{% if not request.GET.design %}is-active{% endif %}"><input type="radio" name="design" value="" {% if not request.GET.design %}checked{% endif %}><span>همه</span></label>
+          <label class="{% if request.GET.design == "3d" %}is-active{% endif %}"><input type="radio" name="design" value="3d" {% if request.GET.design == "3d" %}checked{% endif %}><span>طراحی سه‌بعدی</span></label>
+          <label class="{% if request.GET.design == "without_3d" %}is-active{% endif %}"><input type="radio" name="design" value="without_3d" {% if request.GET.design == "without_3d" %}checked{% endif %}><span>بدون طراحی سه‌بعدی</span></label>
+        </div>
+      </div>
+
+      <div class="cc-mobile-orders-filter-section">
+        <h3>بازه زمانی</h3>
+        <div class="cc-mobile-orders-filter-chips">
+          <label class="{% if not request.GET.period %}is-active{% endif %}"><input type="radio" name="period" value="" {% if not request.GET.period %}checked{% endif %}><span>همه زمان‌ها</span></label>
+          <label class="{% if request.GET.period == "today" %}is-active{% endif %}"><input type="radio" name="period" value="today" {% if request.GET.period == "today" %}checked{% endif %}><span>امروز</span></label>
+          <label class="{% if request.GET.period == "7" %}is-active{% endif %}"><input type="radio" name="period" value="7" {% if request.GET.period == "7" %}checked{% endif %}><span>۷ روز اخیر</span></label>
+          <label class="{% if request.GET.period == "30" %}is-active{% endif %}"><input type="radio" name="period" value="30" {% if request.GET.period == "30" %}checked{% endif %}><span>۳۰ روز اخیر</span></label>
+        </div>
+      </div>
+
+      <div class="cc-mobile-orders-filter-actions">
+        <button class="cc-mobile-orders-filter-apply" type="submit">نمایش سفارش‌ها</button>
+        {% if request.GET.q or request.GET.status or request.GET.payment_status or request.GET.shipping_status or request.GET.design or request.GET.period %}
+          <a href="{% url 'control:orders' %}" class="cc-mobile-orders-filter-clear">پاک کردن فیلترها</a>
+        {% endif %}
+      </div>
+    </form>
+  </section>
+</div>
+
+<script>
+(function () {
+  const root = document;
+  const drawer = root.querySelector('[data-orders-filter-drawer]');
+  const openButton = root.querySelector('[data-orders-filter-open]');
+  if (!drawer || !openButton) return;
+
+  const close = () => {
+    drawer.classList.remove('is-open');
+    drawer.setAttribute('aria-hidden', 'true');
+    openButton.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('cc-orders-filter-locked');
+  };
+
+  const open = () => {
+    drawer.classList.add('is-open');
+    drawer.setAttribute('aria-hidden', 'false');
+    openButton.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('cc-orders-filter-locked');
+  };
+
+  openButton.addEventListener('click', open);
+  drawer.querySelectorAll('[data-orders-filter-close]').forEach((item) => item.addEventListener('click', close));
+
+  drawer.querySelectorAll('.cc-mobile-orders-filter-chips input').forEach((input) => {
+    input.addEventListener('change', () => {
+      drawer.querySelectorAll('label input[name="' + input.name + '"]').forEach((radio) => {
+        radio.closest('label')?.classList.toggle('is-active', radio.checked);
+      });
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && drawer.classList.contains('is-open')) close();
+  });
+})();
+</script>
+
+<div class="cc-card cc-list-card cc-order-list-card">
+  <div class="cc-list-card-head">
+    <div>
+      <strong>لیست سفارش‌ها</strong>
+      <small>این بخش فقط برای مشاهده و پیگیری سفارش‌هاست؛ هیچ عملیات پرداخت یا تغییر وضعیت از اینجا انجام نمی‌شود.</small>
+    </div>
+  </div>
+
+  <div class="cc-mobile-order-list">
+    {% for order in orders %}
+      <article class="cc-mobile-order-card">
+        <div class="cc-mobile-order-top">
+          <a class="cc-order-number" href="{% url 'control:order_detail' order.pk %}">{{ order.number }}</a>
+          <div class="cc-mobile-order-date">
+            <span>{{ order.created_at|date:"Y/m/d" }}</span>
+            <small>{{ order.created_at|date:"H:i" }}</small>
+          </div>
+        </div>
+
+        <div class="cc-mobile-order-customer">
+          <div>
+            <strong>{{ order.user.get_full_name|default:"مشتری" }}</strong>
+            <a href="tel:{{ order.user.phone }}" dir="ltr">{{ order.user.phone }}</a>
+          </div>
+          {% if order.has_3d_design %}
+            <span class="cc-order-3d-pill">3D</span>
+          {% endif %}
+        </div>
+
+        <div class="cc-mobile-order-summary">
+          <div>
+            <span>مبلغ</span>
+            <strong>{{ order.total_amount|price }} <small>تومان</small></strong>
+          </div>
+          <div>
+            <span>اقلام</span>
+            <strong>{{ order.total_quantity|default:0 }} <small>عدد</small></strong>
+          </div>
+          <div>
+            <span>نوع سفارش</span>
+            <strong>{% if order.has_3d_design %}طراحی 3D{% else %}عادی{% endif %}</strong>
+          </div>
+        </div>
+
+        <div class="cc-mobile-order-statuses">
+          <div>
+            <span>پرداخت</span>
+            <span class="cc-order-badge cc-order-payment cc-order-payment-{{ order.payment_status }}">{{ order.get_payment_status_display }}</span>
+          </div>
+          <div>
+            <span>ارسال</span>
+            <span class="cc-order-badge cc-order-shipping cc-order-shipping-{{ order.shipping_status }}">{{ order.get_shipping_status_display }}</span>
+          </div>
+          <div>
+            <span>وضعیت</span>
+            <span class="cc-order-badge cc-order-status cc-order-status-{{ order.status }}">{{ order.get_status_display }}</span>
+          </div>
+        </div>
+
+        <a class="cc-mobile-order-open" href="{% url 'control:order_detail' order.pk %}">
+          مشاهده جزئیات سفارش
+          <span aria-hidden="true">←</span>
+        </a>
+      </article>
+    {% empty %}
+      <div class="cc-mobile-order-empty">
+        <strong>سفارشی پیدا نشد</strong>
+        <span>فیلترها یا عبارت جستجو را تغییر بده.</span>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="cc-table-wrap cc-list-table-wrap">
+    <table class="cc-table cc-table-v2 cc-orders-table">
+      <thead>
+        <tr>
+          <th>سفارش</th>
+          <th>مشتری</th>
+          <th>اقلام</th>
+          <th>مبلغ</th>
+          <th>پرداخت</th>
+          <th>ارسال</th>
+          <th>وضعیت</th>
+          <th>زمان</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+        <tr class="cc-data-row">
+          <td data-label="سفارش">
+            <a class="cc-order-number" href="{% url 'control:order_detail' order.pk %}">
+              {{ order.number }}
+            </a>
+          </td>
+          <td data-label="مشتری">
+            <div class="cc-order-customer">
+              <strong>{{ order.user.get_full_name|default:"مشتری" }}</strong>
+              <a class="cc-order-list-phone" href="tel:{{ order.user.phone }}" dir="ltr">{{ order.user.phone }}</a>
+            </div>
+          </td>
+          <td data-label="اقلام">
+            <span class="cc-number-pill">{{ order.total_quantity|default:0 }} عدد</span>
+            <small class="cc-item-count">{{ order.item_count }} آیتم</small>
+            {% if order.has_3d_design %}
+              <span class="cc-order-3d-pill">3D</span>
+            {% endif %}
+          </td>
+          <td data-label="مبلغ">
+            <div class="cc-price-cell">
+              <strong>{{ order.total_amount|price }}</strong>
+              <small>تومان</small>
+            </div>
+          </td>
+          <td data-label="پرداخت"><span class="cc-order-badge cc-order-payment cc-order-payment-{{ order.payment_status }}">{{ order.get_payment_status_display }}</span></td>
+          <td data-label="ارسال"><span class="cc-order-badge cc-order-shipping cc-order-shipping-{{ order.shipping_status }}">{{ order.get_shipping_status_display }}</span></td>
+          <td data-label="وضعیت"><span class="cc-order-badge cc-order-status cc-order-status-{{ order.status }}">{{ order.get_status_display }}</span></td>
+          <td data-label="زمان">
+            <span class="cc-order-date">{{ order.created_at|date:"Y/m/d" }}</span>
+            <small class="cc-order-time">{{ order.created_at|date:"H:i" }}</small>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="8" class="cc-empty cc-list-empty">
+          <span>⌑</span>
+          <strong>سفارشی پیدا نشد</strong>
+          <small>فیلترها یا عبارت جستجو را تغییر بده.</small>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "control_center/pagination.html" %}
+{% endblock %}

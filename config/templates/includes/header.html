@@ -1,0 +1,11 @@
+{% comment %}
+Global public navigation.
+The shop shell is shared by the home page, catalogue, product pages, account,
+orders and saved pages so the 3D designer entry is available everywhere.
+Auth screens remain intentionally minimal.
+{% endcomment %}
+{% if request.resolver_match.namespace == 'users' and request.resolver_match.url_name == 'login' or request.resolver_match.namespace == 'users' and request.resolver_match.url_name == 'verify_otp' %}
+    {# Auth pages intentionally render without global site navigation. #}
+{% else %}
+    {% include "includes/shop_header.html" %}
+{% endif %}

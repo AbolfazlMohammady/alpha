@@ -1,0 +1,238 @@
+:root {
+    --nf-black: #000000;
+    --nf-white: #ffffff;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+body.not-found-page {
+    min-height: 100vh;
+    overflow: hidden;
+    background: #000;
+    color: #000;
+    font-family: "Vazirmatn", Tahoma, sans-serif;
+}
+
+.not-found {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    min-height: 560px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+}
+
+.not-found__canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 1;
+}
+
+.not-found__characters {
+    position: absolute;
+    width: 99%;
+    height: 95%;
+    inset: auto;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.not-found__character {
+    position: absolute;
+    width: 18%;
+    height: 18%;
+    object-fit: fill;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+    will-change: left, transform;
+}
+
+.not-found__character--static {
+    bottom: 5%;
+}
+
+.not-found__message {
+    position: absolute;
+    width: 90%;
+    height: 90%;
+    inset: 5%;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+.not-found__message-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 500ms ease;
+    pointer-events: auto;
+}
+
+.not-found__message.is-visible .not-found__message-inner {
+    opacity: 1;
+}
+
+.not-found__eyebrow {
+    display: none;
+}
+
+.not-found__title {
+    margin: 1%;
+    color: #000;
+    font-size: 35px;
+    line-height: 1.15;
+    font-weight: 600;
+}
+
+.not-found__code {
+    margin: 1%;
+    color: #000;
+    font-size: 80px;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.not-found__description {
+    width: 50%;
+    min-width: 40%;
+    margin: 1%;
+    color: #000;
+    font-size: 15px;
+    line-height: 1.6;
+    text-align: center;
+}
+
+.not-found__actions {
+    display: flex;
+    gap: 24px;
+    margin-top: 32px;
+    justify-content: center;
+}
+
+.not-found__button {
+    min-width: auto;
+    min-height: auto;
+    padding: 8px 24px;
+    border: 2px solid #000;
+    border-radius: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #000;
+    background: transparent;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.5;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background-color 300ms ease-in-out,
+        color 300ms ease-in-out,
+        transform 300ms ease-in-out;
+}
+
+.not-found__button svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex: 0 0 auto;
+}
+
+.not-found__button:hover {
+    transform: scale(1.05);
+}
+
+.not-found__button--outline:hover {
+    color: #fff;
+    background: #000;
+}
+
+.not-found__button--solid {
+    color: #fff;
+    background: #000;
+}
+
+.not-found__button--solid:hover {
+    color: #fff;
+    background: #111;
+}
+
+@media (max-width: 640px) {
+    .not-found {
+        height: 100dvh;
+        min-height: 520px;
+    }
+
+    /* Keep the desktop composition on mobile; only scale typography slightly. */
+    .not-found__message {
+        width: 92%;
+        height: 90%;
+        inset: 5% 4%;
+    }
+
+    .not-found__message-inner {
+        width: 100%;
+        padding-inline: 8px;
+    }
+
+    .not-found__title {
+        font-size: clamp(30px, 8.5vw, 35px);
+    }
+
+    .not-found__code {
+        font-size: clamp(68px, 20vw, 80px);
+    }
+
+    .not-found__description {
+        width: min(78%, 360px);
+        min-width: 0;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    .not-found__actions {
+        gap: 16px;
+        margin-top: 28px;
+    }
+
+    .not-found__button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .not-found__message-inner {
+        opacity: 1;
+        transition: none;
+    }
+}
