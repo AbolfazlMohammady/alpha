@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Case, CharField, Count, ExpressionWrapper, F, OuterRef, PositiveBigIntegerField, Prefetch, Subquery, Sum, When, Value
@@ -235,7 +236,7 @@ def checkout_view(request):
     )
     items = list(
         cart.items
-        .select_related("product", "variant__color", "variant__size")
+        .select_related("product", "variant__color", "variant__size", "custom_design", "vendor_listing__vendor")
         .order_by("added_at", "id")
     )
 
@@ -243,9 +244,11 @@ def checkout_view(request):
         messages.info(request, "سبد خرید شما خالی است.")
         return redirect("orders:cart")
 
+    shipping_quote_ids = []
     if request.method == "POST":
         address_id = request.POST.get("address_id")
         note = request.POST.get("customer_note", "")
+        shipping_quote_ids = [value.strip() for value in request.POST.get("shipping_quote_ids", "").split(",") if value.strip()]
         try:
             address = Address.objects.select_related("city", "city__province", "user").get(
                 pk=address_id,
@@ -256,8 +259,9 @@ def checkout_view(request):
                 cart=cart,
                 address=address,
                 customer_note=note,
+                shipping_quote_ids=shipping_quote_ids,
             )
-        except (Address.DoesNotExist, ValueError) as exc:
+        except (Address.DoesNotExist, ValueError, ValidationError) as exc:
             messages.error(request, str(exc) or "لطفاً یک آدرس معتبر انتخاب کنید.")
         else:
             _remember_cart_count(request, 0)
@@ -281,6 +285,8 @@ def checkout_view(request):
             "subtotal": subtotal,
             "shipping_amount": 0,
             "total_amount": subtotal,
+            "shipping_quote_ids": ",".join(shipping_quote_ids),
+            "has_vendor_listings": any(item.vendor_listing_id for item in items),
         },
     )
 
