@@ -136,7 +136,7 @@ def merge_guest_cart(request, user) -> None:
     request._babaei_cart_item_count = merged_count
 
 
-def add_design_to_cart(request, *, design: DesignDraft, quantity=1) -> CartItem:
+def add_design_to_cart(request, *, design: DesignDraft, quantity=1, vendor_listing=None) -> CartItem:
     quantity = int(quantity)
     if quantity < 1:
         raise ValueError("تعداد باید حداقل ۱ باشد.")
@@ -148,14 +148,25 @@ def add_design_to_cart(request, *, design: DesignDraft, quantity=1) -> CartItem:
         raise ValueError("این طراحی متعلق به کاربر دیگری است.")
     if not design.user_id and design.session_key != session_key:
         raise ValueError("این طراحی متعلق به نشست فعلی نیست.")
+    if vendor_listing is not None:
+        from apps.marketplace.models import VendorProduct
+        vendor_listing = VendorProduct.objects.select_related("vendor").get(
+            pk=vendor_listing.pk, product_id=design.product_id,
+            status=VendorProduct.Status.ACTIVE, vendor__status="active",
+            supports_custom_printing=True,
+        )
+        if vendor_listing.stock_quantity < quantity:
+            raise ValueError("موجودی فروشنده برای این سفارش کافی نیست.")
     with transaction.atomic():
         cart = get_active_cart(request)
         item = CartItem.objects.filter(cart=cart, custom_design=design).select_for_update().first()
         if item:
+            if item.vendor_listing_id != getattr(vendor_listing, "id", None):
+                raise ValueError("این طراحی قبلاً با فروشنده دیگری به سبد اضافه شده است.")
             item.quantity += quantity
             item.save(update_fields=("quantity", "updated_at"))
         else:
-            item = CartItem.objects.create(cart=cart, product=design.product, variant=design.variant, custom_design=design, quantity=quantity)
+            item = CartItem.objects.create(cart=cart, product=design.product, variant=design.variant, custom_design=design, vendor_listing=vendor_listing, quantity=quantity)
     return item
 
 
