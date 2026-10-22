@@ -13,8 +13,10 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
+from apps.orders.models import Cart, CartItem
+from apps.users.models import Address
 from .models import SettlementBatch, Shipment, Vendor, VendorOrder
-from .services import approve_settlement, mark_vendor_order_delivered, record_payout_result
+from .services import approve_settlement, create_shipping_quote, mark_vendor_order_delivered, record_payout_result
 
 
 def _json_body(request):
@@ -29,6 +31,53 @@ def _json_body(request):
 
 def _error(message, status=400):
     return JsonResponse({"ok": False, "error": str(message)}, status=status)
+
+
+@login_required
+@require_POST
+def cart_shipping_quote_api(request):
+    """Create a short-lived quote for one seller-owned cart line."""
+    try:
+        payload = _json_body(request)
+        cart = Cart.objects.filter(user=request.user, status=Cart.Status.ACTIVE).first()
+        if not cart:
+            return _error("سبد خرید فعال پیدا نشد.", 404)
+        item = get_object_or_404(
+            CartItem.objects.select_related("vendor_listing__vendor", "product"),
+            pk=payload.get("cart_item_id"),
+            cart=cart,
+        )
+        address = get_object_or_404(
+            Address.objects.select_related("city", "city__province"),
+            pk=payload.get("address_id"),
+            user=request.user,
+        )
+        quote = create_shipping_quote(
+            user=request.user,
+            cart_item=item,
+            address=address,
+            provider=payload.get("provider", "tipax"),
+        )
+        return JsonResponse({
+            "ok": True,
+            "quote_id": str(quote.uuid),
+            "cart_item_id": item.id,
+            "provider": quote.provider,
+            "amount": quote.amount,
+            "currency": quote.currency,
+            "expires_at": quote.expires_at.isoformat(),
+            "message": "هزینه ارسال برآورد شد؛ قیمت نهایی ممکن است در صورتحساب شرکت حمل متفاوت باشد.",
+        })
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    except CarrierNotConfigured as exc:
+        return _error(exc, 503)
+    except CarrierError as exc:
+        return _error(exc, 502)
+    except ValidationError as exc:
+        return _error(exc)
+    except (TypeError, ValueError) as exc:
+        return _error(exc)
 
 
 def _vendor_for_user(user):
