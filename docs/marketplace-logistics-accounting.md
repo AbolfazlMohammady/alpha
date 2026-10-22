@@ -29,7 +29,8 @@ Configure separately for each provider. The adapter uses TIPAX and POST prefixes
 - POST_API_BASE_URL, POST_API_TOKEN, POST_QUOTE_PATH, POST_SHIPMENT_PATH, POST_TRACKING_PATH
 - Optional auth settings: TIPAX_API_AUTH_HEADER, TIPAX_API_AUTH_SCHEME, POST_API_AUTH_HEADER, POST_API_AUTH_SCHEME (default header/scheme: Authorization: Bearer ...)
 - Optional response mappings: PREFIX_QUOTE_AMOUNT_PATH, PREFIX_QUOTE_REFERENCE_PATH, PREFIX_QUOTE_EXPIRES_PATH, PREFIX_SHIPMENT_TRACKING_PATH, PREFIX_SHIPMENT_ID_PATH, PREFIX_SHIPMENT_LABEL_PATH, PREFIX_TRACKING_STATUS_PATH, PREFIX_TRACKING_COST_PATH, replacing PREFIX with TIPAX or POST
-- TIPAX_AMOUNT_DIVISOR and POST_AMOUNT_DIVISOR (use 10 if the provider reports rials while the project stores toman; this must be verified from the provider contract)\n- CARRIER_API_TIMEOUT_SECONDS (default 10)
+- TIPAX_AMOUNT_DIVISOR and POST_AMOUNT_DIVISOR (use 10 if the provider reports rials while the project stores toman; this must be verified from the provider contract)
+- CARRIER_API_TIMEOUT_SECONDS (default 10)
 
 Response paths use dot notation, for example data.price.amount. The request body is a normalized generic payload; if the provider's official API requires a different schema, implement/verify the provider-specific request mapping before enabling that provider. Never commit tokens or customer data to Git.
 
@@ -42,7 +43,8 @@ The generic payout adapter is disabled unless all of these are configured:
 - PAYOUT_API_BASE_URL (HTTPS required)
 - PAYOUT_API_TOKEN
 - PAYOUT_API_PATH
-- Optional PAYOUT_API_TIMEOUT_SECONDS, PAYOUT_API_AUTH_HEADER, PAYOUT_API_AUTH_SCHEME, PAYOUT_RESPONSE_REFERENCE_PATH, PAYOUT_RESPONSE_STATUS_PATH\n- PAYOUT_AMOUNT_MULTIPLIER and PAYOUT_API_CURRENCY (set only after verifying whether the payout API expects toman or rials)
+- Optional PAYOUT_API_TIMEOUT_SECONDS, PAYOUT_API_AUTH_HEADER, PAYOUT_API_AUTH_SCHEME, PAYOUT_RESPONSE_REFERENCE_PATH, PAYOUT_RESPONSE_STATUS_PATH
+- PAYOUT_AMOUNT_MULTIPLIER and PAYOUT_API_CURRENCY (set only after verifying whether the payout API expects toman or rials)
 
 The payload includes an idempotency key, amount, currency, verified IBAN and account name. This generic contract must be mapped and tested against the chosen Iranian bank/PSP payout API. Network timeouts leave a batch in a reconciliation state; do not retry blindly.
 
@@ -61,7 +63,10 @@ Both require the project's Celery worker and Beat to be running. Run these after
 
 Seller dashboard UI is available at /marketplace/vendor/dashboard/. All seller endpoints require login and ownership checks. Admin endpoints require staff access.
 
-- GET /marketplace/api/vendor/dashboard/\n- GET /marketplace/api/vendor/orders/\n- GET /marketplace/api/vendor/settlements/\n- POST /marketplace/api/vendor/profile/shipping/
+- GET /marketplace/api/vendor/dashboard/
+- GET /marketplace/api/vendor/orders/
+- GET /marketplace/api/vendor/settlements/
+- POST /marketplace/api/vendor/profile/shipping/
 - GET|POST /marketplace/api/vendor/products/
 - POST /marketplace/api/vendor/products/<listing_id>/
 - POST /marketplace/api/vendor/products/<listing_id>/wholesale/
@@ -77,7 +82,8 @@ Seller dashboard UI is available at /marketplace/vendor/dashboard/. All seller e
 - POST /marketplace/api/admin/settlements/<batch_id>/payout-result/
 - GET /marketplace/api/admin/accounting/trial-balance/
 - POST /marketplace/api/admin/accounting/reconciliation/
-- POST /marketplace/api/admin/accounting/carrier-payment/\n- POST /marketplace/api/admin/accounting/gateway-settlement/
+- POST /marketplace/api/admin/accounting/carrier-payment/
+- POST /marketplace/api/admin/accounting/gateway-settlement/
 
 The endpoints are a backend interface; this change does not claim to deliver a finished seller-facing HTML dashboard.
 
