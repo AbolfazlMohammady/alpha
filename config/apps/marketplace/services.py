@@ -15,12 +15,13 @@ from .models import (
 )
 
 
-def get_system_account(code: str, name: str, kind: str, currency: str = "IRT") -> LedgerAccount:
+def get_system_account(code: str, name: str, kind: str, currency: str = "IRT", vendor=None) -> LedgerAccount:
     account, _ = LedgerAccount.objects.get_or_create(
         code=code,
-        defaults={"name": name, "kind": kind, "currency": currency},
+        defaults={"name": name, "kind": kind, "currency": currency, "vendor": vendor},
     )
-    if account.kind != kind or account.currency != currency:
+    expected_vendor_id = vendor.pk if vendor else None
+    if account.kind != kind or account.currency != currency or account.vendor_id != expected_vendor_id:
         raise ValidationError(f"حساب مالی {code} با تنظیمات ناسازگار از قبل وجود دارد.")
     return account
 
@@ -215,6 +216,7 @@ def create_vendor_orders_for_paid_order(order):
                 f"بستانکاری فروشنده: {vendor.store_name}",
                 LedgerAccount.Kind.LIABILITY,
                 order.currency,
+                vendor=vendor,
             )
             if payable:
                 journal_lines.append({"account": payable_account, "debit": 0, "credit": payable, "memo": order.number})
@@ -483,11 +485,14 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
 
 
 def reconcile_shipment_actual_cost(*, shipment: Shipment, actual_cost: int, actor=None):
-    """Record the carrier's final charge and post a payable/expense journal once.
+    """Reconcile final carrier cost against collected shipping funds and the quote.
 
-    If a later carrier invoice corrects the amount, post only the difference.
-    Shipments paid directly by a vendor or recipient are recorded for audit but
-    do not create a platform carrier payable.
+    Central-account shipping is posted as:
+    Dr shipping funds payable (up to the amount collected)
+    Dr shipping expense (only any excess over collected funds)
+    Cr carrier payable (actual carrier invoice).
+    A lower final cost leaves the residual shipping amount pending policy review;
+    it is never silently treated as platform revenue.
     """
     actual_cost = int(actual_cost)
     if actual_cost < 0:
@@ -495,44 +500,76 @@ def reconcile_shipment_actual_cost(*, shipment: Shipment, actual_cost: int, acto
     with transaction.atomic():
         locked = Shipment.objects.select_for_update().select_related("vendor_order", "vendor_order__vendor").get(pk=shipment.pk)
         previous = locked.actual_cost
-        locked.actual_cost = actual_cost
-        locked.save(update_fields=("actual_cost", "updated_at"))
-        if locked.payer != Shipment.Payer.PLATFORM:
-            return locked, False
         if previous == actual_cost:
             return locked, False
-        expense = get_system_account("shipping_expense", "هزینه حمل‌ونقل", LedgerAccount.Kind.EXPENSE, locked.vendor_order.currency)
-        carrier_payable = get_system_account("carrier_payable", "بدهی به شرکت حمل‌ونقل", LedgerAccount.Kind.LIABILITY, locked.vendor_order.currency)
-        delta = actual_cost - int(previous or 0)
-        if delta == 0:
-            return locked, False
-        lines = []
-        if delta > 0:
-            lines.extend([
-                {"account": expense, "debit": delta, "credit": 0, "memo": str(locked.uuid)},
-                {"account": carrier_payable, "debit": 0, "credit": delta, "memo": str(locked.uuid)},
-            ])
-        else:
-            lines.extend([
-                {"account": carrier_payable, "debit": abs(delta), "credit": 0, "memo": str(locked.uuid)},
-                {"account": expense, "debit": 0, "credit": abs(delta), "memo": str(locked.uuid)},
-            ])
-        post_journal(
-            idempotency_key=f"shipment-cost:{locked.uuid}:{previous if previous is not None else 'none'}:{actual_cost}",
-            kind="shipping_cost",
-            description=f"تطبیق هزینه نهایی حمل مرسوله {locked.tracking_number or locked.uuid}",
-            lines=lines,
-            vendor_order=locked.vendor_order,
-            created_by=actor,
-            metadata={
-                "shipment_uuid": str(locked.uuid),
-                "quoted_cost": locked.quoted_cost,
-                "previous_actual_cost": previous,
-                "actual_cost": actual_cost,
-                "delta": delta,
-                "provider": locked.provider,
-            },
+        locked.actual_cost = actual_cost
+        locked.save(update_fields=("actual_cost", "updated_at"))
+        vendor_order = locked.vendor_order
+        VendorOrder.objects.filter(pk=vendor_order.pk).update(
+            shipping_cost_actual=Shipment.objects.filter(vendor_order=vendor_order, actual_cost__isnull=False).aggregate(total=Sum("actual_cost"))["total"] or 0,
+            updated_at=timezone.now(),
         )
+        record_external_reconciliation(
+            source=FinancialReconciliation.Source.CARRIER_INVOICE,
+            external_reference=f"{locked.uuid}:{actual_cost}",
+            internal_reference=vendor_order.order.number,
+            expected_amount=locked.customer_charge,
+            actual_amount=actual_cost,
+            currency=vendor_order.currency,
+            details={
+                "shipment_uuid": str(locked.uuid),
+                "provider": locked.provider,
+                "quoted_cost": locked.quoted_cost,
+                "customer_charge": locked.customer_charge,
+                "previous_actual_cost": previous,
+            },
+            actor=actor,
+        )
+        if locked.payer != Shipment.Payer.PLATFORM:
+            return locked, True
+        funds_account = get_system_account("shipping_funds_payable", "وجوه تخصیص‌یافته به حمل", LedgerAccount.Kind.LIABILITY, vendor_order.currency)
+        expense_account = get_system_account("shipping_expense", "هزینه حمل‌ونقل", LedgerAccount.Kind.EXPENSE, vendor_order.currency)
+        carrier_payable = get_system_account("carrier_payable", "بدهی به شرکت حمل‌ونقل", LedgerAccount.Kind.LIABILITY, vendor_order.currency)
+
+        charge = int(locked.customer_charge or 0)
+        old_funds = min(int(previous or 0), charge)
+        new_funds = min(actual_cost, charge)
+        old_expense = max(int(previous or 0) - charge, 0)
+        new_expense = max(actual_cost - charge, 0)
+        funds_delta = new_funds - old_funds
+        expense_delta = new_expense - old_expense
+        carrier_delta = actual_cost - int(previous or 0)
+        lines = []
+        if funds_delta > 0:
+            lines.append({"account": funds_account, "debit": funds_delta, "credit": 0, "memo": str(locked.uuid)})
+        elif funds_delta < 0:
+            lines.append({"account": funds_account, "debit": 0, "credit": abs(funds_delta), "memo": str(locked.uuid)})
+        if expense_delta > 0:
+            lines.append({"account": expense_account, "debit": expense_delta, "credit": 0, "memo": str(locked.uuid)})
+        elif expense_delta < 0:
+            lines.append({"account": expense_account, "debit": 0, "credit": abs(expense_delta), "memo": str(locked.uuid)})
+        if carrier_delta > 0:
+            lines.append({"account": carrier_payable, "debit": 0, "credit": carrier_delta, "memo": str(locked.uuid)})
+        elif carrier_delta < 0:
+            lines.append({"account": carrier_payable, "debit": abs(carrier_delta), "credit": 0, "memo": str(locked.uuid)})
+        if lines:
+            post_journal(
+                idempotency_key=f"shipment-cost:{locked.uuid}:{previous if previous is not None else 'none'}:{actual_cost}",
+                kind="shipping_cost",
+                description=f"تطبیق هزینه نهایی حمل مرسوله {locked.tracking_number or locked.uuid}",
+                lines=lines,
+                vendor_order=vendor_order,
+                created_by=actor,
+                metadata={
+                    "shipment_uuid": str(locked.uuid),
+                    "quoted_cost": locked.quoted_cost,
+                    "customer_charge": charge,
+                    "previous_actual_cost": previous,
+                    "actual_cost": actual_cost,
+                    "delta": carrier_delta,
+                    "provider": locked.provider,
+                },
+            )
         return locked, True
 
 
