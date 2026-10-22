@@ -30,7 +30,7 @@ class VendorAdmin(admin.ModelAdmin):
     autocomplete_fields = ("user",)
     readonly_fields = ("uuid", "created_at", "updated_at", "approved_at")
     list_select_related = ("user",)
-    actions = ("approve_vendors", "suspend_vendors")
+    actions = ("approve_vendors", "suspend_vendors", "verify_bank_details")
 
     @admin.display(description="وضعیت")
     def status_badge(self, obj):
@@ -42,6 +42,29 @@ class VendorAdmin(admin.ModelAdmin):
         from django.utils import timezone
         updated = queryset.filter(status=Vendor.Status.PENDING).update(status=Vendor.Status.ACTIVE, approved_at=timezone.now())
         self.message_user(request, f"{updated} فروشنده تأیید شد.")
+
+    @admin.action(description="تأیید اطلاعات بانکی فروشندگان انتخاب‌شده")
+    def verify_bank_details(self, request, queryset):
+        from django.utils import timezone
+        from django.contrib import messages
+        count = 0
+        invalid = 0
+        for vendor in queryset:
+            try:
+                vendor.full_clean()
+            except ValidationError:
+                invalid += 1
+                continue
+            if not vendor.bank_iban or not vendor.bank_account_name:
+                invalid += 1
+                continue
+            vendor.bank_details_verified_at = timezone.now()
+            vendor.save(update_fields=("bank_details_verified_at", "updated_at"))
+            count += 1
+        if count:
+            self.message_user(request, f"اطلاعات بانکی {count} فروشنده علامت‌گذاری شد؛ این اقدام فقط پس از تطبیق واقعی شبا و مالک حساب با مدرک معتبر انجام شود.", messages.WARNING)
+        if invalid:
+            self.message_user(request, f"اطلاعات بانکی {invalid} فروشنده ناقص یا نامعتبر بود و تأیید نشد.", messages.ERROR)
 
     @admin.action(description="تعلیق فروشندگان انتخاب‌شده")
     def suspend_vendors(self, request, queryset):
