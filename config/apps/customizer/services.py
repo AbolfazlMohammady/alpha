@@ -111,6 +111,10 @@ def promote_design_assets_for_order(order) -> None:
     )
 
     for draft in designs:
+        if draft.status != DesignDraft.Status.CONFIRMED:
+            draft.status = DesignDraft.Status.CONFIRMED
+            draft.confirmed_at = timezone.now()
+            draft.save(update_fields=("status", "confirmed_at", "updated_at"))
         artworks = {
             layer.artwork
             for layer in draft.layers.all()
