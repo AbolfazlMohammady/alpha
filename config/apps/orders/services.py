@@ -100,7 +100,7 @@ def merge_guest_cart(request, user) -> None:
         return
     with transaction.atomic():
         user_cart, _ = Cart.objects.get_or_create(user=user, status=Cart.Status.ACTIVE)
-        for guest_item in guest.items.select_related("product", "variant", "custom_design").select_for_update(of=("self",)):
+        for guest_item in guest.items.select_related("product", "variant", "custom_design", "vendor_listing").select_for_update(of=("self",)):
             if guest_item.custom_design_id:
                 design = guest_item.custom_design
                 design.user = user
@@ -112,6 +112,7 @@ def merge_guest_cart(request, user) -> None:
                     defaults={
                         "product": guest_item.product,
                         "variant": guest_item.variant,
+                        "vendor_listing": guest_item.vendor_listing,
                         "quantity": guest_item.quantity,
                     },
                 )
@@ -120,11 +121,15 @@ def merge_guest_cart(request, user) -> None:
                     cart=user_cart,
                     product=guest_item.product,
                     variant=guest_item.variant,
+                    vendor_listing=guest_item.vendor_listing,
+                    custom_design=None,
                     defaults={"quantity": guest_item.quantity},
                 )
             if not created:
                 item.quantity += guest_item.quantity
-                if item.variant_id:
+                if item.vendor_listing_id:
+                    item.quantity = min(item.quantity, item.vendor_listing.stock_quantity)
+                elif item.variant_id:
                     item.quantity = min(item.quantity, item.variant.stock_quantity)
                 item.save(update_fields=["quantity", "updated_at"])
         guest.status = Cart.Status.CONVERTED
