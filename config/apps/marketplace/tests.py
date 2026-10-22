@@ -47,6 +47,27 @@ class LedgerPostingTests(TestCase):
         self.assertEqual(entry.status, JournalEntry.Status.POSTED)
         self.assertEqual(entry.lines.count(), 2)
 
+    def test_reused_idempotency_key_with_changed_amount_is_rejected(self):
+        post_journal(
+            idempotency_key="test-fingerprint-001",
+            kind="test",
+            description="ثبت اولیه",
+            lines=[
+                {"account": self.clearing, "debit": 1000, "credit": 0},
+                {"account": self.revenue, "debit": 0, "credit": 1000},
+            ],
+        )
+        with self.assertRaises(ValidationError):
+            post_journal(
+                idempotency_key="test-fingerprint-001",
+                kind="test",
+                description="مبلغ متفاوت با همان کلید",
+                lines=[
+                    {"account": self.clearing, "debit": 2000, "credit": 0},
+                    {"account": self.revenue, "debit": 0, "credit": 2000},
+                ],
+            )
+
     def test_unbalanced_entry_is_rejected(self):
         with self.assertRaises(ValidationError):
             post_journal(
