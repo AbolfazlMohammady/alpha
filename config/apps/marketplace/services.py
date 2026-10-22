@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import hashlib
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
@@ -9,7 +10,7 @@ from django.utils import timezone
 
 from .models import (
     JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
-    Shipment, Vendor, VendorOrder, VendorProduct,
+    Shipment, ShippingQuote, Vendor, VendorOrder, VendorProduct,
 )
 
 
@@ -331,3 +332,116 @@ def record_payout_result(*, batch_id, provider_reference, succeeded, failure_rea
             batch.failure_reason = (failure_reason or "پرداخت ناموفق بود.")[:4000]
         batch.save(update_fields=("status", "payout_reference", "paid_at", "failure_reason"))
         return batch
+
+
+def address_fingerprint(*, user, address) -> str:
+    raw = "|".join([
+        str(user.pk), str(address.pk), str(address.postal_code or ""),
+        str(address.city_id), str(address.description or ""), str(address.title or ""),
+    ])
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def create_shipping_quote(*, user, cart_item, address, provider):
+    """Quote one seller parcel using seller-configured origin and customer address."""
+    from .carriers import get_carrier
+    from django.utils import timezone
+
+    listing = cart_item.vendor_listing
+    if not listing:
+        raise ValidationError("این قلم سبد به فروشنده مشخصی متصل نیست.")
+    if cart_item.cart.user_id != user.pk:
+        raise ValidationError("این قلم سبد متعلق به کاربر فعلی نیست.")
+    if address.user_id != user.pk:
+        raise ValidationError("آدرس انتخاب‌شده متعلق به کاربر فعلی نیست.")
+    if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders:
+        raise ValidationError("این فروشنده در حال حاضر سفارش نمی‌پذیرد.")
+    if not listing.vendor.pickup_postal_code:
+        raise ValidationError("فروشنده هنوز کد پستی مبدأ ارسال را در پنل تکمیل نکرده است.")
+    if not listing.weight_grams:
+        raise ValidationError("وزن بسته‌بندی‌شده محصول باید توسط فروشنده ثبت شود.")
+    if not all((listing.package_length_cm, listing.package_width_cm, listing.package_height_cm)):
+        raise ValidationError("ابعاد بسته‌بندی محصول باید توسط فروشنده تکمیل شود.")
+    provider = str(provider).lower()
+    if provider not in {"tipax", "post"}:
+        raise ValidationError("شرکت حمل‌ونقل انتخاب‌شده پشتیبانی نمی‌شود.")
+    payload = {
+        "origin_postal_code": listing.vendor.pickup_postal_code,
+        "destination_postal_code": address.postal_code,
+        "weight_grams": listing.weight_grams * cart_item.quantity,
+        "length_cm": listing.package_length_cm,
+        "width_cm": listing.package_width_cm,
+        "height_cm": listing.package_height_cm,
+        "declared_value": int(listing.retail_price) * cart_item.quantity,
+        "service_level": "standard",
+        "quantity": cart_item.quantity,
+    }
+    quote = get_carrier(provider).quote(payload)
+    expires_at = None
+    if quote.expires_at:
+        from django.utils.dateparse import parse_datetime
+        expires_at = parse_datetime(str(quote.expires_at))
+        if expires_at and timezone.is_naive(expires_at):
+            expires_at = timezone.make_aware(expires_at, timezone.get_current_timezone())
+    expires_at = expires_at or (timezone.now() + timedelta(minutes=15))
+    if expires_at <= timezone.now():
+        raise ValidationError("شرکت حمل‌ونقل هزینه‌ای با مهلت اعتبار گذشته برگردانده است.")
+    return ShippingQuote.objects.create(
+        user=user,
+        cart_item=cart_item,
+        vendor_listing=listing,
+        provider=provider,
+        amount=quote.amount,
+        currency=quote.currency,
+        quote_reference=quote.reference,
+        quantity=cart_item.quantity,
+        address_fingerprint=address_fingerprint(user=user, address=address),
+        expires_at=expires_at,
+        provider_payload={"request": payload, "response": quote.raw or {}},
+    )
+
+
+def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
+    """Validate and consume the exact current quote set atomically for checkout."""
+    from django.utils import timezone
+
+    now = now or timezone.now()
+    seller_items = [item for item in items if item.vendor_listing_id]
+    if not seller_items:
+        if quote_ids:
+            raise ValidationError("برای سبدی بدون فروشنده، استعلام حمل نامعتبر است.")
+        return 0
+    if len(seller_items) != len(items):
+        raise ValidationError("برای سفارش چندفروشندگی، همه اقلام باید فروشنده مشخص داشته باشند.")
+    normalized_ids = [str(value).strip() for value in quote_ids if str(value).strip()]
+    if len(normalized_ids) != len(seller_items) or len(set(normalized_ids)) != len(normalized_ids):
+        raise ValidationError("برای هر قلم فروشنده باید یک هزینه ارسال معتبر انتخاب شود.")
+    quotes = list(
+        ShippingQuote.objects.select_for_update().filter(
+            uuid__in=normalized_ids,
+            user=user,
+            cart_item__cart=cart,
+            status=ShippingQuote.Status.VALID,
+            expires_at__gt=now,
+        )
+    )
+    if len(quotes) != len(seller_items):
+        raise ValidationError("یکی از استعلام‌های ارسال منقضی یا نامعتبر است؛ هزینه ارسال را دوباره محاسبه کنید.")
+    by_item = {quote.cart_item_id: quote for quote in quotes}
+    fingerprint = address_fingerprint(user=user, address=address)
+    total = 0
+    for item in seller_items:
+        quote = by_item.get(item.id)
+        if (
+            not quote
+            or quote.vendor_listing_id != item.vendor_listing_id
+            or quote.quantity != item.quantity
+            or quote.address_fingerprint != fingerprint
+        ):
+            raise ValidationError("استعلام ارسال با آدرس، فروشنده یا تعداد فعلی سبد مطابقت ندارد.")
+        total += quote.amount
+    ShippingQuote.objects.filter(id__in=[quote.id for quote in quotes]).update(
+        status=ShippingQuote.Status.CONSUMED,
+        used_at=now,
+    )
+    return total
