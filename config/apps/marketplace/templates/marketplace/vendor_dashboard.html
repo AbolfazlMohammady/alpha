@@ -101,6 +101,11 @@
     </section>
 
     <section class="vd-card vd-section">
+        <div class="vd-item-head"><h2>تاریخچه تسویه‌ها</h2><button class="vd-btn vd-btn--soft" type="button" id="vd-refresh-settlements">به‌روزرسانی</button></div>
+        <div id="vd-settlements" class="vd-list"><p class="vd-muted">در حال بارگذاری...</p></div>
+    </section>
+
+    <section class="vd-card vd-section">
         <div class="vd-item-head"><h2>سفارش‌ها و ارسال</h2><button class="vd-btn vd-btn--soft" type="button" id="vd-refresh-orders">به‌روزرسانی</button></div>
         <div id="vd-orders" class="vd-list"><p class="vd-muted">در حال بارگذاری...</p></div>
     </section>
@@ -224,6 +229,25 @@
             </article>
         `).join("");
     }
+    async function loadSettlements() {
+        const data = await request("/marketplace/api/vendor/settlements/");
+        const box = document.getElementById("vd-settlements");
+        if (!data.results.length) { box.innerHTML = '<p class="vd-muted">هنوز تسویه‌ای ثبت نشده است.</p>'; return; }
+        box.innerHTML = data.results.map((batch) => `
+            <article class="vd-item">
+                <div class="vd-item-head"><h3>تسویه شماره ${batch.id}</h3><span class="vd-badge">${escapeHtml(batch.status_label)}</span></div>
+                <div class="vd-details">
+                    <span>فروش ناخالص: ${money(batch.gross_amount)} تومان</span>
+                    <span>کمیسیون: ${money(batch.commission_amount)} تومان</span>
+                    <span>مبلغ تسویه: ${money(batch.payable_amount)} تومان</span>
+                    <span>ایجاد: ${escapeHtml(batch.created_at.slice(0, 10))}</span>
+                    <span>پرداخت: ${escapeHtml(batch.paid_at ? batch.paid_at.slice(0, 10) : "هنوز پرداخت نشده")}</span>
+                    <span>مرجع واریز: ${escapeHtml(batch.payout_reference || "ثبت نشده")}</span>
+                </div>
+                ${batch.failure_reason ? `<p class="vd-error">${escapeHtml(batch.failure_reason)}</p>` : ""}
+            </article>
+        `).join("");
+    }
     document.getElementById("vd-shipping-profile").addEventListener("submit", async (event) => {
         event.preventDefault();
         try {
@@ -252,6 +276,7 @@
     });
     document.getElementById("vd-refresh-products").addEventListener("click", () => loadProducts().catch((error) => notify(error.message, true)));
     document.getElementById("vd-refresh-orders").addEventListener("click", () => loadOrders().catch((error) => notify(error.message, true)));
+    document.getElementById("vd-refresh-settlements").addEventListener("click", () => loadSettlements().catch((error) => notify(error.message, true)));
     document.addEventListener("submit", async (event) => {
         if (event.target.matches(".vd-stock-form")) {
             event.preventDefault();
@@ -309,7 +334,7 @@
             }
         } catch (error) { notify(error.message, true); }
     });
-    Promise.all([loadSummary(), loadProducts(), loadOrders()]).catch((error) => notify(error.message, true));
+    Promise.all([loadSummary(), loadProducts(), loadOrders(), loadSettlements()]).catch((error) => notify(error.message, true));
 })();
 </script>
 {% endblock %}
