@@ -390,7 +390,7 @@ def create_shipping_quote(*, user, cart_item, address, provider):
         "weight_grams": listing.weight_grams * cart_item.quantity,
         "length_cm": listing.package_length_cm,
         "width_cm": listing.package_width_cm,
-        "height_cm": listing.package_height_cm,
+        "height_cm": listing.package_height_cm * cart_item.quantity,
         "declared_value": int(cart_item.unit_price) * cart_item.quantity,
         "service_level": "standard",
         "quantity": cart_item.quantity,
@@ -457,6 +457,10 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
             or quote.quantity != item.quantity
             or quote.address_fingerprint != fingerprint
             or int((quote.provider_payload.get("request") or {}).get("declared_value", -1)) != int(item.unit_price) * item.quantity
+            or int((quote.provider_payload.get("request") or {}).get("weight_grams", -1)) != item.vendor_listing.weight_grams * item.quantity
+            or int((quote.provider_payload.get("request") or {}).get("length_cm", -1)) != item.vendor_listing.package_length_cm
+            or int((quote.provider_payload.get("request") or {}).get("width_cm", -1)) != item.vendor_listing.package_width_cm
+            or int((quote.provider_payload.get("request") or {}).get("height_cm", -1)) != item.vendor_listing.package_height_cm * item.quantity
         ):
             raise ValidationError("استعلام ارسال با آدرس، فروشنده یا تعداد فعلی سبد مطابقت ندارد.")
         total += quote.amount
