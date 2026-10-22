@@ -346,23 +346,48 @@ def approve_settlement(*, batch_id, approver):
 
 
 def record_payout_result(*, batch_id, provider_reference, succeeded, failure_reason=""):
-    """Record a confirmed external payout result; this does not initiate a bank transfer."""
+    """Record a confirmed external payout result and post the payout ledger entry."""
     with transaction.atomic():
-        batch = SettlementBatch.objects.select_for_update().get(pk=batch_id)
+        batch = SettlementBatch.objects.select_for_update().select_related("vendor").get(pk=batch_id)
+        reference = str(provider_reference or "").strip()[:180]
+        if batch.status == SettlementBatch.Status.PAID:
+            if succeeded and reference and reference == batch.payout_reference:
+                return batch, False
+            raise ValidationError("تسویه پرداخت‌شده است و نتیجه جدید با سابقه آن سازگار نیست.")
         if batch.status not in {SettlementBatch.Status.APPROVED, SettlementBatch.Status.PROCESSING, SettlementBatch.Status.FAILED}:
             raise ValidationError("وضعیت تسویه برای ثبت نتیجه پرداخت معتبر نیست.")
         if succeeded:
-            if not provider_reference:
+            if not reference:
                 raise ValidationError("شناسه مرجع پرداخت موفق الزامی است.")
+            if SettlementBatch.objects.filter(payout_reference=reference, status=SettlementBatch.Status.PAID).exclude(pk=batch.pk).exists():
+                raise ValidationError("این شناسه مرجع قبلاً برای تسویه دیگری ثبت شده است.")
+            payable_account = get_system_account(
+                f"vendor_payable_{batch.vendor_id}",
+                f"بستانکاری فروشنده: {batch.vendor.store_name}",
+                LedgerAccount.Kind.LIABILITY,
+                batch.currency,
+                vendor=batch.vendor,
+            )
+            clearing = get_system_account("gateway_clearing", "وجوه دریافتی درگاه", LedgerAccount.Kind.ASSET, batch.currency)
+            post_journal(
+                idempotency_key=f"vendor-payout:{batch.uuid}",
+                kind="vendor_payout",
+                description=f"واریز سهم فروشنده {batch.vendor.store_name} برای تسویه {batch.uuid}",
+                lines=[
+                    {"account": payable_account, "debit": batch.payable_amount, "credit": 0, "memo": reference},
+                    {"account": clearing, "debit": 0, "credit": batch.payable_amount, "memo": reference},
+                ],
+                metadata={"settlement_batch_id": batch.id, "payout_reference": reference},
+            )
             batch.status = SettlementBatch.Status.PAID
-            batch.payout_reference = provider_reference[:180]
+            batch.payout_reference = reference
             batch.paid_at = timezone.now()
             batch.failure_reason = ""
         else:
             batch.status = SettlementBatch.Status.FAILED
             batch.failure_reason = (failure_reason or "پرداخت ناموفق بود.")[:4000]
         batch.save(update_fields=("status", "payout_reference", "paid_at", "failure_reason"))
-        return batch
+        return batch, True
 
 
 def address_fingerprint(*, user, address) -> str:
