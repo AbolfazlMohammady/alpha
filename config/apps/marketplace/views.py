@@ -15,7 +15,7 @@ from django.views.decorators.http import require_GET, require_POST
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
 from apps.orders.models import Cart, CartItem
 from apps.users.models import Address
-from .models import SettlementBatch, Shipment, Vendor, VendorOrder, VendorProduct
+from .models import FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorOrder, VendorProduct
 from .services import approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_external_reconciliation, record_payout_result, trial_balance
 from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
 
@@ -360,7 +360,7 @@ def external_reconciliation_api(request):
     try:
         payload = _json_body(request)
         source = str(payload.get("source", ""))
-        if source not in {choice for choice, _label in __import__("apps.marketplace.models", fromlist=["FinancialReconciliation"]).FinancialReconciliation.Source.choices}:
+        if source not in {choice for choice, _label in FinancialReconciliation.Source.choices}:
             return _error("منبع تطبیق مالی معتبر نیست.")
         record, created = record_external_reconciliation(
             source=source,
