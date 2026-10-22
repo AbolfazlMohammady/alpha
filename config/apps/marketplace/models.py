@@ -158,6 +158,29 @@ class VendorOrder(models.Model):
         ]
         indexes = [models.Index(fields=("vendor", "status", "created_at"), name="market_vorder_vendor_status_idx")]
 
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old = type(self).objects.filter(pk=self.pk).values(
+                "order_id", "vendor_id", "currency", "items_snapshot", "subtotal",
+                "customer_shipping_amount", "commission_amount", "vendor_payable",
+            ).first()
+            current = {
+                "order_id": self.order_id,
+                "vendor_id": self.vendor_id,
+                "currency": self.currency,
+                "items_snapshot": self.items_snapshot,
+                "subtotal": self.subtotal,
+                "customer_shipping_amount": self.customer_shipping_amount,
+                "commission_amount": self.commission_amount,
+                "vendor_payable": self.vendor_payable,
+            }
+            if old and old != current:
+                raise ValidationError("اطلاعات مالی و Snapshot سفارش فروشنده قابل بازنویسی نیست.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("سفارش فروشنده حذف نمی‌شود؛ از گردش لغو/بازپرداخت استفاده کنید.")
+
     def __str__(self):
         return f"{self.order.number} / {self.vendor.store_name}"
 
@@ -404,13 +427,13 @@ class SettlementLine(models.Model):
         ordering = ("id",)
 
     def save(self, *args, **kwargs):
-        if self.batch.status not in {SettlementBatch.Status.DRAFT, SettlementBatch.Status.PENDING_APPROVAL}:
-            raise ValidationError("اقلام تسویه پس از تأیید قابل تغییر نیستند.")
+        if self.batch.status != SettlementBatch.Status.DRAFT:
+            raise ValidationError("اقلام تسویه پس از ارسال برای تأیید قابل تغییر نیستند.")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        if self.batch.status not in {SettlementBatch.Status.DRAFT, SettlementBatch.Status.PENDING_APPROVAL}:
-            raise ValidationError("اقلام تسویه پس از تأیید قابل حذف نیستند.")
+        if self.batch.status != SettlementBatch.Status.DRAFT:
+            raise ValidationError("اقلام تسویه پس از ارسال برای تأیید قابل حذف نیستند.")
         return super().delete(*args, **kwargs)
 
 
@@ -448,7 +471,7 @@ class FinancialReconciliation(models.Model):
 
     def save(self, *args, **kwargs):
         if self.pk:
-            old = type(self).objects.filter(pk=self.pk).values("source", "external_reference", "expected_amount", "actual_amount", "currency", "details").first()
+            old = type(self).objects.filter(pk=self.pk).values("source", "external_reference", "expected_amount", "actual_amount", "currency", "details", "status").first()
             if old and self.status in {self.Status.MATCHED, self.Status.MISMATCH}:
                 new = {
                     "source": self.source,
@@ -457,6 +480,7 @@ class FinancialReconciliation(models.Model):
                     "actual_amount": self.actual_amount,
                     "currency": self.currency,
                     "details": self.details,
+                    "status": self.status,
                 }
                 if old != new:
                     raise ValidationError("سابقه تطبیق مالی قطعی قابل ویرایش نیست؛ یک رکورد اصلاحی جدید ثبت کنید.")
