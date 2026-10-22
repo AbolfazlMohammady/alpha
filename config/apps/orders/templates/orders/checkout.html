@@ -110,6 +110,11 @@
                 <div><span>جمع کالاها</span><strong id="checkoutSubtotal">{{ subtotal|price }} تومان</strong></div>
                 <div><span>ارسال</span><strong id="shippingAmountDisplay">برای محاسبه انتخاب کن</strong></div>
             </div>
+            {% if mixed_fulfilment %}
+            <div class="order-card" role="alert" style="margin-top:12px;border-color:#b45309;">
+                این سبد شامل کالاهای فروشندگان و کالاهای خارج از مارکت‌پلیس است. فعلاً باید این نوع کالاها را در سفارش‌های جداگانه خریداری کنی تا ارسال و تسویه هر سفارش درست محاسبه شود.
+            </div>
+            {% endif %}
             {% if has_vendor_listings %}
             <div class="order-card" style="margin-top: 14px; padding: 14px;">
                 <label for="shippingProvider">شرکت حمل‌ونقل</label>
@@ -127,7 +132,7 @@
                 <strong id="checkoutTotal" data-subtotal="{{ subtotal }}">{{ total_amount|price }} <small>تومان</small></strong>
             </div>
 
-            <button class="order-btn order-btn--primary" type="submit" {% if not addresses %}disabled{% endif %}>
+            <button class="order-btn order-btn--primary" type="submit" {% if not addresses or mixed_fulfilment %}disabled{% endif %}>
                 ادامه و ورود به پرداخت
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"></path></svg>
             </button>
@@ -172,6 +177,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const providerSelect = document.getElementById("shippingProvider");
     const addressInputs = [...document.querySelectorAll("input[name='address_id']")];
     const sellerItems = [...document.querySelectorAll("[data-requires-shipping='true']")];
+    const mixedFulfilment = {{ mixed_fulfilment|yesno:"true,false" }};
     const money = (value) => new Intl.NumberFormat("fa-IR").format(value);
     const clearQuotes = () => {
         if (quoteIdsInput) quoteIdsInput.value = "";
@@ -240,6 +246,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (form) {
         form.addEventListener("submit", (event) => {
+            if (mixedFulfilment) {
+                event.preventDefault();
+                if (quoteMessage) quoteMessage.textContent = "کالاهای فروشندگان و کالاهای خارج از مارکت‌پلیس را در دو سفارش جدا ثبت کن.";
+                return;
+            }
             if (sellerItems.length && !quoteIdsInput.value.trim()) {
                 event.preventDefault();
                 if (quoteMessage) quoteMessage.textContent = "قبل از ادامه، هزینه ارسال را محاسبه کن.";
