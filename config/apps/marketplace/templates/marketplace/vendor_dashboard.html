@@ -191,7 +191,16 @@
                     <label class="vd-field">قیمت هر واحد عمده<input name="unit_price" type="number" min="1" required></label>
                     <button class="vd-btn vd-btn--soft" type="submit">افزودن پله عمده</button>
                 </form>
-                <div class="vd-list" style="margin-top:8px">${item.wholesale_tiers.map((tier) => `<div class="vd-item-head"><span class="vd-muted">از ${money(tier.minimum_quantity)} عدد: ${money(tier.unit_price)} تومان برای هر واحد</span><button type="button" class="vd-btn vd-btn--soft" data-delete-tier="${tier.id}">حذف پله</button></div>`).join("") || '<p class="vd-muted">پله عمده ثبت نشده است.</p>'}</div>
+                <div class="vd-list" style="margin-top:10px">
+                    ${item.wholesale_tiers.map((tier) => `
+                        <form class="vd-tier-update vd-form" data-tier-id="${tier.id}">
+                            <label class="vd-field">حداقل تعداد<input name="minimum_quantity" type="number" min="2" value="${tier.minimum_quantity}" required></label>
+                            <label class="vd-field">قیمت واحد عمده<input name="unit_price" type="number" min="1" value="${tier.unit_price}" required></label>
+                            <button class="vd-btn vd-btn--soft" type="submit">به‌روزرسانی پله</button>
+                            <button class="vd-btn vd-btn--soft" type="button" data-delete-tier="${tier.id}">حذف پله</button>
+                        </form>
+                    `).join("") || '<p class="vd-muted">پله عمده ثبت نشده است.</p>'}
+                </div>
             </article>
         `).join("");
     }
@@ -325,6 +334,17 @@
                 payload.supports_custom_printing = payload.supports_custom_printing === "true";
                 await request("/marketplace/api/vendor/products/" + event.target.dataset.listingId + "/", {method:"POST", body:JSON.stringify(payload)});
                 notify("تغییرات ثبت شد؛ تغییر قیمت تا تأیید مدیر از فروش خارج می‌شود.");
+                await loadProducts();
+            } catch (error) { notify(error.message, true); }
+        }
+        if (event.target.matches(".vd-tier-update")) {
+            event.preventDefault();
+            try {
+                const payload = Object.fromEntries(new FormData(event.target).entries());
+                payload.minimum_quantity = Number(payload.minimum_quantity);
+                payload.unit_price = Number(payload.unit_price);
+                await request("/marketplace/api/vendor/wholesale-tiers/" + event.target.dataset.tierId + "/", {method:"PATCH", body:JSON.stringify(payload)});
+                notify("پله عمده به‌روزرسانی شد و برای بررسی مدیر ارسال شد.");
                 await loadProducts();
             } catch (error) { notify(error.message, true); }
         }
