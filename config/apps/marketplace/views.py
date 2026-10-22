@@ -15,7 +15,8 @@ from django.views.decorators.http import require_GET, require_POST
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
 from apps.orders.models import Cart, CartItem
 from apps.users.models import Address
-from .models import FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorOrder, VendorProduct
+from apps.shop.models import Product
+from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorOrder, VendorProduct, WholesalePriceTier
 from .services import approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_external_reconciliation, record_payout_result, trial_balance
 from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
 
@@ -119,6 +120,164 @@ def vendor_dashboard_api(request):
         "orders": {"pending_fulfilment": pending, "delivered": delivered, "total": orders.count()},
         "settlement": {"pending_amount": payable, "paid_amount": paid, "currency": "IRT"},
     })
+
+
+@login_required
+def vendor_products_api(request):
+    try:
+        vendor = _vendor_for_user(request.user)
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    if request.method == "GET":
+        listings = vendor.listings.select_related("product", "product__category").prefetch_related("wholesale_tiers").order_by("-created_at")
+        return JsonResponse({"ok": True, "results": [{
+            "id": listing.id,
+            "product_id": listing.product_id,
+            "product_name": listing.product.name,
+            "status": listing.status,
+            "retail_price": listing.retail_price,
+            "compare_at_price": listing.compare_at_price,
+            "stock_quantity": listing.stock_quantity,
+            "wholesale_enabled": listing.wholesale_enabled,
+            "wholesale_tiers": [{"minimum_quantity": tier.minimum_quantity, "unit_price": tier.unit_price} for tier in listing.wholesale_tiers.all()],
+            "supports_custom_printing": listing.supports_custom_printing,
+            "weight_grams": listing.weight_grams,
+            "package_dimensions_cm": [listing.package_length_cm, listing.package_width_cm, listing.package_height_cm],
+        } for listing in listings]})
+    if request.method != "POST":
+        return _error("متد درخواست پشتیبانی نمی‌شود.", 405)
+    try:
+        payload = _json_body(request)
+        if not vendor.can_receive_orders:
+            return _error("فروشنده تا زمان تأیید و فعال‌شدن حساب نمی‌تواند محصول ثبت کند.", 403)
+        product = get_object_or_404(Product, pk=payload.get("product_id"), is_active=True, category__is_active=True)
+        if vendor.listings.filter(product=product).exists():
+            return _error("این محصول قبلاً توسط فروشگاه شما ثبت شده است.", 409)
+        listing = VendorProduct(
+            vendor=vendor,
+            product=product,
+            status=VendorProduct.Status.PENDING,
+            retail_price=int(payload.get("retail_price", 0)),
+            compare_at_price=payload.get("compare_at_price") or None,
+            stock_quantity=int(payload.get("stock_quantity", 0)),
+            wholesale_enabled=payload.get("wholesale_enabled") is True,
+            supports_custom_printing=payload.get("supports_custom_printing") is True,
+            weight_grams=int(payload.get("weight_grams", 0)),
+            package_length_cm=int(payload.get("package_length_cm", 0)),
+            package_width_cm=int(payload.get("package_width_cm", 0)),
+            package_height_cm=int(payload.get("package_height_cm", 0)),
+            handling_days=int(payload.get("handling_days", 2)),
+        )
+        listing.full_clean()
+        listing.save()
+        return JsonResponse({"ok": True, "listing_id": listing.id, "status": listing.status, "message": "محصول برای بررسی مدیر ثبت شد."}, status=201)
+    except (ValidationError, TypeError, ValueError) as exc:
+        return _error(exc)
+
+
+@login_required
+@require_POST
+def vendor_product_update_api(request, listing_id):
+    try:
+        vendor = _vendor_for_user(request.user)
+        payload = _json_body(request)
+        with transaction.atomic():
+            listing = get_object_or_404(VendorProduct.objects.select_for_update(), pk=listing_id, vendor=vendor)
+            allowed = {
+                "retail_price", "compare_at_price", "stock_quantity", "wholesale_enabled",
+                "supports_custom_printing", "weight_grams", "package_length_cm",
+                "package_width_cm", "package_height_cm", "handling_days",
+            }
+            unknown = set(payload) - allowed
+            if unknown:
+                return _error("فیلدهای غیرمجاز: " + ", ".join(sorted(unknown)))
+            price_changed = False
+            for field in allowed.intersection(payload):
+                value = payload[field]
+                if field in {"retail_price", "stock_quantity", "weight_grams", "package_length_cm", "package_width_cm", "package_height_cm", "handling_days"}:
+                    value = int(value)
+                elif field == "compare_at_price":
+                    value = None if value in (None, "") else int(value)
+                elif field in {"wholesale_enabled", "supports_custom_printing"}:
+                    if not isinstance(value, bool):
+                        return _error(f"{field} باید true یا false باشد.")
+                if field in {"retail_price", "compare_at_price"} and getattr(listing, field) != value:
+                    price_changed = True
+                setattr(listing, field, value)
+            if listing.status == VendorProduct.Status.ACTIVE and price_changed:
+                listing.status = VendorProduct.Status.PENDING
+            listing.full_clean()
+            listing.save()
+        return JsonResponse({"ok": True, "listing_id": listing.id, "status": listing.status, "price_reapproval_required": price_changed})
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    except (ValidationError, TypeError, ValueError) as exc:
+        return _error(exc)
+
+
+@login_required
+@require_POST
+def vendor_wholesale_tier_api(request, listing_id):
+    try:
+        vendor = _vendor_for_user(request.user)
+        payload = _json_body(request)
+        listing = get_object_or_404(VendorProduct, pk=listing_id, vendor=vendor)
+        if listing.status not in {VendorProduct.Status.ACTIVE, VendorProduct.Status.PENDING, VendorProduct.Status.DRAFT}:
+            return _error("وضعیت فعلی محصول اجازه تغییر قیمت عمده را نمی‌دهد.", 409)
+        minimum = int(payload.get("minimum_quantity", 0))
+        unit_price = int(payload.get("unit_price", 0))
+        tier = WholesalePriceTier(listing=listing, minimum_quantity=minimum, unit_price=unit_price)
+        tier.full_clean()
+        with transaction.atomic():
+            tier.save()
+            listing.wholesale_enabled = True
+            if listing.status == VendorProduct.Status.ACTIVE:
+                listing.status = VendorProduct.Status.PENDING
+            listing.save(update_fields=("wholesale_enabled", "status", "updated_at"))
+        return JsonResponse({"ok": True, "tier_id": tier.id, "minimum_quantity": tier.minimum_quantity, "unit_price": tier.unit_price}, status=201)
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    except (ValidationError, TypeError, ValueError) as exc:
+        return _error(exc)
+
+
+@login_required
+@require_POST
+def vendor_wholesale_tier_delete_api(request, tier_id):
+    try:
+        vendor = _vendor_for_user(request.user)
+        with transaction.atomic():
+            tier = get_object_or_404(WholesalePriceTier.objects.select_for_update(), pk=tier_id, listing__vendor=vendor)
+            listing = tier.listing
+            tier.delete()
+            if listing.status == VendorProduct.Status.ACTIVE:
+                listing.status = VendorProduct.Status.PENDING
+                listing.save(update_fields=("status", "updated_at"))
+        return JsonResponse({"ok": True, "deleted": True})
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+
+
+@login_required
+@require_POST
+def vendor_category_request_api(request):
+    try:
+        vendor = _vendor_for_user(request.user)
+        payload = _json_body(request)
+        if not vendor.can_receive_orders:
+            return _error("فروشنده باید ابتدا تأیید شود.", 403)
+        category_request = CategoryRequest(
+            vendor=vendor,
+            name=str(payload.get("name", "")).strip(),
+            description=str(payload.get("description", "")).strip(),
+        )
+        category_request.full_clean()
+        category_request.save()
+        return JsonResponse({"ok": True, "request_id": category_request.id, "status": category_request.status}, status=201)
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    except (ValidationError, TypeError, ValueError) as exc:
+        return _error(exc)
 
 
 @login_required
