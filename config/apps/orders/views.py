@@ -47,11 +47,13 @@ def _remember_cart_count(request, count):
 
 
 def _cart_totals(cart, request=None):
-    unit_price = Case(When(custom_design__isnull=False, then=F("custom_design__total_price")), When(variant__isnull=False, then=F("variant__price")), default=F("product__base_price"), output_field=PositiveBigIntegerField())
-    line_total = ExpressionWrapper(F("quantity") * unit_price, output_field=PositiveBigIntegerField())
-    totals = cart.items.aggregate(count=Sum("quantity", default=0), subtotal=Sum(line_total, default=0))
-    count = _remember_cart_count(request, totals["count"] or 0) if request is not None else totals["count"] or 0
-    return {"count": count, "subtotal": totals["subtotal"] or 0}
+    # Seller-specific wholesale tiers cannot be represented by the old catalog
+    # SQL expression; calculate against the exact listing selected in the cart.
+    items = list(cart.items.select_related("product", "variant", "custom_design", "vendor_listing"))
+    count = sum(item.quantity for item in items)
+    subtotal = sum(item.line_total for item in items)
+    count = _remember_cart_count(request, count) if request is not None else count
+    return {"count": count, "subtotal": subtotal}
 
 
 def _cart_items_queryset(request):
@@ -70,7 +72,7 @@ def _cart_items_queryset(request):
     )
     queryset = (
         CartItem.objects
-        .select_related("cart", "product__category", "variant__color", "variant__size", "custom_design")
+        .select_related("cart", "product__category", "variant__color", "variant__size", "custom_design", "vendor_listing__vendor")
         .annotate(primary_image_url=primary_image_url, primary_image_alt=primary_image_alt)
     )
     user_id = request.session.get(AUTH_USER_SESSION_KEY)
