@@ -336,6 +336,13 @@ def create_order_from_cart(*, user, cart, address, customer_note="", shipping_qu
 
         order_rows = []
         subtotal = 0
+        listing_quantities = {}
+        listing_stock_quantities = {}
+        for cart_item in items:
+            if cart_item.vendor_listing_id:
+                listing_stock_quantities[cart_item.vendor_listing_id] = listing_stock_quantities.get(cart_item.vendor_listing_id, 0) + cart_item.quantity
+                if cart_item.custom_design_id is None:
+                    listing_quantities[cart_item.vendor_listing_id] = listing_quantities.get(cart_item.vendor_listing_id, 0) + cart_item.quantity
 
         for item in items:
             product = item.product
@@ -346,13 +353,14 @@ def create_order_from_cart(*, user, cart, address, customer_note="", shipping_qu
                 raise ValueError("طراحی این آیتم دیگر قابل سفارش نیست.")
 
             if design is not None:
+                listing = None
                 if item.vendor_listing_id:
                     from apps.marketplace.models import VendorProduct
-                    listing = item.vendor_listing
+                    listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=item.vendor_listing_id)
                     if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders or not listing.supports_custom_printing:
                         raise ValueError("فروشنده انتخاب‌شده امکان اجرای طراحی سفارشی را ندارد.")
-                    if listing.stock_quantity < item.quantity:
-                        raise ValueError("ظرفیت/موجودی فروشنده برای طراحی سفارشی کافی نیست.")
+                    if listing.stock_quantity < listing_stock_quantities.get(listing.pk, 0):
+                        raise ValueError("ظرفیت/موجودی فروشنده برای مجموع تعداد سفارش کافی نیست.")
                 if design.user_id and design.user_id != user.id:
                     raise ValueError("طراحی سفارشی متعلق به این کاربر نیست.")
                 unit_price = design.total_price
@@ -365,7 +373,7 @@ def create_order_from_cart(*, user, cart, address, customer_note="", shipping_qu
                     "shirt_color": design.shirt_color,
                     "variant_id": design.variant_id,
                 })
-                if item.vendor_listing_id and not item.vendor_listing.supports_custom_printing:
+                if listing is not None and not listing.supports_custom_printing:
                     raise ValueError("فروشنده انتخاب‌شده چاپ سفارشی را پشتیبانی نمی‌کند.")
                 order_rows.append({
                     "cart_item": item,
@@ -383,14 +391,14 @@ def create_order_from_cart(*, user, cart, address, customer_note="", shipping_qu
                 subtotal += line_total
                 continue
 
-            listing = item.vendor_listing
-            if listing is not None:
+            listing = None
+            if item.vendor_listing_id:
                 from apps.marketplace.models import VendorProduct
-                listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=listing.pk)
+                listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=item.vendor_listing_id)
                 if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders:
                     raise ValueError(f"فروشنده محصول «{product.name}» در حال حاضر سفارش نمی‌پذیرد.")
-                if listing.stock_quantity < item.quantity:
-                    raise ValueError(f"موجودی فروشنده برای «{product.name}» کافی نیست.")
+                if listing.stock_quantity < listing_stock_quantities.get(listing.pk, 0):
+                    raise ValueError(f"موجودی فروشنده برای مجموع تعداد محصول «{product.name}» کافی نیست.")
             variant = None
             if item.variant_id:
                 variant = (
@@ -415,7 +423,7 @@ def create_order_from_cart(*, user, cart, address, customer_note="", shipping_qu
                 color_name = ""
                 size_name = ""
             if listing is not None and listing.wholesale_enabled:
-                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=item.quantity).order_by("-minimum_quantity").first()
+                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=listing_quantities.get(listing.pk, 0)).order_by("-minimum_quantity").first()
                 if tier:
                     unit_price = tier.unit_price
 
