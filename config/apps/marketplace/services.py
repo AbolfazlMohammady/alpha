@@ -646,16 +646,25 @@ def trial_balance(*, currency="IRT"):
     }
 
 
-def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: bool, actor=None):
-    """Post a full-refund reversal only after the payment provider confirms it."""
+def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: bool, refund_source="bank", actor=None):
+    """Record a confirmed full refund as a new financial event.
+
+    The refund is not a blind reversal of the original receipt: gateway funds
+    may already have settled to the bank, and shipping funds may have their own
+    liability account. Post a new, balanced refund journal to the actual source.
+    """
     from apps.orders.models import Order
 
-    if not refund_confirmed or not refund_reference.strip():
+    refund_reference = str(refund_reference or "").strip()
+    if not refund_confirmed or not refund_reference:
         raise ValidationError("برای ثبت بازپرداخت باید تأیید قطعی سرویس پرداخت و شناسه مرجع وجود داشته باشد.")
+    if refund_source not in {"bank", "gateway_clearing"}:
+        raise ValidationError("منبع بازپرداخت باید حساب بانکی یا مانده درگاه باشد.")
     with transaction.atomic():
         locked_order = Order.objects.select_for_update().get(pk=order.pk)
+        refund_key = f"order-refund:{locked_order.uuid}"
         if locked_order.payment_status == Order.PaymentStatus.REFUNDED:
-            existing = JournalEntry.objects.filter(idempotency_key=f"order-refund:{locked_order.uuid}").first()
+            existing = JournalEntry.objects.filter(idempotency_key=refund_key).first()
             if existing:
                 return existing, False
             raise ValidationError("سفارش بازپرداخت‌شده است اما سند مالی آن پیدا نشد؛ بررسی لازم است.")
@@ -681,11 +690,62 @@ def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: 
         ).first()
         if not original:
             raise ValidationError("سند مالی اصلی سفارش پیدا نشد؛ بازپرداخت حسابداری متوقف شد.")
-        reversal, created = reverse_journal(
-            entry=original,
-            idempotency_key=f"order-refund:{locked_order.uuid}",
-            reason=f"بازپرداخت تأییدشده: {refund_reference}",
+        vendor_orders = list(VendorOrder.objects.filter(order=locked_order).select_related("vendor"))
+        if not vendor_orders:
+            raise ValidationError("برای سفارش سند سهم فروشنده وجود ندارد؛ بازپرداخت خودکار متوقف شد.")
+        lines = []
+        for vendor_order in vendor_orders:
+            payable_account = get_system_account(
+                f"vendor_payable_{vendor_order.vendor_id}",
+                f"بستانکاری فروشنده: {vendor_order.vendor.store_name}",
+                LedgerAccount.Kind.LIABILITY,
+                locked_order.currency,
+                vendor=vendor_order.vendor,
+            )
+            commission_account = get_system_account(
+                "platform_commission_revenue",
+                "درآمد کمیسیون پلتفرم",
+                LedgerAccount.Kind.REVENUE,
+                locked_order.currency,
+            )
+            if vendor_order.vendor_payable:
+                lines.append({"account": payable_account, "debit": vendor_order.vendor_payable, "credit": 0, "memo": refund_reference})
+            if vendor_order.commission_amount:
+                lines.append({"account": commission_account, "debit": vendor_order.commission_amount, "credit": 0, "memo": refund_reference})
+        if locked_order.shipping_amount:
+            shipping_funds = get_system_account(
+                "shipping_funds_payable", "وجوه تخصیص‌یافته به حمل",
+                LedgerAccount.Kind.LIABILITY, locked_order.currency,
+            )
+            lines.append({"account": shipping_funds, "debit": locked_order.shipping_amount, "credit": 0, "memo": refund_reference})
+        refund_account = (
+            get_system_account("platform_bank", "حساب بانکی پلتفرم", LedgerAccount.Kind.ASSET, locked_order.currency)
+            if refund_source == "bank"
+            else get_system_account("gateway_clearing", "وجوه در انتظار تسویه درگاه", LedgerAccount.Kind.ASSET, locked_order.currency)
+        )
+        lines.append({"account": refund_account, "debit": 0, "credit": locked_order.total_amount, "memo": refund_reference})
+        reversal, created = post_journal(
+            idempotency_key=refund_key,
+            kind="order_refund",
+            description=f"بازپرداخت کامل سفارش {locked_order.number}",
+            lines=lines,
+            order=locked_order,
             created_by=actor,
+            metadata={
+                "refund_reference": refund_reference,
+                "refund_source": refund_source,
+                "amount": locked_order.total_amount,
+                "original_entry_id": original.id,
+            },
+        )
+        record_external_reconciliation(
+            source=FinancialReconciliation.Source.PAYMENT_GATEWAY,
+            external_reference=f"refund:{refund_reference}",
+            internal_reference=locked_order.number,
+            expected_amount=locked_order.total_amount,
+            actual_amount=locked_order.total_amount,
+            details={"order_uuid": str(locked_order.uuid), "refund_source": refund_source, "journal_entry_id": reversal.id},
+            actor=actor,
         )
         locked_order.payment_status = Order.PaymentStatus.REFUNDED
         locked_order.status = Order.Status.REFUNDED
@@ -696,55 +756,6 @@ def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: 
             updated_at=timezone.now(),
         )
         return reversal, created
-
-
-
-def record_external_reconciliation(*, source, external_reference, expected_amount=None, actual_amount=None, currency="IRT", internal_reference="", details=None, actor=None):
-    """Persist an idempotent external-vs-internal match without overwriting history."""
-    external_reference = str(external_reference or "").strip()
-    if not external_reference:
-        raise ValidationError("شناسه مرجع خارجی الزامی است.")
-    if currency != "IRT":
-        raise ValidationError("در این نسخه تطبیق چندارزی پشتیبانی نمی‌شود.")
-    expected = None if expected_amount is None else int(expected_amount)
-    actual = None if actual_amount is None else int(actual_amount)
-    if (expected is not None and expected < 0) or (actual is not None and actual < 0):
-        raise ValidationError("مبالغ تطبیق نمی‌توانند منفی باشند.")
-    if expected is None or actual is None:
-        status = FinancialReconciliation.Status.UNMATCHED
-    elif expected == actual:
-        status = FinancialReconciliation.Status.MATCHED
-    else:
-        status = FinancialReconciliation.Status.MISMATCH
-    with transaction.atomic():
-        record = FinancialReconciliation.objects.filter(
-            source=source,
-            external_reference=external_reference,
-        ).first()
-        if record:
-            same = (
-                record.expected_amount == expected
-                and record.actual_amount == actual
-                and record.currency == currency
-                and record.internal_reference == str(internal_reference or "")[:180]
-            )
-            if not same:
-                raise ValidationError("این مرجع خارجی قبلاً با مبالغ دیگری ثبت شده است؛ سابقه را بازنویسی نکنید.")
-            return record, False
-        record = FinancialReconciliation.objects.create(
-            source=source,
-            external_reference=external_reference,
-            internal_reference=str(internal_reference or "")[:180],
-            expected_amount=expected,
-            actual_amount=actual,
-            currency=currency,
-            status=status,
-            details=details or {},
-            recorded_by=actor,
-            reconciled_at=timezone.now() if status != FinancialReconciliation.Status.UNMATCHED else None,
-        )
-        return record, True
-
 
 
 def record_carrier_invoice_payment(*, invoice_reference: str, amount: int, actor=None, provider_reference=""):
