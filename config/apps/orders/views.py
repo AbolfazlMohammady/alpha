@@ -287,6 +287,7 @@ def checkout_view(request):
             "total_amount": subtotal,
             "shipping_quote_ids": ",".join(shipping_quote_ids),
             "has_vendor_listings": any(item.vendor_listing_id for item in items),
+            "mixed_fulfilment": any(item.vendor_listing_id for item in items) and any(not item.vendor_listing_id for item in items),
         },
     )
 
