@@ -352,7 +352,7 @@ def record_payout_result(*, batch_id, provider_reference, succeeded, failure_rea
         reference = str(provider_reference or "").strip()[:180]
         if batch.status == SettlementBatch.Status.PAID:
             if succeeded and reference and reference == batch.payout_reference:
-                return batch, False
+                return batch
             raise ValidationError("تسویه پرداخت‌شده است و نتیجه جدید با سابقه آن سازگار نیست.")
         if batch.status not in {SettlementBatch.Status.APPROVED, SettlementBatch.Status.PROCESSING, SettlementBatch.Status.FAILED}:
             raise ValidationError("وضعیت تسویه برای ثبت نتیجه پرداخت معتبر نیست.")
@@ -387,7 +387,7 @@ def record_payout_result(*, batch_id, provider_reference, succeeded, failure_rea
             batch.status = SettlementBatch.Status.FAILED
             batch.failure_reason = (failure_reason or "پرداخت ناموفق بود.")[:4000]
         batch.save(update_fields=("status", "payout_reference", "paid_at", "failure_reason"))
-        return batch, True
+        return batch
 
 
 def address_fingerprint(*, user, address) -> str:
