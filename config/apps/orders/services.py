@@ -197,7 +197,7 @@ def add_to_cart(request, *, product, variant=None, custom_design=None, vendor_li
             variant = type(variant).objects.select_for_update().get(pk=variant.pk)
             if not variant.is_active or not product.is_active or not product.category.is_active:
                 raise ValueError("این محصول دیگر قابل خرید نیست.")
-            if variant.stock_quantity < quantity:
+            if vendor_listing is None and variant.stock_quantity < quantity:
                 raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
         elif product.variants.filter(is_active=True).exists():
             raise ValueError("لطفاً رنگ و سایز محصول را انتخاب کنید.")
@@ -223,8 +223,13 @@ def update_cart_item(request, item_id: int, quantity: int) -> CartItem:
         raise ValueError("تعداد باید حداقل ۱ باشد.")
     with transaction.atomic():
         cart = get_active_cart(request)
-        item = CartItem.objects.select_for_update().select_related("variant").get(cart=cart, pk=item_id)
-        if item.variant_id:
+        item = CartItem.objects.select_for_update().select_related("variant", "vendor_listing").get(cart=cart, pk=item_id)
+        if item.vendor_listing_id:
+            from apps.marketplace.models import VendorProduct
+            listing = VendorProduct.objects.select_for_update().get(pk=item.vendor_listing_id)
+            if quantity > listing.stock_quantity:
+                raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی فروشنده است.")
+        elif item.variant_id:
             variant = type(item.variant).objects.select_for_update().get(pk=item.variant_id)
             if quantity > variant.stock_quantity:
                 raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
