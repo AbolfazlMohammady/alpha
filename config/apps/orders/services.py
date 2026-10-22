@@ -159,12 +159,25 @@ def add_design_to_cart(request, *, design: DesignDraft, quantity=1) -> CartItem:
     return item
 
 
-def add_to_cart(request, *, product, variant=None, custom_design=None, quantity=1) -> CartItem:
+def add_to_cart(request, *, product, variant=None, custom_design=None, vendor_listing=None, quantity=1) -> CartItem:
     quantity = int(quantity)
     if quantity < 1:
         raise ValueError("تعداد باید حداقل ۱ باشد.")
     if custom_design is not None and (custom_design.product_id != product.id or custom_design.status not in {"draft", "cart"}):
         raise ValueError("طراحی انتخاب‌شده معتبر نیست.")
+    if vendor_listing is not None:
+        from apps.marketplace.models import VendorProduct, Vendor
+        vendor_listing = VendorProduct.objects.select_related("vendor").get(
+            pk=vendor_listing.pk,
+            product_id=product.id,
+            status=VendorProduct.Status.ACTIVE,
+            vendor__status=Vendor.Status.ACTIVE,
+            vendor__user__is_active=True,
+        )
+        if vendor_listing.stock_quantity < quantity:
+            raise ValueError("موجودی این فروشنده برای تعداد انتخاب‌شده کافی نیست.")
+        if custom_design is not None and not vendor_listing.supports_custom_printing:
+            raise ValueError("این فروشنده چاپ سفارشی این محصول را پشتیبانی نمی‌کند.")
     with transaction.atomic():
         cart = get_active_cart(request)
         if variant is not None:
@@ -177,11 +190,15 @@ def add_to_cart(request, *, product, variant=None, custom_design=None, quantity=
                 raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
         elif product.variants.filter(is_active=True).exists():
             raise ValueError("لطفاً رنگ و سایز محصول را انتخاب کنید.")
-        lookup = {"cart": cart, "custom_design": custom_design} if custom_design is not None else {"cart": cart, "product": product, "variant": variant, "custom_design": None}
+        lookup = {"cart": cart, "custom_design": custom_design} if custom_design is not None else {
+            "cart": cart, "product": product, "variant": variant, "custom_design": None,
+            "vendor_listing": vendor_listing,
+        }
         item, created = CartItem.objects.select_for_update().get_or_create(**lookup, defaults={"quantity": quantity})
         if not created:
             new_quantity = item.quantity + quantity
-            if variant is not None and new_quantity > variant.stock_quantity:
+            available = vendor_listing.stock_quantity if vendor_listing is not None else (variant.stock_quantity if variant is not None else None)
+            if available is not None and new_quantity > available:
                 raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
             item.quantity = new_quantity
             item.save(update_fields=["quantity", "updated_at"])
@@ -303,8 +320,11 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
                     "shirt_color": design.shirt_color,
                     "variant_id": design.variant_id,
                 })
+                if item.vendor_listing_id and not item.vendor_listing.supports_custom_printing:
+                    raise ValueError("فروشنده انتخاب‌شده چاپ سفارشی را پشتیبانی نمی‌کند.")
                 order_rows.append({
                     "cart_item": item,
+                    "vendor_listing": item.vendor_listing,
                     "variant": design.variant,
                     "unit_price": unit_price,
                     "compare_at_price": None,
@@ -318,6 +338,14 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
                 subtotal += line_total
                 continue
 
+            listing = item.vendor_listing
+            if listing is not None:
+                from apps.marketplace.models import VendorProduct
+                listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=listing.pk)
+                if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders:
+                    raise ValueError(f"فروشنده محصول «{product.name}» در حال حاضر سفارش نمی‌پذیرد.")
+                if listing.stock_quantity < item.quantity:
+                    raise ValueError(f"موجودی فروشنده برای «{product.name}» کافی نیست.")
             variant = None
             if item.variant_id:
                 variant = (
@@ -328,24 +356,29 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
                 )
                 if not variant.is_active:
                     raise ValueError(f"ترکیب «{product.name}» دیگر قابل سفارش نیست.")
-                if variant.stock_quantity < item.quantity:
+                if listing is None and variant.stock_quantity < item.quantity:
                     raise ValueError(f"موجودی «{product.name}» برای تعداد انتخاب‌شده کافی نیست.")
-                unit_price = variant.effective_price
-                compare_at_price = variant.effective_compare_at_price
+                unit_price = listing.retail_price if listing else variant.effective_price
+                compare_at_price = listing.compare_at_price if listing else variant.effective_compare_at_price
                 variant_sku = variant.sku
                 color_name = variant.color.name
                 size_name = variant.size.name
             else:
-                unit_price = product.base_price
-                compare_at_price = product.compare_at_price
+                unit_price = listing.retail_price if listing else product.base_price
+                compare_at_price = listing.compare_at_price if listing else product.compare_at_price
                 variant_sku = ""
                 color_name = ""
                 size_name = ""
+            if listing is not None and listing.wholesale_enabled:
+                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=item.quantity).order_by("-minimum_quantity").first()
+                if tier:
+                    unit_price = tier.unit_price
 
             line_total = unit_price * item.quantity
             subtotal += line_total
             order_rows.append({
                 "cart_item": item,
+                "vendor_listing": listing,
                 "variant": variant,
                 "unit_price": unit_price,
                 "compare_at_price": compare_at_price,
@@ -385,6 +418,7 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
             OrderItem(
                 order=order,
                 product=row["cart_item"].product,
+                vendor_listing=row.get("vendor_listing"),
                 variant=row["variant"],
                 product_name=(row["custom_design"].design_code if row.get("custom_design") else row["cart_item"].product.name),
                 variant_sku=row["variant_sku"],
