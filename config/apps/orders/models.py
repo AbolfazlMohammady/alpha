@@ -117,6 +117,13 @@ class CartItem(models.Model):
     def unit_price(self):
         if self.custom_design_id:
             return self.custom_design.total_price
+        if self.vendor_listing_id:
+            price = self.vendor_listing.retail_price
+            if self.vendor_listing.wholesale_enabled:
+                tier = self.vendor_listing.wholesale_tiers.filter(minimum_quantity__lte=self.quantity).order_by("-minimum_quantity").first()
+                if tier:
+                    price = tier.unit_price
+            return price
         return self.variant.effective_price if self.variant_id else self.product.base_price
 
     @property
