@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 
 from .models import (
-    FinancialReconciliation, JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
+    CategoryRequest, FinancialReconciliation, JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
     Shipment, ShippingQuote, Vendor, VendorOrder, VendorProduct, WholesalePriceTier,
 )
 
@@ -195,3 +195,34 @@ class FinancialReconciliationAdmin(ReadOnlyAuditAdmin):
     list_filter = ("source", "status", "currency", "created_at")
     search_fields = ("external_reference", "internal_reference")
     list_select_related = ("recorded_by",)
+
+
+
+@admin.register(CategoryRequest)
+class CategoryRequestAdmin(admin.ModelAdmin):
+    list_display = ("name", "vendor", "status", "reviewed_by", "created_at", "reviewed_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("name", "vendor__store_name", "description")
+    list_select_related = ("vendor", "reviewed_by")
+    readonly_fields = ("created_at", "reviewed_at", "reviewed_by")
+    actions = ("approve_requests", "reject_requests")
+
+    @admin.action(description="تأیید درخواست‌های دسته‌بندی")
+    def approve_requests(self, request, queryset):
+        from django.utils import timezone
+        updated = queryset.filter(status=CategoryRequest.Status.PENDING).update(
+            status=CategoryRequest.Status.APPROVED,
+            reviewed_by=request.user,
+            reviewed_at=timezone.now(),
+        )
+        self.message_user(request, f"{updated} درخواست تأیید شد.")
+
+    @admin.action(description="رد درخواست‌های دسته‌بندی")
+    def reject_requests(self, request, queryset):
+        from django.utils import timezone
+        updated = queryset.filter(status=CategoryRequest.Status.PENDING).update(
+            status=CategoryRequest.Status.REJECTED,
+            reviewed_by=request.user,
+            reviewed_at=timezone.now(),
+        )
+        self.message_user(request, f"{updated} درخواست رد شد.")
