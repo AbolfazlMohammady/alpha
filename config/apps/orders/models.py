@@ -62,6 +62,7 @@ class Cart(models.Model):
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("shop.Product", on_delete=models.PROTECT, related_name="cart_items")
+    vendor_listing = models.ForeignKey("marketplace.VendorProduct", on_delete=models.PROTECT, related_name="cart_items", null=True, blank=True)
     variant = models.ForeignKey(
         "shop.ProductVariant",
         on_delete=models.PROTECT,
@@ -85,13 +86,23 @@ class CartItem(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=("cart", "variant"),
-                condition=Q(variant__isnull=False, custom_design__isnull=True),
+                condition=Q(variant__isnull=False, custom_design__isnull=True, vendor_listing__isnull=True),
                 name="unique_cart_variant_item",
             ),
             models.UniqueConstraint(
+                fields=("cart", "variant", "vendor_listing"),
+                condition=Q(variant__isnull=False, custom_design__isnull=True, vendor_listing__isnull=False),
+                name="unique_cart_vendor_variant_item",
+            ),
+            models.UniqueConstraint(
                 fields=("cart", "product"),
-                condition=Q(variant__isnull=True, custom_design__isnull=True),
+                condition=Q(variant__isnull=True, custom_design__isnull=True, vendor_listing__isnull=True),
                 name="unique_cart_product_item",
+            ),
+            models.UniqueConstraint(
+                fields=("cart", "product", "vendor_listing"),
+                condition=Q(variant__isnull=True, custom_design__isnull=True, vendor_listing__isnull=False),
+                name="unique_cart_vendor_product_item",
             ),
             models.UniqueConstraint(
                 fields=("cart", "custom_design"),
@@ -198,6 +209,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("shop.Product", on_delete=models.PROTECT, related_name="order_items")
+    vendor_listing = models.ForeignKey("marketplace.VendorProduct", on_delete=models.PROTECT, related_name="order_items", null=True, blank=True)
     variant = models.ForeignKey(
         "shop.ProductVariant",
         on_delete=models.PROTECT,
