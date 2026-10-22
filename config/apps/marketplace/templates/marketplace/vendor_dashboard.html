@@ -68,9 +68,14 @@
     <section class="vd-card vd-section">
         <h2>ثبت محصول برای فروش</h2>
         <p class="vd-muted">محصول باید از کاتالوگ سایت انتخاب شود. محصول جدید و تغییر قیمت پس از بررسی مدیر فعال می‌شود. وزن و ابعاد، اندازه بسته‌بندی‌شده هستند.</p>
+        <div class="vd-field" style="margin-bottom:12px">
+            <label for="vd-catalog-search">جستجوی محصول در کاتالوگ</label>
+            <input id="vd-catalog-search" autocomplete="off" placeholder="حداقل دو حرف از نام محصول را وارد کن">
+            <div id="vd-catalog-results" class="vd-list" role="listbox"></div>
+        </div>
         <form id="vd-product-create" class="vd-form">
             {% csrf_token %}
-            <label class="vd-field">شناسه محصول کاتالوگ<input name="product_id" type="number" min="1" required></label>
+            <label class="vd-field">شناسه محصول انتخاب‌شده<input name="product_id" id="vd-product-id" type="number" min="1" required readonly></label>
             <label class="vd-field">قیمت خرده‌فروشی (تومان)<input name="retail_price" type="number" min="1" required></label>
             <label class="vd-field">قیمت قبل از تخفیف (اختیاری)<input name="compare_at_price" type="number" min="0"></label>
             <label class="vd-field">موجودی انبار<input name="stock_quantity" type="number" min="0" value="0" required></label>
@@ -256,6 +261,31 @@
             await request("/marketplace/api/vendor/profile/shipping/", {method:"POST", body:JSON.stringify(payload)});
             notify("اطلاعات مبدأ ارسال ذخیره شد.");
         } catch (error) { notify(error.message, true); }
+    });
+    let catalogSearchTimer = null;
+    const catalogSearch = document.getElementById("vd-catalog-search");
+    const catalogResults = document.getElementById("vd-catalog-results");
+    catalogSearch?.addEventListener("input", () => {
+        if (catalogSearchTimer) clearTimeout(catalogSearchTimer);
+        catalogSearchTimer = setTimeout(async () => {
+            const query = catalogSearch.value.trim();
+            if (query.length < 2) { catalogResults.innerHTML = ""; return; }
+            try {
+                const data = await request("/marketplace/api/vendor/catalog-products/?q=" + encodeURIComponent(query));
+                catalogResults.innerHTML = data.results.map((product) =>
+                    '<button type="button" class="vd-btn vd-btn--soft" data-catalog-product="' + product.id + '" data-catalog-name="' + escapeHtml(product.name) + '">' +
+                    escapeHtml(product.name) + ' · ' + escapeHtml(product.category) + ' · شناسه ' + product.id + '</button>'
+                ).join("") || '<p class="vd-muted">محصولی پیدا نشد.</p>';
+            } catch (error) { notify(error.message, true); }
+        }, 250);
+    });
+    catalogResults?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-catalog-product]");
+        if (!button) return;
+        document.getElementById("vd-product-id").value = button.dataset.catalogProduct;
+        catalogSearch.value = button.dataset.catalogName;
+        catalogResults.innerHTML = "";
+        notify("محصول انتخاب شد؛ قیمت و موجودی فروشگاه را تکمیل کن.");
     });
     document.getElementById("vd-product-create").addEventListener("submit", async (event) => {
         event.preventDefault();
