@@ -315,6 +315,8 @@ def vendor_order_action_api(request, order_id):
 def shipment_quote_api(request, order_id):
     try:
         vendor_order = _vendor_order_for_user(request.user, order_id)
+        if vendor_order.status != VendorOrder.Status.READY_TO_SHIP:
+            return _error("برای استعلام نهایی، سفارش باید ابتدا آماده ارسال شود.", 409)
         raw_payload = _json_body(request)
         provider = str(raw_payload.get("provider", "tipax")).lower()
         if provider not in {"tipax", "post"}:
@@ -410,7 +412,18 @@ def shipment_book_api(request, order_id):
         }
         try:
             result = get_carrier(shipment.provider).create_shipment(carrier_payload)
+        except CarrierNotConfigured as exc:
+            # No network request was made when required configuration is absent,
+            # so it is safe to return the quote to a retryable state.
+            Shipment.objects.filter(pk=shipment.pk).update(
+                status=Shipment.Status.QUOTED,
+                last_error=str(exc),
+                last_event_at=timezone.now(),
+            )
+            return _error(exc, 503)
         except CarrierError as exc:
+            # Network/5xx failures can be ambiguous; keep EXCEPTION until the
+            # carrier dashboard is checked to avoid duplicate shipment booking.
             Shipment.objects.filter(pk=shipment.pk).update(
                 status=Shipment.Status.EXCEPTION,
                 last_error=str(exc),
