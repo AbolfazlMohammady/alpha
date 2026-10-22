@@ -5,6 +5,7 @@ from .models import FinancialReconciliation, JournalEntry, LedgerAccount
 from .services import (
     account_balance,
     post_journal,
+    record_gateway_settlement,
     record_external_reconciliation,
     reverse_journal,
     trial_balance,
@@ -80,6 +81,25 @@ class LedgerPostingTests(TestCase):
                 ],
             )
         self.assertFalse(JournalEntry.objects.filter(idempotency_key="test-unbalanced-001").exists())
+
+    def test_gateway_settlement_records_net_deposit_and_fee(self):
+        entry, created = record_gateway_settlement(
+            settlement_reference="GW-SETTLE-001",
+            gross_amount=100000,
+            net_amount=99000,
+            fee_amount=1000,
+            actual_bank_amount=99000,
+        )
+        self.assertTrue(created)
+        self.assertEqual(entry.kind, "gateway_settlement")
+        self.assertEqual(entry.lines.count(), 3)
+        reconciliation = FinancialReconciliation.objects.get(
+            source=FinancialReconciliation.Source.BANK_STATEMENT,
+            external_reference="gateway-settlement:GW-SETTLE-001",
+        )
+        self.assertEqual(reconciliation.status, FinancialReconciliation.Status.MATCHED)
+        report = trial_balance()
+        self.assertTrue(report["balanced"])
 
     def test_reversal_preserves_auditable_balanced_history(self):
         entry, _ = post_journal(
