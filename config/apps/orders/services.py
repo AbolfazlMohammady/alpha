@@ -319,6 +319,13 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
                 raise ValueError("طراحی این آیتم دیگر قابل سفارش نیست.")
 
             if design is not None:
+                if item.vendor_listing_id:
+                    from apps.marketplace.models import VendorProduct
+                    listing = item.vendor_listing
+                    if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders or not listing.supports_custom_printing:
+                        raise ValueError("فروشنده انتخاب‌شده امکان اجرای طراحی سفارشی را ندارد.")
+                    if listing.stock_quantity < item.quantity:
+                        raise ValueError("ظرفیت/موجودی فروشنده برای طراحی سفارشی کافی نیست.")
                 if design.user_id and design.user_id != user.id:
                     raise ValueError("طراحی سفارشی متعلق به این کاربر نیست.")
                 unit_price = design.total_price
@@ -496,8 +503,16 @@ def process_manual_payment(*, order, success):
             locked_order.save(update_fields=["payment_status", "payment_reference", "updated_at"])
             return locked_order, True
 
-        order_items = list(locked_order.items.select_related("product", "variant").select_for_update(of=("self",)))
+        order_items = list(locked_order.items.select_related("product", "variant", "vendor_listing__vendor").select_for_update(of=("self",)))
         for item in order_items:
+            if item.vendor_listing_id:
+                from apps.marketplace.models import VendorProduct
+                listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=item.vendor_listing_id)
+                if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders or listing.stock_quantity < item.quantity:
+                    raise ValueError(f"موجودی یا وضعیت فروشنده برای «{item.product_name}» معتبر نیست.")
+                listing.stock_quantity -= item.quantity
+                listing.save(update_fields=["stock_quantity", "updated_at"])
+                continue
             if not item.variant_id:
                 continue
             variant = ProductVariant.objects.select_for_update().get(pk=item.variant_id)
@@ -523,4 +538,9 @@ def process_manual_payment(*, order, success):
                 "updated_at",
             ]
         )
+        # Split seller orders and post the financial journal only when every
+        # order line has an explicit vendor listing. Legacy catalog orders keep
+        # their existing workflow until sellers are assigned.
+        from apps.marketplace.services import create_vendor_orders_for_paid_order
+        create_vendor_orders_for_paid_order(locked_order)
         return locked_order, True
