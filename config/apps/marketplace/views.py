@@ -156,6 +156,31 @@ def vendor_dashboard_api(request):
 
 @login_required
 @require_GET
+def vendor_settlements_api(request):
+    try:
+        vendor = _vendor_for_user(request.user)
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    batches = vendor.settlements.order_by("-created_at")[:100]
+    return JsonResponse({"ok": True, "results": [{
+        "id": batch.id,
+        "uuid": str(batch.uuid),
+        "status": batch.status,
+        "status_label": batch.get_status_display(),
+        "period_start": batch.period_start.isoformat(),
+        "period_end": batch.period_end.isoformat(),
+        "gross_amount": batch.gross_amount,
+        "commission_amount": batch.commission_amount,
+        "payable_amount": batch.payable_amount,
+        "payout_reference": batch.payout_reference,
+        "failure_reason": batch.failure_reason,
+        "created_at": batch.created_at.isoformat(),
+        "paid_at": batch.paid_at.isoformat() if batch.paid_at else None,
+    } for batch in batches]})
+
+
+@login_required
+@require_GET
 def vendor_orders_api(request):
     try:
         vendor = _vendor_for_user(request.user)
