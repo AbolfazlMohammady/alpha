@@ -53,7 +53,7 @@ class Migration(migrations.Migration):
                 ("product", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="vendor_listings", to="shop.product")),
                 ("vendor", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="listings", to="marketplace.vendor")),
             ],
-            options={"ordering": ("-created_at",), "indexes": [models.Index(fields=["vendor", "status"], name="market_listing_vendor_status_idx")], "constraints": [
+            options={"ordering": ("-created_at",), "indexes": [models.Index(fields=["vendor", "status"], name="market_listing_v_status_idx")], "constraints": [
                 models.UniqueConstraint(fields=("vendor", "product"), name="unique_vendor_product_listing"),
                 models.CheckConstraint(condition=models.Q(("retail_price__gt", 0)), name="vendor_listing_price_gt_zero"),
                 models.CheckConstraint(condition=models.Q(("compare_at_price__isnull", True), ("compare_at_price__gte", 0), _connector="OR"), name="vendor_listing_compare_nonnegative"),
@@ -94,7 +94,7 @@ class Migration(migrations.Migration):
                 ("order", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="vendor_orders", to="orders.order")),
                 ("vendor", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="orders", to="marketplace.vendor")),
             ],
-            options={"ordering": ("-created_at",), "indexes": [models.Index(fields=["vendor", "status", "created_at"], name="market_vorder_vendor_status_idx")], "constraints": [
+            options={"ordering": ("-created_at",), "indexes": [models.Index(fields=["vendor", "status", "created_at"], name="market_vorder_v_status_idx")], "constraints": [
                 models.UniqueConstraint(fields=("order", "vendor"), name="unique_vendor_order_per_order"),
                 models.CheckConstraint(condition=models.Q(("vendor_payable__gte", 0)), name="vendor_order_payable_nonnegative"),
             ]},
@@ -126,7 +126,7 @@ class Migration(migrations.Migration):
                 ("vendor_order", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="shipments", to="marketplace.vendororder")),
             ],
             options={"ordering": ("-created_at",), "indexes": [
-                models.Index(fields=["provider", "status", "created_at"], name="market_ship_provider_status_idx"),
+                models.Index(fields=["provider", "status", "created_at"], name="market_ship_p_status_idx"),
                 models.Index(fields=["vendor_order", "status"], name="market_ship_order_status_idx"),
             ], "constraints": [
                 models.UniqueConstraint(condition=~models.Q(("external_shipment_id", "")), fields=("provider", "external_shipment_id"), name="unique_provider_shipment_id"),
@@ -203,7 +203,7 @@ class Migration(migrations.Migration):
                 ("approved_by", models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name="approved_vendor_settlements", to=settings.AUTH_USER_MODEL)),
                 ("vendor", models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name="settlements", to="marketplace.vendor")),
             ],
-            options={"ordering": ("-created_at",), "indexes": [models.Index(fields=["vendor", "status", "created_at"], name="market_settle_vendor_status_idx")]},
+            options={"ordering": ("-created_at",), "indexes": [models.Index(fields=["vendor", "status", "created_at"], name="market_settle_v_status_idx")]},
         ),
         migrations.CreateModel(
             name="SettlementLine",
