@@ -402,40 +402,110 @@ def address_fingerprint(*, user, address) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def _vendor_group_quote_payload(*, items, vendor, address, user, lock_listings=False):
+    """Build a deterministic shipping snapshot for all cart lines from one seller."""
+    items = sorted(items, key=lambda item: item.id)
+    listing_ids = sorted({item.vendor_listing_id for item in items if item.vendor_listing_id})
+    listings_qs = VendorProduct.objects.filter(pk__in=listing_ids).select_related("vendor")
+    if lock_listings:
+        listings_qs = listings_qs.select_for_update()
+    listings = {listing.pk: listing for listing in listings_qs}
+    if len(listings) != len(listing_ids):
+        raise ValidationError("یکی از محصولات فروشنده دیگر در دسترس نیست.")
+    quantity_by_listing = {}
+    snapshot = []
+    total_weight = total_quantity = declared_value = 0
+    length_cm = width_cm = height_cm = 0
+    for item in items:
+        listing = listings.get(item.vendor_listing_id)
+        if not listing or listing.vendor_id != vendor.pk:
+            raise ValidationError("همه اقلام استعلام باید متعلق به یک فروشنده باشند.")
+        if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders:
+            raise ValidationError("یکی از محصولات این فروشنده دیگر سفارش نمی‌پذیرد.")
+        if not listing.weight_grams or not all((listing.package_length_cm, listing.package_width_cm, listing.package_height_cm)):
+            raise ValidationError("وزن و ابعاد بسته‌بندی همه محصولات باید تکمیل شده باشد.")
+        if item.custom_design_id and (
+            not listing.supports_custom_printing or not listing.vendor.supports_custom_printing
+        ):
+            raise ValidationError("این فروشنده امکان چاپ سفارشی این محصول را ندارد.")
+        if item.custom_design_id:
+            unit_price = int(item.custom_design.total_price)
+        else:
+            unit_price = int(listing.retail_price)
+            if listing.wholesale_enabled:
+                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=item.quantity).order_by("-minimum_quantity").first()
+                if tier:
+                    unit_price = int(tier.unit_price)
+        quantity = int(item.quantity)
+        quantity_by_listing[listing.pk] = quantity_by_listing.get(listing.pk, 0) + quantity
+        total_quantity += quantity
+        total_weight += int(listing.weight_grams) * quantity
+        declared_value += unit_price * quantity
+        length_cm = max(length_cm, int(listing.package_length_cm))
+        width_cm = max(width_cm, int(listing.package_width_cm))
+        height_cm += int(listing.package_height_cm) * quantity
+        snapshot.append({
+            "cart_item_id": item.id,
+            "listing_id": listing.pk,
+            "quantity": quantity,
+            "unit_price": unit_price,
+            "weight_grams": listing.weight_grams,
+            "length_cm": listing.package_length_cm,
+            "width_cm": listing.package_width_cm,
+            "height_cm": listing.package_height_cm,
+            "custom_design_id": str(item.custom_design_id or ""),
+        })
+    for listing_id, requested in quantity_by_listing.items():
+        if listings[listing_id].stock_quantity < requested:
+            raise ValidationError("موجودی یکی از محصولات برای تعداد انتخاب‌شده کافی نیست.")
+    fingerprint = hashlib.sha256(
+        json.dumps(snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    payload = {
+        "origin_postal_code": vendor.pickup_postal_code,
+        "destination_postal_code": address.postal_code,
+        "weight_grams": total_weight,
+        "length_cm": length_cm,
+        "width_cm": width_cm,
+        "height_cm": height_cm,
+        "declared_value": declared_value,
+        "service_level": "standard",
+        "quantity": total_quantity,
+        "vendor_id": vendor.pk,
+        "cart_item_ids": [item.id for item in items],
+        "listing_ids": listing_ids,
+        "cart_items_fingerprint": fingerprint,
+    }
+    return payload, fingerprint, listings
+
+
 def create_shipping_quote(*, user, cart_item, address, provider):
-    """Quote one seller parcel using seller-configured origin and customer address."""
+    """Quote one combined parcel for all current cart lines belonging to a seller."""
     from .carriers import get_carrier
     from django.utils import timezone
 
-    listing = cart_item.vendor_listing
-    if not listing:
+    if not cart_item.vendor_listing_id:
         raise ValidationError("این قلم سبد به فروشنده مشخصی متصل نیست.")
     if cart_item.cart.user_id != user.pk:
         raise ValidationError("این قلم سبد متعلق به کاربر فعلی نیست.")
     if address.user_id != user.pk:
         raise ValidationError("آدرس انتخاب‌شده متعلق به کاربر فعلی نیست.")
-    if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders:
-        raise ValidationError("این فروشنده در حال حاضر سفارش نمی‌پذیرد.")
-    if not listing.vendor.pickup_postal_code:
+    vendor = cart_item.vendor_listing.vendor
+    if not vendor.pickup_postal_code:
         raise ValidationError("فروشنده هنوز کد پستی مبدأ ارسال را در پنل تکمیل نکرده است.")
-    if not listing.weight_grams:
-        raise ValidationError("وزن بسته‌بندی‌شده محصول باید توسط فروشنده ثبت شود.")
-    if not all((listing.package_length_cm, listing.package_width_cm, listing.package_height_cm)):
-        raise ValidationError("ابعاد بسته‌بندی محصول باید توسط فروشنده تکمیل شود.")
     provider = str(provider).lower()
     if provider not in {"tipax", "post"}:
         raise ValidationError("شرکت حمل‌ونقل انتخاب‌شده پشتیبانی نمی‌شود.")
-    payload = {
-        "origin_postal_code": listing.vendor.pickup_postal_code,
-        "destination_postal_code": address.postal_code,
-        "weight_grams": listing.weight_grams * cart_item.quantity,
-        "length_cm": listing.package_length_cm,
-        "width_cm": listing.package_width_cm,
-        "height_cm": listing.package_height_cm * cart_item.quantity,
-        "declared_value": int(cart_item.unit_price) * cart_item.quantity,
-        "service_level": "standard",
-        "quantity": cart_item.quantity,
-    }
+    items = list(
+        cart_item.cart.items.filter(vendor_listing__vendor=vendor)
+        .select_related("vendor_listing__vendor", "custom_design")
+        .order_by("id")
+    )
+    if not items or cart_item.id not in {item.id for item in items}:
+        raise ValidationError("اقلام سبد فروشنده پیدا نشد.")
+    payload, group_fingerprint, _listings = _vendor_group_quote_payload(
+        items=items, vendor=vendor, address=address, user=user,
+    )
     quote = get_carrier(provider).quote(payload)
     expires_at = None
     if quote.expires_at:
@@ -449,20 +519,20 @@ def create_shipping_quote(*, user, cart_item, address, provider):
     return ShippingQuote.objects.create(
         user=user,
         cart_item=cart_item,
-        vendor_listing=listing,
+        vendor_listing=cart_item.vendor_listing,
         provider=provider,
         amount=quote.amount,
         currency=quote.currency,
         quote_reference=quote.reference,
-        quantity=cart_item.quantity,
+        quantity=payload["quantity"],
         address_fingerprint=address_fingerprint(user=user, address=address),
         expires_at=expires_at,
-        provider_payload={"request": payload, "response": quote.raw or {}},
+        provider_payload={"request": payload, "group_fingerprint": group_fingerprint, "response": quote.raw or {}},
     )
 
 
 def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
-    """Validate and consume the exact current quote set atomically for checkout."""
+    """Validate one current, seller-group shipping quote per seller atomically."""
     from django.utils import timezone
 
     now = now or timezone.now()
@@ -474,10 +544,22 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
     if len(seller_items) != len(items):
         raise ValidationError("برای سفارش چندفروشندگی، همه اقلام باید فروشنده مشخص داشته باشند.")
     normalized_ids = [str(value).strip() for value in quote_ids if str(value).strip()]
-    if len(normalized_ids) != len(seller_items) or len(set(normalized_ids)) != len(normalized_ids):
-        raise ValidationError("برای هر قلم فروشنده باید یک هزینه ارسال معتبر انتخاب شود.")
+    listing_map = {
+        listing.pk: listing
+        for listing in VendorProduct.objects.select_for_update().filter(
+            pk__in={item.vendor_listing_id for item in seller_items}
+        ).select_related("vendor")
+    }
+    grouped = {}
+    for item in seller_items:
+        listing = listing_map.get(item.vendor_listing_id)
+        if not listing:
+            raise ValidationError("یکی از محصولات فروشنده دیگر پیدا نشد.")
+        grouped.setdefault(listing.vendor_id, []).append(item)
+    if len(normalized_ids) != len(set(normalized_ids)) or len(normalized_ids) != len(grouped):
+        raise ValidationError("برای هر فروشنده باید دقیقاً یک هزینه ارسال معتبر انتخاب شود.")
     quotes = list(
-        ShippingQuote.objects.select_for_update().filter(
+        ShippingQuote.objects.select_for_update().select_related("vendor_listing").filter(
             uuid__in=normalized_ids,
             user=user,
             cart_item__cart=cart,
@@ -485,33 +567,38 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
             expires_at__gt=now,
         )
     )
-    if len(quotes) != len(seller_items):
+    if len(quotes) != len(grouped):
         raise ValidationError("یکی از استعلام‌های ارسال منقضی یا نامعتبر است؛ هزینه ارسال را دوباره محاسبه کنید.")
-    by_item = {quote.cart_item_id: quote for quote in quotes}
-    fingerprint = address_fingerprint(user=user, address=address)
+    quote_by_vendor = {}
+    for quote in quotes:
+        vendor_id = quote.vendor_listing.vendor_id
+        if vendor_id in quote_by_vendor:
+            raise ValidationError("برای یک فروشنده بیش از یک استعلام ارسال ثبت شده است.")
+        quote_by_vendor[vendor_id] = quote
+    address_hash = address_fingerprint(user=user, address=address)
     total = 0
-    for item in seller_items:
-        quote = by_item.get(item.id)
-        listing = VendorProduct.objects.select_for_update().get(pk=item.vendor_listing_id)
-        if item.custom_design_id:
-            expected_unit_price = int(item.custom_design.total_price)
-        else:
-            expected_unit_price = int(listing.retail_price)
-            if listing.wholesale_enabled:
-                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=item.quantity).order_by("-minimum_quantity").first()
-                if tier:
-                    expected_unit_price = int(tier.unit_price)
-        request_snapshot = (quote.provider_payload.get("request") or {}) if quote else {}
+    for vendor_id, group_items in grouped.items():
+        quote = quote_by_vendor.get(vendor_id)
+        if not quote or quote.cart_item_id not in {item.id for item in group_items}:
+            raise ValidationError("استعلام ارسال با فروشنده یا سبد فعلی مطابقت ندارد.")
+        vendor = listing_map[group_items[0].vendor_listing_id].vendor
+        payload, group_fingerprint, listings = _vendor_group_quote_payload(
+            items=group_items, vendor=vendor, address=address, user=user, lock_listings=True,
+        )
+        request_snapshot = quote.provider_payload.get("request") or {}
         if (
-            not quote
-            or quote.vendor_listing_id != item.vendor_listing_id
-            or quote.quantity != item.quantity
-            or quote.address_fingerprint != fingerprint
-            or int(request_snapshot.get("declared_value", -1)) != expected_unit_price * item.quantity
-            or int(request_snapshot.get("weight_grams", -1)) != listing.weight_grams * item.quantity
-            or int(request_snapshot.get("length_cm", -1)) != listing.package_length_cm
-            or int(request_snapshot.get("width_cm", -1)) != listing.package_width_cm
-            or int(request_snapshot.get("height_cm", -1)) != listing.package_height_cm * item.quantity
+            quote.vendor_listing.vendor_id != vendor_id
+            or quote.address_fingerprint != address_hash
+            or quote.quantity != payload["quantity"]
+            or quote.provider_payload.get("group_fingerprint") != group_fingerprint
+            or request_snapshot.get("cart_items_fingerprint") != group_fingerprint
+            or request_snapshot.get("cart_item_ids") != payload["cart_item_ids"]
+            or request_snapshot.get("listing_ids") != payload["listing_ids"]
+            or request_snapshot.get("origin_postal_code") != vendor.pickup_postal_code
+            or request_snapshot.get("destination_postal_code") != address.postal_code
+            or any(request_snapshot.get(key) != payload[key] for key in (
+                "declared_value", "weight_grams", "length_cm", "width_cm", "height_cm", "quantity"
+            ))
         ):
             raise ValidationError("استعلام ارسال با آدرس، فروشنده، قیمت یا بسته‌بندی فعلی مطابقت ندارد.")
         total += quote.amount
@@ -519,8 +606,7 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
         status=ShippingQuote.Status.CONSUMED,
         used_at=now,
     )
-    return total
-
+    return total, quotes
 
 
 def reconcile_shipment_actual_cost(*, shipment: Shipment, actual_cost: int, actor=None):
