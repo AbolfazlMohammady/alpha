@@ -222,6 +222,28 @@ def vendor_orders_api(request):
 
 
 @login_required
+@require_GET
+def vendor_catalog_products_api(request):
+    try:
+        vendor = _vendor_for_user(request.user)
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    query = str(request.GET.get("q", "")).strip()
+    if len(query) < 2:
+        return JsonResponse({"ok": True, "results": []})
+    products = Product.objects.filter(
+        is_active=True,
+        category__is_active=True,
+        name__icontains=query,
+    ).select_related("category").order_by("name")[:30]
+    return JsonResponse({"ok": True, "results": [{
+        "id": product.id,
+        "name": product.name,
+        "category": product.category.name,
+    } for product in products]})
+
+
+@login_required
 def vendor_products_api(request):
     try:
         vendor = _vendor_for_user(request.user)
