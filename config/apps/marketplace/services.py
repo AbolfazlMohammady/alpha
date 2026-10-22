@@ -413,8 +413,11 @@ def _vendor_group_quote_payload(*, items, vendor, address, user, lock_listings=F
     if len(listings) != len(listing_ids):
         raise ValidationError("یکی از محصولات فروشنده دیگر در دسترس نیست.")
     quantity_by_listing = {}
+    stock_by_listing = {}
     for item in items:
-        quantity_by_listing[item.vendor_listing_id] = quantity_by_listing.get(item.vendor_listing_id, 0) + int(item.quantity)
+        stock_by_listing[item.vendor_listing_id] = stock_by_listing.get(item.vendor_listing_id, 0) + int(item.quantity)
+        if not item.custom_design_id:
+            quantity_by_listing[item.vendor_listing_id] = quantity_by_listing.get(item.vendor_listing_id, 0) + int(item.quantity)
     snapshot = []
     total_weight = total_quantity = declared_value = 0
     length_cm = width_cm = height_cm = 0
@@ -435,7 +438,7 @@ def _vendor_group_quote_payload(*, items, vendor, address, user, lock_listings=F
         else:
             unit_price = int(listing.retail_price)
             if listing.wholesale_enabled:
-                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=quantity_by_listing[listing.pk]).order_by("-minimum_quantity").first()
+                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=quantity_by_listing.get(listing.pk, 0)).order_by("-minimum_quantity").first()
                 if tier:
                     unit_price = int(tier.unit_price)
         quantity = int(item.quantity)
@@ -456,7 +459,7 @@ def _vendor_group_quote_payload(*, items, vendor, address, user, lock_listings=F
             "height_cm": listing.package_height_cm,
             "custom_design_id": str(item.custom_design_id or ""),
         })
-    for listing_id, requested in quantity_by_listing.items():
+    for listing_id, requested in stock_by_listing.items():
         if listings[listing_id].stock_quantity < requested:
             raise ValidationError("موجودی یکی از محصولات برای تعداد انتخاب‌شده کافی نیست.")
     fingerprint = hashlib.sha256(
