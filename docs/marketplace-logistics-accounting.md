@@ -19,7 +19,7 @@ All monetary amounts use the repository's integer IRT convention. Keep one unit 
 7. Carrier tracking is polled every 30 minutes when Celery Beat and workers are running. Unknown provider statuses are not guessed as delivered. Staff can apply a verified manual status as a fallback.
 8. Delivery starts the vendor-specific settlement hold period. The daily task creates a batch for delivered seller orders; a centrally-paid shipment is not eligible until its actual carrier cost is recorded.
 9. Admin reviews and approves a batch. If a contracted payout API is configured, the system submits the transfer with an idempotency key. An API acknowledgement is not considered proof of payment; the batch becomes paid only after a confirmed result is recorded.
-10. The ledger records vendor payouts and central carrier costs. Carrier invoice payments are recorded separately. Quote-vs-final-cost and external-vs-internal mismatches are retained for review.
+10. The ledger records vendor payouts and central carrier costs. Gateway-to-bank settlement and processing fees are recorded separately; carrier invoice payments reduce accrued carrier liabilities against the platform bank account. Quote-vs-final-cost and external-vs-internal mismatches are retained for review.
 
 ## Carrier environment variables
 
@@ -29,7 +29,7 @@ Configure separately for each provider. The adapter uses TIPAX and POST prefixes
 - POST_API_BASE_URL, POST_API_TOKEN, POST_QUOTE_PATH, POST_SHIPMENT_PATH, POST_TRACKING_PATH
 - Optional auth settings: TIPAX_API_AUTH_HEADER, TIPAX_API_AUTH_SCHEME, POST_API_AUTH_HEADER, POST_API_AUTH_SCHEME (default header/scheme: Authorization: Bearer ...)
 - Optional response mappings: PREFIX_QUOTE_AMOUNT_PATH, PREFIX_QUOTE_REFERENCE_PATH, PREFIX_QUOTE_EXPIRES_PATH, PREFIX_SHIPMENT_TRACKING_PATH, PREFIX_SHIPMENT_ID_PATH, PREFIX_SHIPMENT_LABEL_PATH, PREFIX_TRACKING_STATUS_PATH, PREFIX_TRACKING_COST_PATH, replacing PREFIX with TIPAX or POST
-- CARRIER_API_TIMEOUT_SECONDS (default 10)
+- TIPAX_AMOUNT_DIVISOR and POST_AMOUNT_DIVISOR (use 10 if the provider reports rials while the project stores toman; this must be verified from the provider contract)\n- CARRIER_API_TIMEOUT_SECONDS (default 10)
 
 Response paths use dot notation, for example data.price.amount. The request body is a normalized generic payload; if the provider's official API requires a different schema, implement/verify the provider-specific request mapping before enabling that provider. Never commit tokens or customer data to Git.
 
@@ -42,7 +42,7 @@ The generic payout adapter is disabled unless all of these are configured:
 - PAYOUT_API_BASE_URL (HTTPS required)
 - PAYOUT_API_TOKEN
 - PAYOUT_API_PATH
-- Optional PAYOUT_API_TIMEOUT_SECONDS
+- Optional PAYOUT_API_TIMEOUT_SECONDS, PAYOUT_API_AUTH_HEADER, PAYOUT_API_AUTH_SCHEME, PAYOUT_RESPONSE_REFERENCE_PATH, PAYOUT_RESPONSE_STATUS_PATH\n- PAYOUT_AMOUNT_MULTIPLIER and PAYOUT_API_CURRENCY (set only after verifying whether the payout API expects toman or rials)
 
 The payload includes an idempotency key, amount, currency, verified IBAN and account name. This generic contract must be mapped and tested against the chosen Iranian bank/PSP payout API. Network timeouts leave a batch in a reconciliation state; do not retry blindly.
 
@@ -77,7 +77,7 @@ All seller endpoints require login and ownership checks. Admin endpoints require
 - POST /marketplace/api/admin/settlements/<batch_id>/payout-result/
 - GET /marketplace/api/admin/accounting/trial-balance/
 - POST /marketplace/api/admin/accounting/reconciliation/
-- POST /marketplace/api/admin/accounting/carrier-payment/
+- POST /marketplace/api/admin/accounting/carrier-payment/\n- POST /marketplace/api/admin/accounting/gateway-settlement/
 
 The endpoints are a backend interface; this change does not claim to deliver a finished seller-facing HTML dashboard.
 
