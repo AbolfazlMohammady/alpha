@@ -53,7 +53,10 @@
         if (!option) return;
         let price = Number(option.dataset.price || 0);
         const compare = Number(option.dataset.comparePrice || 0);
-        const quantity = Math.max(1, Number(quantityInput?.value || 1));
+        const existingListingQuantity = Object.keys(cartListings)
+            .filter((key) => key.startsWith(listingSelect.value + ":"))
+            .reduce((total, key) => total + Number(cartListings[key] || 0), 0);
+        const quantity = Math.max(1, Number(quantityInput?.value || 1)) + existingListingQuantity;
         const tiers = (option.dataset.wholesaleTiers || "").split(",").map((item) => {
             const parts = item.split(":");
             return {minimum: Number(parts[0] || 0), price: Number(parts[1] || 0)};
