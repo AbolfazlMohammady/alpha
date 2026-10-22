@@ -1,508 +1,559 @@
 from __future__ import annotations
 
-from datetime import timedelta
-import hashlib
+from django.db import transaction
 
-from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import IntegrityError, transaction
-from django.db.models import Sum
-from django.utils import timezone
-
-from .models import (
-    JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
-    Shipment, ShippingQuote, Vendor, VendorOrder, VendorProduct,
-)
+from .models import Cart, CartItem, Order, OrderItem
+from apps.customizer.models import DesignDraft
 
 
-def get_system_account(code: str, name: str, kind: str, currency: str = "IRT") -> LedgerAccount:
-    account, _ = LedgerAccount.objects.get_or_create(
-        code=code,
-        defaults={"name": name, "kind": kind, "currency": currency},
-    )
-    if account.kind != kind or account.currency != currency:
-        raise ValidationError(f"حساب مالی {code} با تنظیمات ناسازگار از قبل وجود دارد.")
-    return account
+CART_SESSION_KEY = "babaei_cart_session"
+CART_COUNT_SESSION_KEY = "babaei_cart_item_count"
+CART_PRODUCTS_SESSION_KEY = "babaei_cart_products"
+AUTH_USER_SESSION_KEY = "_auth_user_id"
 
 
-def post_journal(*, idempotency_key, kind, description, lines, order=None, vendor_order=None, created_by=None, metadata=None):
-    """Create an immutable, balanced double-entry journal exactly once.
-
-    Each line is {account: LedgerAccount, debit: int, credit: int, memo?: str}.
-    All values use the project's integer IRT convention; never use floats.
-    """
-    normalized = []
-    debit_total = credit_total = 0
-    for item in lines:
-        debit, credit = int(item.get("debit", 0)), int(item.get("credit", 0))
-        if debit < 0 or credit < 0 or (debit == 0) == (credit == 0):
-            raise ValidationError("هر ردیف سند باید دقیقاً یک مبلغ بدهکار یا بستانکار مثبت داشته باشد.")
-        account = item["account"]
-        if not account.is_active:
-            raise ValidationError(f"حساب {account.code} غیرفعال است.")
-        if account.currency != "IRT":
-            raise ValidationError("تبدیل ارز در این نسخه پشتیبانی نمی‌شود.")
-        normalized.append((account, debit, credit, item.get("memo", "")))
-        debit_total += debit
-        credit_total += credit
-    if len(normalized) < 2 or debit_total != credit_total:
-        raise ValidationError(f"سند نامتوازن است: بدهکار {debit_total}، بستانکار {credit_total}.")
-
-    with transaction.atomic():
-        existing = JournalEntry.objects.filter(idempotency_key=idempotency_key).first()
-        if existing:
-            if existing.status not in {JournalEntry.Status.POSTED, JournalEntry.Status.REVERSED}:
-                raise ValidationError("کلید تکراری به سند ناقص متصل است؛ بررسی مدیریتی لازم است.")
-            return existing, False
-        try:
-            entry = JournalEntry.objects.create(
-                idempotency_key=idempotency_key,
-                kind=kind,
-                description=description,
-                order=order,
-                vendor_order=vendor_order,
-                created_by=created_by,
-                metadata=metadata or {},
-            )
-            JournalLine.objects.bulk_create([
-                JournalLine(entry=entry, account=account, debit=debit, credit=credit, memo=memo)
-                for account, debit, credit, memo in normalized
-            ])
-            entry.status = JournalEntry.Status.POSTED
-            entry.posted_at = timezone.now()
-            entry.save(update_fields=("status", "posted_at"))
-            return entry, True
-        except IntegrityError:
-            existing = JournalEntry.objects.get(idempotency_key=idempotency_key)
-            return existing, False
+def _ensure_session_key(request) -> str:
+    if not request.session.session_key:
+        request.session.save()
+    return request.session.session_key
 
 
-def reverse_journal(*, entry: JournalEntry, idempotency_key: str, reason: str, created_by=None):
-    """Reverse a posted journal with a new balanced journal; never edit history."""
-    entry = JournalEntry.objects.prefetch_related("lines__account").get(pk=entry.pk)
-    if entry.status == JournalEntry.Status.REVERSED:
-        reversal = JournalEntry.objects.filter(idempotency_key=idempotency_key).first()
-        if reversal:
-            return reversal, False
-        raise ValidationError("این سند قبلاً معکوس شده است.")
-    if entry.status != JournalEntry.Status.POSTED:
-        raise ValidationError("فقط سند قطعی را می‌توان معکوس کرد.")
-    lines = [
-        {
-            "account": line.account,
-            "debit": line.credit,
-            "credit": line.debit,
-            "memo": f"معکوس سند {entry.id}",
-        }
-        for line in entry.lines.all()
-    ]
-    with transaction.atomic():
-        reversal, created = post_journal(
-            idempotency_key=idempotency_key,
-            kind="reversal",
-            description=f"معکوس سند {entry.id}: {reason[:350]}",
-            lines=lines,
-            order=entry.order,
-            vendor_order=entry.vendor_order,
-            created_by=created_by,
-            metadata={"reverses_entry_id": entry.id, "reason": reason},
-        )
-        if created:
-            JournalEntry.objects.filter(pk=entry.pk, status=JournalEntry.Status.POSTED).update(status=JournalEntry.Status.REVERSED)
-        return reversal, created
+def _authenticated_user_id(request):
+    return request.session.get(AUTH_USER_SESSION_KEY)
 
 
-def create_vendor_orders_for_paid_order(order):
-    """Split a paid order only when every item has an approved seller listing.
+def get_active_cart(request) -> Cart:
+    cached_cart = getattr(request, "_babaei_active_cart", None)
+    if cached_cart is not None:
+        return cached_cart
+    user_id = _authenticated_user_id(request)
+    if user_id:
+        cart, _ = Cart.objects.get_or_create(user_id=user_id, status=Cart.Status.ACTIVE)
+    else:
+        session_key = _ensure_session_key(request)
+        if request.session.get(CART_SESSION_KEY) != session_key:
+            request.session[CART_SESSION_KEY] = session_key
+        cart, _ = Cart.objects.get_or_create(session_key=session_key, user=None, status=Cart.Status.ACTIVE)
+    request._babaei_active_cart = cart
+    return cart
 
-    Legacy single-store orders remain untouched until their products are assigned
-    to vendors. This prevents silently losing an item from seller fulfilment.
-    """
-    from apps.orders.models import Order
 
-    order = Order.objects.select_related("user").prefetch_related("items__product").get(pk=order.pk)
-    if order.payment_status != Order.PaymentStatus.PAID:
-        raise ValidationError("تفکیک سفارش فقط پس از پرداخت موفق مجاز است.")
-    items = list(order.items.all())
-    if not items:
-        return []
-    # Seller identity is snapshotted on each order line. Never infer a seller
-    # from product_id alone: multiple vendors may list the same catalog product.
-    if any(not item.vendor_listing_id for item in items):
-        # Deliberately avoid partial seller routing for a mixed/legacy order.
-        return []
-    grouped = {}
+def _product_cart_cache(request) -> dict:
+    value = getattr(request, "_babaei_cart_products", None)
+    if value is None:
+        value = request.session.get(CART_PRODUCTS_SESSION_KEY, {})
+        if not isinstance(value, dict):
+            value = {}
+        request._babaei_cart_products = value
+    return value
+
+
+def _save_product_cart_cache(request, cache: dict) -> None:
+    request.session[CART_PRODUCTS_SESSION_KEY] = cache
+    request._babaei_cart_products = cache
+
+
+def cache_cart_items(request, items) -> None:
+    cache = {}
     for item in items:
-        listing = item.vendor_listing
-        if (
-            listing.status != VendorProduct.Status.ACTIVE
-            or listing.vendor.status != Vendor.Status.ACTIVE
-            or not listing.vendor.user.is_active
-        ):
-            raise ValidationError("یکی از فروشندگان سفارش در زمان تسویه سفارش فعال نیست.")
-        grouped.setdefault(listing.vendor_id, {"vendor": listing.vendor, "items": [], "subtotal": 0})
-        gross = int(item.line_total)
-        grouped[listing.vendor_id]["subtotal"] += gross
-        grouped[listing.vendor_id]["items"].append({
-            "order_item_id": item.id,
-            "product_id": item.product_id,
-            "product_name": item.product_name,
-            "variant_sku": item.variant_sku,
-            "color_name": item.color_name,
-            "size_name": item.size_name,
-            "quantity": item.quantity,
-            "unit_price": int(item.unit_price),
-            "line_total": gross,
-            "vendor_product_id": listing.id,
-            "custom_design_code": item.custom_design_code,
-            "custom_design_snapshot": item.custom_design_snapshot,
-        })
+        cache.setdefault(str(item.product_id), {})[str(item.variant_id) if item.variant_id else "base"] = item.quantity
+    _save_product_cart_cache(request, cache)
 
-    gross_sum = sum(group["subtotal"] for group in grouped.values())
-    discount_remaining = int(order.discount_amount or 0)
-    lines = []
-    created_orders = []
+
+def invalidate_product_cart_cache(request) -> None:
+    request.session.pop(CART_PRODUCTS_SESSION_KEY, None)
+    request._babaei_cart_products = {}
+
+
+def _cache_item(request, item: CartItem) -> None:
+    cache = _product_cart_cache(request)
+    cache.setdefault(str(item.product_id), {})[str(item.variant_id) if item.variant_id else "base"] = item.quantity
+    _save_product_cart_cache(request, cache)
+
+
+def get_product_cart_variants(request, product_id: int):
+    cached = _product_cart_cache(request)
+    product_data = cached.get(str(product_id))
+    if product_data is not None:
+        return {None if key == "base" else int(key): int(value) for key, value in product_data.items()}
+
+    user_id = _authenticated_user_id(request)
+    if user_id:
+        rows = CartItem.objects.filter(cart__user_id=user_id, cart__status=Cart.Status.ACTIVE, product_id=product_id).values_list("variant_id", "quantity")
+    else:
+        session_key = request.session.get(CART_SESSION_KEY) or request.session.session_key
+        if not session_key:
+            return {}
+        rows = CartItem.objects.filter(cart__session_key=session_key, cart__user__isnull=True, cart__status=Cart.Status.ACTIVE, product_id=product_id).values_list("variant_id", "quantity")
+    result = dict(rows)
+    cached[str(product_id)] = {"base" if variant_id is None else str(variant_id): quantity for variant_id, quantity in result.items()}
+    _save_product_cart_cache(request, cached)
+    return result
+
+
+def merge_guest_cart(request, user) -> None:
+    session_key = request.session.get(CART_SESSION_KEY) or request.session.session_key
+    if not session_key:
+        return
+    guest = Cart.objects.filter(session_key=session_key, user__isnull=True, status=Cart.Status.ACTIVE).first()
+    if not guest:
+        return
     with transaction.atomic():
-        for vendor_id, group in grouped.items():
-            vendor = group["vendor"]
-            # Allocate order-level discount proportionally, with the final seller
-            # absorbing any integer remainder so allocations exactly reconcile.
-            if vendor_id == list(grouped.keys())[-1]:
-                discount = discount_remaining
+        user_cart, _ = Cart.objects.get_or_create(user=user, status=Cart.Status.ACTIVE)
+        for guest_item in guest.items.select_related("product", "variant", "custom_design").select_for_update(of=("self",)):
+            if guest_item.custom_design_id:
+                design = guest_item.custom_design
+                design.user = user
+                design.session_key = ""
+                design.save(update_fields=("user", "session_key", "updated_at"))
+                item, created = CartItem.objects.get_or_create(
+                    cart=user_cart,
+                    custom_design=design,
+                    defaults={
+                        "product": guest_item.product,
+                        "variant": guest_item.variant,
+                        "quantity": guest_item.quantity,
+                    },
+                )
             else:
-                discount = (int(order.discount_amount or 0) * group["subtotal"] // max(gross_sum, 1))
-                discount_remaining -= discount
-            net_sales = max(group["subtotal"] - discount, 0)
-            commission = (net_sales * vendor.commission_bps + 5000) // 10000
-            commission = min(commission, net_sales)
-            payable = net_sales - commission
-            shipping_share = ShippingQuote.objects.filter(
-                order=order,
-                vendor_listing__vendor=vendor,
-            ).aggregate(total=Sum("amount"))["total"] or 0
-            vendor_order, _ = VendorOrder.objects.get_or_create(
-                order=order,
-                vendor=vendor,
-                defaults={
-                    "items_snapshot": group["items"],
-                    "subtotal": net_sales,
-                    "customer_shipping_amount": int(shipping_share),
-                    "commission_amount": commission,
-                    "vendor_payable": payable,
-                    "currency": order.currency,
-                },
-            )
-            created_orders.append(vendor_order)
-            lines.append((vendor, vendor_order, net_sales, commission, payable))
+                item, created = CartItem.objects.get_or_create(
+                    cart=user_cart,
+                    product=guest_item.product,
+                    variant=guest_item.variant,
+                    defaults={"quantity": guest_item.quantity},
+                )
+            if not created:
+                item.quantity += guest_item.quantity
+                if item.variant_id:
+                    item.quantity = min(item.quantity, item.variant.stock_quantity)
+                item.save(update_fields=["quantity", "updated_at"])
+        guest.status = Cart.Status.CONVERTED
+        guest.save(update_fields=["status", "updated_at"])
+    request.session.pop(CART_SESSION_KEY, None)
+    invalidate_product_cart_cache(request)
+    merged_count = user_cart.item_count
+    request.session[CART_COUNT_SESSION_KEY] = merged_count
+    request._babaei_cart_item_count = merged_count
 
-        # Posting is idempotent and happens once per successfully paid order.
-        clearing = get_system_account("gateway_clearing", "وجوه دریافتی درگاه", LedgerAccount.Kind.ASSET, order.currency)
-        commission_account = get_system_account("platform_commission", "درآمد کمیسیون پلتفرم", LedgerAccount.Kind.REVENUE, order.currency)
-        shipping_account = get_system_account("shipping_funds_payable", "وجوه تخصیص‌یافته به حمل", LedgerAccount.Kind.LIABILITY, order.currency)
-        journal_lines = [{"account": clearing, "debit": int(order.total_amount), "credit": 0, "memo": order.number}]
-        for vendor, vendor_order, net_sales, commission, payable in lines:
-            payable_account = get_system_account(
-                f"vendor_payable_{vendor.id}",
-                f"بستانکاری فروشنده: {vendor.store_name}",
-                LedgerAccount.Kind.LIABILITY,
-                order.currency,
-            )
-            if payable:
-                journal_lines.append({"account": payable_account, "debit": 0, "credit": payable, "memo": order.number})
-            if commission:
-                journal_lines.append({"account": commission_account, "debit": 0, "credit": commission, "memo": order.number})
-        if order.shipping_amount:
-            journal_lines.append({"account": shipping_account, "debit": 0, "credit": int(order.shipping_amount), "memo": order.number})
-        # A legacy checkout may not yet allocate shipping; only post when the
-        # order's actual money components reconcile to its payable total.
-        expected_credit = sum(line["credit"] for line in journal_lines)
-        expected_debit = sum(line["debit"] for line in journal_lines)
-        if expected_credit != expected_debit:
-            raise ValidationError(
-                "تفکیک مالی سفارش با تخفیف/هزینه ارسال فعلی سازگار نیست؛ قبل از ثبت سند، تخصیص مبالغ سفارش باید تکمیل شود."
-            )
-        post_journal(
-            idempotency_key=f"order-paid:{order.uuid}",
-            kind="order_payment",
-            description=f"ثبت فروش و بدهی فروشندگان برای سفارش {order.number}",
-            lines=journal_lines,
-            order=order,
-            metadata={"vendor_order_ids": [row.id for row in created_orders]},
+
+def add_design_to_cart(request, *, design: DesignDraft, quantity=1, vendor_listing=None) -> CartItem:
+    quantity = int(quantity)
+    if quantity < 1:
+        raise ValueError("تعداد باید حداقل ۱ باشد.")
+    if design.status != DesignDraft.Status.DRAFT:
+        raise ValueError("این طراحی دیگر قابل افزودن به سبد نیست.")
+    session_key = _ensure_session_key(request)
+    user_id = _authenticated_user_id(request)
+    if design.user_id and str(design.user_id) != str(user_id):
+        raise ValueError("این طراحی متعلق به کاربر دیگری است.")
+    if not design.user_id and design.session_key != session_key:
+        raise ValueError("این طراحی متعلق به نشست فعلی نیست.")
+    if vendor_listing is not None:
+        from apps.marketplace.models import VendorProduct
+        vendor_listing = VendorProduct.objects.select_related("vendor").get(
+            pk=vendor_listing.pk, product_id=design.product_id,
+            status=VendorProduct.Status.ACTIVE, vendor__status="active",
+            supports_custom_printing=True,
         )
-    return created_orders
-
-
-def mark_vendor_order_delivered(vendor_order: VendorOrder, *, delivered_at=None):
-    delivered_at = delivered_at or timezone.now()
+        if vendor_listing.stock_quantity < quantity:
+            raise ValueError("موجودی فروشنده برای این سفارش کافی نیست.")
     with transaction.atomic():
-        locked = VendorOrder.objects.select_for_update().select_related("vendor").get(pk=vendor_order.pk)
-        if locked.status == VendorOrder.Status.CANCELLED:
-            raise ValidationError("سفارش لغوشده را نمی‌توان تحویل‌شده ثبت کرد.")
-        if locked.status == VendorOrder.Status.DELIVERED:
-            return locked, False
-        locked.status = VendorOrder.Status.DELIVERED
-        locked.delivered_at = delivered_at
-        locked.settlement_eligible_at = delivered_at + timedelta(hours=locked.vendor.settlement_hold_hours)
-        locked.save(update_fields=("status", "delivered_at", "settlement_eligible_at", "updated_at"))
-        return locked, True
-
-
-def create_daily_settlement_batches(*, now=None):
-    """Create one approval batch per vendor for delivered, matured, unpaid orders."""
-    now = now or timezone.now()
-    created = []
-    vendors = Vendor.objects.filter(status=Vendor.Status.ACTIVE).order_by("id")
-    for vendor in vendors:
-        eligible = list(
-            VendorOrder.objects.filter(
-                vendor=vendor,
-                status=VendorOrder.Status.DELIVERED,
-                settlement_eligible_at__lte=now,
-            )
-            .exclude(settlement_lines__batch__status__in=[
-                SettlementBatch.Status.PENDING_APPROVAL,
-                SettlementBatch.Status.APPROVED,
-                SettlementBatch.Status.PROCESSING,
-                SettlementBatch.Status.PAID,
-            ])
-            .distinct()
-            .order_by("id")
-        )
-        if not eligible:
-            continue
-        key = f"daily-settlement:{vendor.id}:{now.date().isoformat()}"
-        with transaction.atomic():
-            batch, was_created = SettlementBatch.objects.get_or_create(
-                idempotency_key=key,
-                defaults={
-                    "vendor": vendor,
-                    "status": SettlementBatch.Status.PENDING_APPROVAL,
-                    "period_start": now.replace(hour=0, minute=0, second=0, microsecond=0),
-                    "period_end": now,
-                    "gross_amount": sum(item.subtotal for item in eligible),
-                    "commission_amount": sum(item.commission_amount for item in eligible),
-                    "payable_amount": sum(item.vendor_payable for item in eligible),
-                    "order_ids": [item.order_id for item in eligible],
-                },
-            )
-            if was_created:
-                SettlementLine.objects.bulk_create([
-                    SettlementLine(
-                        batch=batch,
-                        vendor_order=item,
-                        gross_amount=item.subtotal,
-                        commission_amount=item.commission_amount,
-                        payable_amount=item.vendor_payable,
-                    )
-                    for item in eligible
-                ])
-                created.append(batch)
-    return created
-
-
-def approve_settlement(*, batch_id, approver):
-    if not approver or not approver.is_authenticated or not (approver.is_staff or approver.is_superuser):
-        raise PermissionDenied("تأیید تسویه فقط برای مدیر مجاز است.")
-    with transaction.atomic():
-        batch = SettlementBatch.objects.select_for_update().get(pk=batch_id)
-        if batch.status != SettlementBatch.Status.PENDING_APPROVAL:
-            raise ValidationError("فقط تسویه در انتظار تأیید را می‌توان تأیید کرد.")
-        if not batch.vendor.can_receive_orders:
-            raise ValidationError("وضعیت فروشنده اجازه تسویه نمی‌دهد.")
-        if not batch.vendor.bank_details_verified_at or not batch.vendor.bank_iban:
-            raise ValidationError("اطلاعات بانکی فروشنده هنوز تأیید نشده است.")
-        if batch.payable_amount <= 0:
-            raise ValidationError("مبلغ تسویه باید مثبت باشد.")
-        batch.status = SettlementBatch.Status.APPROVED
-        batch.approved_by = approver
-        batch.approved_at = timezone.now()
-        batch.save(update_fields=("status", "approved_by", "approved_at"))
-        return batch
-
-
-def record_payout_result(*, batch_id, provider_reference, succeeded, failure_reason=""):
-    """Record a confirmed external payout result; this does not initiate a bank transfer."""
-    with transaction.atomic():
-        batch = SettlementBatch.objects.select_for_update().get(pk=batch_id)
-        if batch.status not in {SettlementBatch.Status.APPROVED, SettlementBatch.Status.PROCESSING, SettlementBatch.Status.FAILED}:
-            raise ValidationError("وضعیت تسویه برای ثبت نتیجه پرداخت معتبر نیست.")
-        if succeeded:
-            if not provider_reference:
-                raise ValidationError("شناسه مرجع پرداخت موفق الزامی است.")
-            batch.status = SettlementBatch.Status.PAID
-            batch.payout_reference = provider_reference[:180]
-            batch.paid_at = timezone.now()
-            batch.failure_reason = ""
+        cart = get_active_cart(request)
+        item = CartItem.objects.filter(cart=cart, custom_design=design).select_for_update().first()
+        if item:
+            if item.vendor_listing_id != getattr(vendor_listing, "id", None):
+                raise ValueError("این طراحی قبلاً با فروشنده دیگری به سبد اضافه شده است.")
+            item.quantity += quantity
+            item.save(update_fields=("quantity", "updated_at"))
         else:
-            batch.status = SettlementBatch.Status.FAILED
-            batch.failure_reason = (failure_reason or "پرداخت ناموفق بود.")[:4000]
-        batch.save(update_fields=("status", "payout_reference", "paid_at", "failure_reason"))
-        return batch
+            item = CartItem.objects.create(cart=cart, product=design.product, variant=design.variant, custom_design=design, vendor_listing=vendor_listing, quantity=quantity)
+    return item
 
 
-def address_fingerprint(*, user, address) -> str:
-    raw = "|".join([
-        str(user.pk), str(address.pk), str(address.postal_code or ""),
-        str(address.city_id), str(address.description or ""), str(address.title or ""),
-    ])
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+def add_to_cart(request, *, product, variant=None, custom_design=None, vendor_listing=None, quantity=1) -> CartItem:
+    quantity = int(quantity)
+    if quantity < 1:
+        raise ValueError("تعداد باید حداقل ۱ باشد.")
+    if custom_design is not None and (custom_design.product_id != product.id or custom_design.status not in {"draft", "cart"}):
+        raise ValueError("طراحی انتخاب‌شده معتبر نیست.")
+    if vendor_listing is not None:
+        from apps.marketplace.models import VendorProduct, Vendor
+        vendor_listing = VendorProduct.objects.select_related("vendor").get(
+            pk=vendor_listing.pk,
+            product_id=product.id,
+            status=VendorProduct.Status.ACTIVE,
+            vendor__status=Vendor.Status.ACTIVE,
+            vendor__user__is_active=True,
+        )
+        if vendor_listing.stock_quantity < quantity:
+            raise ValueError("موجودی این فروشنده برای تعداد انتخاب‌شده کافی نیست.")
+        if custom_design is not None and not vendor_listing.supports_custom_printing:
+            raise ValueError("این فروشنده چاپ سفارشی این محصول را پشتیبانی نمی‌کند.")
+    with transaction.atomic():
+        cart = get_active_cart(request)
+        if variant is not None:
+            if variant.product_id != product.id:
+                raise ValueError("ترکیب انتخاب‌شده متعلق به این محصول نیست.")
+            variant = type(variant).objects.select_for_update().get(pk=variant.pk)
+            if not variant.is_active or not product.is_active or not product.category.is_active:
+                raise ValueError("این محصول دیگر قابل خرید نیست.")
+            if variant.stock_quantity < quantity:
+                raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
+        elif product.variants.filter(is_active=True).exists():
+            raise ValueError("لطفاً رنگ و سایز محصول را انتخاب کنید.")
+        lookup = {"cart": cart, "custom_design": custom_design} if custom_design is not None else {
+            "cart": cart, "product": product, "variant": variant, "custom_design": None,
+            "vendor_listing": vendor_listing,
+        }
+        item, created = CartItem.objects.select_for_update().get_or_create(**lookup, defaults={"quantity": quantity})
+        if not created:
+            new_quantity = item.quantity + quantity
+            available = vendor_listing.stock_quantity if vendor_listing is not None else (variant.stock_quantity if variant is not None else None)
+            if available is not None and new_quantity > available:
+                raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
+            item.quantity = new_quantity
+            item.save(update_fields=["quantity", "updated_at"])
+    _cache_item(request, item)
+    return item
 
 
-def create_shipping_quote(*, user, cart_item, address, provider):
-    """Quote one seller parcel using seller-configured origin and customer address."""
-    from .carriers import get_carrier
-    from django.utils import timezone
+def update_cart_item(request, item_id: int, quantity: int) -> CartItem:
+    quantity = int(quantity)
+    if quantity < 1:
+        raise ValueError("تعداد باید حداقل ۱ باشد.")
+    with transaction.atomic():
+        cart = get_active_cart(request)
+        item = CartItem.objects.select_for_update().select_related("variant").get(cart=cart, pk=item_id)
+        if item.variant_id:
+            variant = type(item.variant).objects.select_for_update().get(pk=item.variant_id)
+            if quantity > variant.stock_quantity:
+                raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
+        item.quantity = quantity
+        item.save(update_fields=["quantity", "updated_at"])
+    _cache_item(request, item)
+    return item
 
-    listing = cart_item.vendor_listing
-    if not listing:
-        raise ValidationError("این قلم سبد به فروشنده مشخصی متصل نیست.")
-    if cart_item.cart.user_id != user.pk:
-        raise ValidationError("این قلم سبد متعلق به کاربر فعلی نیست.")
-    if address.user_id != user.pk:
-        raise ValidationError("آدرس انتخاب‌شده متعلق به کاربر فعلی نیست.")
-    if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders:
-        raise ValidationError("این فروشنده در حال حاضر سفارش نمی‌پذیرد.")
-    if not listing.vendor.pickup_postal_code:
-        raise ValidationError("فروشنده هنوز کد پستی مبدأ ارسال را در پنل تکمیل نکرده است.")
-    if not listing.weight_grams:
-        raise ValidationError("وزن بسته‌بندی‌شده محصول باید توسط فروشنده ثبت شود.")
-    if not all((listing.package_length_cm, listing.package_width_cm, listing.package_height_cm)):
-        raise ValidationError("ابعاد بسته‌بندی محصول باید توسط فروشنده تکمیل شود.")
-    provider = str(provider).lower()
-    if provider not in {"tipax", "post"}:
-        raise ValidationError("شرکت حمل‌ونقل انتخاب‌شده پشتیبانی نمی‌شود.")
-    payload = {
-        "origin_postal_code": listing.vendor.pickup_postal_code,
-        "destination_postal_code": address.postal_code,
-        "weight_grams": listing.weight_grams * cart_item.quantity,
-        "length_cm": listing.package_length_cm,
-        "width_cm": listing.package_width_cm,
-        "height_cm": listing.package_height_cm,
-        "declared_value": int(cart_item.unit_price) * cart_item.quantity,
-        "service_level": "standard",
-        "quantity": cart_item.quantity,
-    }
-    quote = get_carrier(provider).quote(payload)
-    expires_at = None
-    if quote.expires_at:
-        from django.utils.dateparse import parse_datetime
-        expires_at = parse_datetime(str(quote.expires_at))
-        if expires_at and timezone.is_naive(expires_at):
-            expires_at = timezone.make_aware(expires_at, timezone.get_current_timezone())
-    expires_at = expires_at or (timezone.now() + timedelta(minutes=15))
-    if expires_at <= timezone.now():
-        raise ValidationError("شرکت حمل‌ونقل هزینه‌ای با مهلت اعتبار گذشته برگردانده است.")
-    return ShippingQuote.objects.create(
-        user=user,
-        cart_item=cart_item,
-        vendor_listing=listing,
-        provider=provider,
-        amount=quote.amount,
-        currency=quote.currency,
-        quote_reference=quote.reference,
-        quantity=cart_item.quantity,
-        address_fingerprint=address_fingerprint(user=user, address=address),
-        expires_at=expires_at,
-        provider_payload={"request": payload, "response": quote.raw or {}},
+
+def remove_cart_item(request, item_id: int) -> None:
+    cart = get_active_cart(request)
+    item = (
+        CartItem.objects
+        .filter(cart=cart, pk=item_id)
+        .values("product_id", "variant_id", "custom_design_id")
+        .first()
     )
+    if not item:
+        return
+
+    CartItem.objects.filter(cart=cart, pk=item_id).delete()
+
+    # A design that has not reached an order is disposable. Do not keep it as
+    # an admin-visible record after the customer removes it from the cart.
+    if item["custom_design_id"]:
+        DesignDraft.objects.filter(
+            pk=item["custom_design_id"],
+            status__in=[DesignDraft.Status.DRAFT, DesignDraft.Status.CART],
+        ).delete()
+
+    cache = _product_cart_cache(request)
+    product_cache = cache.get(str(item["product_id"]))
+    if product_cache:
+        product_cache.pop(str(item["variant_id"]) if item["variant_id"] else "base", None)
+        if not product_cache:
+            cache.pop(str(item["product_id"]), None)
+    _save_product_cart_cache(request, cache)
 
 
-def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
-    """Validate and consume the exact current quote set atomically for checkout."""
-    from django.utils import timezone
+def clear_cart(request) -> None:
+    cart = get_active_cart(request)
+    design_ids = list(
+        cart.items
+        .exclude(custom_design_id=None)
+        .values_list("custom_design_id", flat=True)
+    )
+    cart.items.all().delete()
 
-    now = now or timezone.now()
-    seller_items = [item for item in items if item.vendor_listing_id]
-    if not seller_items:
-        if quote_ids:
-            raise ValidationError("برای سبدی بدون فروشنده، استعلام حمل نامعتبر است.")
-        return 0, []
-    if len(seller_items) != len(items):
-        raise ValidationError("برای سفارش چندفروشندگی، همه اقلام باید فروشنده مشخص داشته باشند.")
-    normalized_ids = [str(value).strip() for value in quote_ids if str(value).strip()]
-    if len(normalized_ids) != len(seller_items) or len(set(normalized_ids)) != len(normalized_ids):
-        raise ValidationError("برای هر قلم فروشنده باید یک هزینه ارسال معتبر انتخاب شود.")
-    quotes = list(
-        ShippingQuote.objects.select_for_update().filter(
-            uuid__in=normalized_ids,
+    if design_ids:
+        DesignDraft.objects.filter(
+            id__in=design_ids,
+            status__in=[DesignDraft.Status.DRAFT, DesignDraft.Status.CART],
+        ).delete()
+
+    invalidate_product_cart_cache(request)
+
+
+def create_order_from_cart(*, user, cart, address, customer_note="", shipping_quote_ids=None):
+    """Convert the active cart into an immutable order snapshot."""
+    from apps.shop.models import ProductVariant
+
+    with transaction.atomic():
+        locked_cart = Cart.objects.select_for_update().get(
+            pk=cart.pk,
             user=user,
-            cart_item__cart=cart,
-            status=ShippingQuote.Status.VALID,
-            expires_at__gt=now,
+            status=Cart.Status.ACTIVE,
         )
-    )
-    if len(quotes) != len(seller_items):
-        raise ValidationError("یکی از استعلام‌های ارسال منقضی یا نامعتبر است؛ هزینه ارسال را دوباره محاسبه کنید.")
-    by_item = {quote.cart_item_id: quote for quote in quotes}
-    fingerprint = address_fingerprint(user=user, address=address)
-    total = 0
-    for item in seller_items:
-        quote = by_item.get(item.id)
-        if (
-            not quote
-            or quote.vendor_listing_id != item.vendor_listing_id
-            or quote.quantity != item.quantity
-            or quote.address_fingerprint != fingerprint
-            or int((quote.provider_payload.get("request") or {}).get("declared_value", -1)) != int(item.unit_price) * item.quantity
-        ):
-            raise ValidationError("استعلام ارسال با آدرس، فروشنده یا تعداد فعلی سبد مطابقت ندارد.")
-        total += quote.amount
-    ShippingQuote.objects.filter(id__in=[quote.id for quote in quotes]).update(
-        status=ShippingQuote.Status.CONSUMED,
-        used_at=now,
-    )
-    return total
+        items = list(
+            locked_cart.items
+            .select_related(
+                "product",
+                "product__category",
+                "variant__color",
+                "variant__size",
+                "custom_design",
+            )
+            .select_for_update(of=("self",))
+            .order_by("added_at", "id")
+        )
+        if not items:
+            raise ValueError("سبد خرید خالی است.")
+
+        order_rows = []
+        subtotal = 0
+
+        for item in items:
+            product = item.product
+            design = item.custom_design
+            if not product.is_active or not product.category.is_active:
+                raise ValueError("این لباس دیگر قابل سفارش نیست.")
+            if design is not None and (design.status not in {DesignDraft.Status.DRAFT, DesignDraft.Status.CART} or design.product_id != product.id):
+                raise ValueError("طراحی این آیتم دیگر قابل سفارش نیست.")
+
+            if design is not None:
+                if item.vendor_listing_id:
+                    from apps.marketplace.models import VendorProduct
+                    listing = item.vendor_listing
+                    if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders or not listing.supports_custom_printing:
+                        raise ValueError("فروشنده انتخاب‌شده امکان اجرای طراحی سفارشی را ندارد.")
+                    if listing.stock_quantity < item.quantity:
+                        raise ValueError("ظرفیت/موجودی فروشنده برای طراحی سفارشی کافی نیست.")
+                if design.user_id and design.user_id != user.id:
+                    raise ValueError("طراحی سفارشی متعلق به این کاربر نیست.")
+                unit_price = design.total_price
+                line_total = unit_price * item.quantity
+                snapshot = dict(design.payload or {})
+                snapshot.update({
+                    "design_code": design.design_code,
+                    "base_price": design.base_price,
+                    "total_price": design.total_price,
+                    "shirt_color": design.shirt_color,
+                    "variant_id": design.variant_id,
+                })
+                if item.vendor_listing_id and not item.vendor_listing.supports_custom_printing:
+                    raise ValueError("فروشنده انتخاب‌شده چاپ سفارشی را پشتیبانی نمی‌کند.")
+                order_rows.append({
+                    "cart_item": item,
+                    "vendor_listing": item.vendor_listing,
+                    "variant": design.variant,
+                    "unit_price": unit_price,
+                    "compare_at_price": None,
+                    "variant_sku": getattr(design.variant, "sku", "") if design.variant_id else "",
+                    "color_name": getattr(getattr(design.variant, "color", None), "name", "") if design.variant_id else "",
+                    "size_name": getattr(getattr(design.variant, "size", None), "name", "") if design.variant_id else "",
+                    "line_total": line_total,
+                    "custom_design": design,
+                    "custom_design_snapshot": snapshot,
+                })
+                subtotal += line_total
+                continue
+
+            listing = item.vendor_listing
+            if listing is not None:
+                from apps.marketplace.models import VendorProduct
+                listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=listing.pk)
+                if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders:
+                    raise ValueError(f"فروشنده محصول «{product.name}» در حال حاضر سفارش نمی‌پذیرد.")
+                if listing.stock_quantity < item.quantity:
+                    raise ValueError(f"موجودی فروشنده برای «{product.name}» کافی نیست.")
+            variant = None
+            if item.variant_id:
+                variant = (
+                    ProductVariant.objects
+                    .select_for_update()
+                    .select_related("color", "size")
+                    .get(pk=item.variant_id, product_id=product.id)
+                )
+                if not variant.is_active:
+                    raise ValueError(f"ترکیب «{product.name}» دیگر قابل سفارش نیست.")
+                if listing is None and variant.stock_quantity < item.quantity:
+                    raise ValueError(f"موجودی «{product.name}» برای تعداد انتخاب‌شده کافی نیست.")
+                unit_price = listing.retail_price if listing else variant.effective_price
+                compare_at_price = listing.compare_at_price if listing else variant.effective_compare_at_price
+                variant_sku = variant.sku
+                color_name = variant.color.name
+                size_name = variant.size.name
+            else:
+                unit_price = listing.retail_price if listing else product.base_price
+                compare_at_price = listing.compare_at_price if listing else product.compare_at_price
+                variant_sku = ""
+                color_name = ""
+                size_name = ""
+            if listing is not None and listing.wholesale_enabled:
+                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=item.quantity).order_by("-minimum_quantity").first()
+                if tier:
+                    unit_price = tier.unit_price
+
+            line_total = unit_price * item.quantity
+            subtotal += line_total
+            order_rows.append({
+                "cart_item": item,
+                "vendor_listing": listing,
+                "variant": variant,
+                "unit_price": unit_price,
+                "compare_at_price": compare_at_price,
+                "variant_sku": variant_sku,
+                "color_name": color_name,
+                "size_name": size_name,
+                "line_total": line_total,
+                "custom_design": None,
+                "custom_design_snapshot": {},
+            })
+
+        from apps.marketplace.services import consume_shipping_quotes
+        shipping_amount, used_shipping_quotes = consume_shipping_quotes(
+            user=user,
+            cart=locked_cart,
+            address=address,
+            items=items,
+            quote_ids=shipping_quote_ids or [],
+        )
+        recipient_name = " ".join(str(address.recipient_display_name or "").split())
+        if len(recipient_name) < 2:
+            raise ValueError("برای ثبت سفارش، نام و نام خانوادگی گیرنده را در پروفایل یا خود آدرس تکمیل کنید.")
+
+        order = Order.objects.create(
+            user=user,
+            status=Order.Status.PENDING,
+            payment_status=Order.PaymentStatus.UNPAID,
+            shipping_status=Order.ShippingStatus.PENDING,
+            shipping_title=address.title,
+            shipping_recipient=recipient_name,
+            shipping_phone=str(address.phone),
+            shipping_province=address.city.province.name,
+            shipping_city=address.city.name,
+            shipping_postal_code=address.postal_code,
+            shipping_address=address.description or address.title,
+            subtotal=subtotal,
+            discount_amount=0,
+            shipping_amount=shipping_amount,
+            total_amount=subtotal + shipping_amount,
+            currency="IRT",
+            customer_note=customer_note.strip(),
+        )
+        if used_shipping_quotes:
+            from apps.marketplace.models import ShippingQuote
+            ShippingQuote.objects.filter(pk__in=[quote.pk for quote in used_shipping_quotes]).update(order=order)
+
+        OrderItem.objects.bulk_create([
+            OrderItem(
+                order=order,
+                product=row["cart_item"].product,
+                vendor_listing=row.get("vendor_listing"),
+                variant=row["variant"],
+                product_name=(row["custom_design"].design_code if row.get("custom_design") else row["cart_item"].product.name),
+                variant_sku=row["variant_sku"],
+                color_name=row["color_name"],
+                size_name=row["size_name"],
+                unit_price=row["unit_price"],
+                compare_at_price=row["compare_at_price"],
+                quantity=row["cart_item"].quantity,
+                line_total=row["line_total"],
+                custom_design=row.get("custom_design"),
+                custom_design_code=row["custom_design"].design_code if row.get("custom_design") else "",
+                custom_design_snapshot=row.get("custom_design_snapshot", {}),
+            )
+            for row in order_rows
+        ])
+
+        design_ids = [
+            row["custom_design"].id
+            for row in order_rows
+            if row.get("custom_design") is not None
+        ]
+        if design_ids:
+            from django.utils import timezone
+            DesignDraft.objects.filter(
+                id__in=design_ids,
+                status__in=[DesignDraft.Status.DRAFT, DesignDraft.Status.CART],
+            ).update(
+                status=DesignDraft.Status.CONFIRMED,
+                confirmed_at=timezone.now(),
+                user=user,
+                session_key="",
+            )
+
+        locked_cart.status = Cart.Status.CONVERTED
+        locked_cart.save(update_fields=["status", "updated_at"])
+
+    return order
 
 
+def process_manual_payment(*, order, success):
+    """Development-only payment simulator.
 
-def reconcile_shipment_actual_cost(*, shipment: Shipment, actual_cost: int, actor=None):
-    """Record the carrier's final charge and post a payable/expense journal once.
-
-    If a later carrier invoice corrects the amount, post only the difference.
-    Shipments paid directly by a vendor or recipient are recorded for audit but
-    do not create a platform carrier payable.
+    Successful payment locks each variant, verifies stock, decrements inventory,
+    and marks the order paid. Failed payment keeps the order pending so it can
+    be retried.
     """
-    actual_cost = int(actual_cost)
-    if actual_cost < 0:
-        raise ValidationError("هزینه واقعی حمل نمی‌تواند منفی باشد.")
+    from apps.shop.models import ProductVariant
+    from django.utils import timezone
+
     with transaction.atomic():
-        locked = Shipment.objects.select_for_update().select_related("vendor_order", "vendor_order__vendor").get(pk=shipment.pk)
-        previous = locked.actual_cost
-        locked.actual_cost = actual_cost
-        locked.save(update_fields=("actual_cost", "updated_at"))
-        if locked.payer != Shipment.Payer.PLATFORM:
-            return locked, False
-        if previous == actual_cost:
-            return locked, False
-        expense = get_system_account("shipping_expense", "هزینه حمل‌ونقل", LedgerAccount.Kind.EXPENSE, locked.vendor_order.currency)
-        carrier_payable = get_system_account("carrier_payable", "بدهی به شرکت حمل‌ونقل", LedgerAccount.Kind.LIABILITY, locked.vendor_order.currency)
-        delta = actual_cost - int(previous or 0)
-        if delta == 0:
-            return locked, False
-        lines = []
-        if delta > 0:
-            lines.extend([
-                {"account": expense, "debit": delta, "credit": 0, "memo": str(locked.uuid)},
-                {"account": carrier_payable, "debit": 0, "credit": delta, "memo": str(locked.uuid)},
-            ])
-        else:
-            lines.extend([
-                {"account": carrier_payable, "debit": abs(delta), "credit": 0, "memo": str(locked.uuid)},
-                {"account": expense, "debit": 0, "credit": abs(delta), "memo": str(locked.uuid)},
-            ])
-        post_journal(
-            idempotency_key=f"shipment-cost:{locked.uuid}:{actual_cost}",
-            kind="shipping_cost",
-            description=f"تطبیق هزینه نهایی حمل مرسوله {locked.tracking_number or locked.uuid}",
-            lines=lines,
-            vendor_order=locked.vendor_order,
-            created_by=actor,
-            metadata={
-                "shipment_uuid": str(locked.uuid),
-                "quoted_cost": locked.quoted_cost,
-                "previous_actual_cost": previous,
-                "actual_cost": actual_cost,
-                "delta": delta,
-                "provider": locked.provider,
-            },
+        locked_order = Order.objects.select_for_update().get(pk=order.pk)
+
+        if locked_order.payment_status == Order.PaymentStatus.PAID:
+            from apps.customizer.services import promote_design_assets_for_order
+            promote_design_assets_for_order(locked_order)
+            from apps.marketplace.services import create_vendor_orders_for_paid_order
+            create_vendor_orders_for_paid_order(locked_order)
+            return locked_order, False
+
+        if locked_order.status in {Order.Status.CANCELLED, Order.Status.REFUNDED}:
+            raise ValueError("این سفارش دیگر قابل پرداخت نیست.")
+
+        if not success:
+            locked_order.payment_status = Order.PaymentStatus.FAILED
+            locked_order.payment_reference = f"MANUAL-FAILED-{locked_order.number}"
+            locked_order.save(update_fields=["payment_status", "payment_reference", "updated_at"])
+            return locked_order, True
+
+        order_items = list(locked_order.items.select_related("product", "variant", "vendor_listing__vendor").select_for_update(of=("self",)))
+        for item in order_items:
+            if item.vendor_listing_id:
+                from apps.marketplace.models import VendorProduct
+                listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=item.vendor_listing_id)
+                if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders or listing.stock_quantity < item.quantity:
+                    raise ValueError(f"موجودی یا وضعیت فروشنده برای «{item.product_name}» معتبر نیست.")
+                listing.stock_quantity -= item.quantity
+                listing.save(update_fields=["stock_quantity", "updated_at"])
+                continue
+            if not item.variant_id:
+                continue
+            variant = ProductVariant.objects.select_for_update().get(pk=item.variant_id)
+            if not variant.is_active or variant.stock_quantity < item.quantity:
+                raise ValueError(f"موجودی «{item.product_name}» دیگر کافی نیست.")
+            variant.stock_quantity -= item.quantity
+            variant.save(update_fields=["stock_quantity"])
+
+        from apps.customizer.services import promote_design_assets_for_order
+        promote_design_assets_for_order(locked_order)
+
+        locked_order.payment_status = Order.PaymentStatus.PAID
+        locked_order.status = Order.Status.PAID
+        locked_order.payment_reference = f"MANUAL-{locked_order.number}"
+        locked_order.paid_at = timezone.now()
+
+        locked_order.save(
+            update_fields=[
+                "payment_status",
+                "status",
+                "payment_reference",
+                "paid_at",
+                "updated_at",
+            ]
         )
-        return locked, True
+        # Split seller orders and post the financial journal only when every
+        # order line has an explicit vendor listing. Legacy catalog orders keep
+        # their existing workflow until sellers are assigned.
+        from apps.marketplace.services import create_vendor_orders_for_paid_order
+        create_vendor_orders_for_paid_order(locked_order)
+        return locked_order, True
