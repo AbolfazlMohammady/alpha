@@ -27,6 +27,11 @@ class Vendor(models.Model):
     settlement_hold_hours = models.PositiveSmallIntegerField(default=24, help_text="حداقل فاصله تحویل تا واجد شرایط شدن برای تسویه.")
     bank_account_name = models.CharField(max_length=160, blank=True)
     bank_iban = models.CharField(max_length=34, blank=True, help_text="اطلاعات بانکی فقط پس از احراز هویت و با دسترسی محدود نگهداری شود.")
+    pickup_postal_code = models.CharField(max_length=10, blank=True)
+    pickup_address = models.TextField(blank=True)
+    pickup_city = models.CharField(max_length=120, blank=True)
+    pickup_province = models.CharField(max_length=120, blank=True)
+    contact_phone = models.CharField(max_length=20, blank=True)
     bank_details_verified_at = models.DateTimeField(null=True, blank=True)
     approved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -65,6 +70,10 @@ class VendorProduct(models.Model):
     retail_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
     compare_at_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
     stock_quantity = models.PositiveIntegerField(default=0)
+    weight_grams = models.PositiveIntegerField(default=0, help_text="وزن بسته‌بندی‌شده بر حسب گرم؛ برای استعلام حمل الزامی است.")
+    package_length_cm = models.PositiveSmallIntegerField(default=0)
+    package_width_cm = models.PositiveSmallIntegerField(default=0)
+    package_height_cm = models.PositiveSmallIntegerField(default=0)
     wholesale_enabled = models.BooleanField(default=False)
     supports_custom_printing = models.BooleanField(default=False)
     handling_days = models.PositiveSmallIntegerField(default=2)
@@ -151,6 +160,36 @@ class VendorOrder(models.Model):
 
     def __str__(self):
         return f"{self.order.number} / {self.vendor.store_name}"
+
+
+class ShippingQuote(models.Model):
+    class Status(models.TextChoices):
+        VALID = "valid", "معتبر"
+        CONSUMED = "consumed", "استفاده‌شده"
+        EXPIRED = "expired", "منقضی‌شده"
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="marketplace_shipping_quotes")
+    cart_item = models.ForeignKey("orders.CartItem", on_delete=models.PROTECT, related_name="shipping_quotes")
+    vendor_listing = models.ForeignKey(VendorProduct, on_delete=models.PROTECT, related_name="shipping_quotes")
+    provider = models.CharField(max_length=16, choices=[("tipax", "تیپاکس"), ("post", "شرکت ملی پست")])
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.VALID, db_index=True)
+    amount = models.PositiveBigIntegerField()
+    currency = models.CharField(max_length=3, default="IRT")
+    quote_reference = models.CharField(max_length=160, blank=True)
+    quantity = models.PositiveIntegerField()
+    address_fingerprint = models.CharField(max_length=64, db_index=True)
+    expires_at = models.DateTimeField(db_index=True)
+    provider_payload = models.JSONField(default=dict, blank=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [models.Index(fields=("user", "status", "expires_at"), name="market_quote_user_status_idx")]
+
+    def __str__(self):
+        return f"{self.provider} / {self.amount} / {self.uuid}"
 
 
 class Shipment(models.Model):
