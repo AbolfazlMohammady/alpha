@@ -51,8 +51,14 @@
     const updateListingPrice = () => {
         const option = selectedListingOption();
         if (!option) return;
-        const price = Number(option.dataset.price || 0);
+        let price = Number(option.dataset.price || 0);
         const compare = Number(option.dataset.comparePrice || 0);
+        const quantity = Math.max(1, Number(quantityInput?.value || 1));
+        const tiers = (option.dataset.wholesaleTiers || "").split(",").map((item) => {
+            const parts = item.split(":");
+            return {minimum: Number(parts[0] || 0), price: Number(parts[1] || 0)};
+        }).filter((tier) => tier.minimum > 0 && tier.price > 0 && tier.minimum <= quantity).sort((a, b) => b.minimum - a.minimum);
+        if (tiers.length) price = tiers[0].price;
         if (priceEl) priceEl.textContent = formatPrice(price);
         if (compare > price) {
             if (oldPriceEl) oldPriceEl.textContent = formatPrice(compare);
@@ -223,8 +229,8 @@
         quantityInput.value = (Number.parseInt(quantityInput.value, 10) || 1) + Number(button.dataset.productQuantityButton);
         updateQuantityUI();
     }));
-    quantityInput?.addEventListener("input", updateQuantityUI);
-    quantityInput?.addEventListener("blur", updateQuantityUI);
+    quantityInput?.addEventListener("input", () => { updateQuantityUI(); updateListingPrice(); });
+    quantityInput?.addEventListener("blur", () => { updateQuantityUI(); updateListingPrice(); });
 
     listingSelect?.addEventListener("change", () => {
         if (variants.length) {
