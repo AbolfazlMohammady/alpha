@@ -143,7 +143,8 @@
         const data = Object.fromEntries(new FormData(form).entries());
         delete data.csrfmiddlewaretoken;
         ["product_id","retail_price","compare_at_price","stock_quantity","weight_grams","package_length_cm","package_width_cm","package_height_cm","handling_days"].forEach((key) => {
-            if (data[key] === "") delete data[key];
+            if (data[key] === "" && key === "compare_at_price") data[key] = null;
+            else if (data[key] === "") delete data[key];
             else if (data[key] !== undefined) data[key] = Number(data[key]);
         });
         ["wholesale_enabled","supports_custom_printing"].forEach((key) => {
@@ -174,16 +175,23 @@
                     <span>عمده: ${item.wholesale_enabled ? "فعال" : "غیرفعال"}</span>
                 </div>
                 <form class="vd-stock-form vd-form" data-listing-id="${item.id}" style="margin-top:12px">
-                    <label class="vd-field">قیمت خرده‌فروشی<input name="retail_price" type="number" min="1" value="${item.retail_price}" required></label>
+                    <label class="vd-field">قیمت خرده‌فروشی (تومان)<input name="retail_price" type="number" min="1" value="${item.retail_price}" required></label>
+                    <label class="vd-field">قیمت قبل تخفیف (خالی = بدون تخفیف)<input name="compare_at_price" type="number" min="0" value="${item.compare_at_price ?? ""}"></label>
                     <label class="vd-field">موجودی جدید<input name="stock_quantity" type="number" min="0" value="${item.stock_quantity}" required></label>
-                    <button class="vd-btn vd-btn--soft" type="submit">ذخیره قیمت/موجودی</button>
+                    <label class="vd-field">وزن بسته (گرم)<input name="weight_grams" type="number" min="0" value="${item.weight_grams}" required></label>
+                    <label class="vd-field">طول بسته (سانتی‌متر)<input name="package_length_cm" type="number" min="0" value="${item.package_dimensions_cm[0]}" required></label>
+                    <label class="vd-field">عرض بسته (سانتی‌متر)<input name="package_width_cm" type="number" min="0" value="${item.package_dimensions_cm[1]}" required></label>
+                    <label class="vd-field">ارتفاع بسته (سانتی‌متر)<input name="package_height_cm" type="number" min="0" value="${item.package_dimensions_cm[2]}" required></label>
+                    <label class="vd-field">آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="${item.handling_days}" required></label>
+                    <label class="vd-field">چاپ سفارشی<select name="supports_custom_printing"><option value="false" ${item.supports_custom_printing ? "" : "selected"}>خیر</option><option value="true" ${item.supports_custom_printing ? "selected" : ""}>بله</option></select></label>
+                    <button class="vd-btn vd-btn--soft" type="submit">ذخیره تغییرات محصول</button>
                 </form>
                 <form class="vd-tier-form vd-form" data-listing-id="${item.id}" style="margin-top:10px">
                     <label class="vd-field">حداقل تعداد عمده<input name="minimum_quantity" type="number" min="2" value="3" required></label>
                     <label class="vd-field">قیمت هر واحد عمده<input name="unit_price" type="number" min="1" required></label>
                     <button class="vd-btn vd-btn--soft" type="submit">افزودن پله عمده</button>
                 </form>
-                <p class="vd-muted">${item.wholesale_tiers.map((tier) => "از " + money(tier.minimum_quantity) + " عدد: " + money(tier.unit_price) + " تومان").join(" · ")}</p>
+                <div class="vd-list" style="margin-top:8px">${item.wholesale_tiers.map((tier) => `<div class="vd-item-head"><span class="vd-muted">از ${money(tier.minimum_quantity)} عدد: ${money(tier.unit_price)} تومان برای هر واحد</span><button type="button" class="vd-btn vd-btn--soft" data-delete-tier="${tier.id}">حذف پله</button></div>`).join("") || '<p class="vd-muted">پله عمده ثبت نشده است.</p>'}</div>
             </article>
         `).join("");
     }
@@ -312,10 +320,11 @@
             event.preventDefault();
             try {
                 const payload = Object.fromEntries(new FormData(event.target).entries());
-                payload.retail_price = Number(payload.retail_price);
-                payload.stock_quantity = Number(payload.stock_quantity);
+                ["retail_price","stock_quantity","weight_grams","package_length_cm","package_width_cm","package_height_cm","handling_days"].forEach((key) => payload[key] = Number(payload[key]));
+                payload.compare_at_price = payload.compare_at_price === "" ? null : Number(payload.compare_at_price);
+                payload.supports_custom_printing = payload.supports_custom_printing === "true";
                 await request("/marketplace/api/vendor/products/" + event.target.dataset.listingId + "/", {method:"POST", body:JSON.stringify(payload)});
-                notify("اطلاعات محصول ذخیره شد. تغییر قیمت ممکن است برای تأیید دوباره به مدیر ارسال شود.");
+                notify("تغییرات ثبت شد؛ تغییر قیمت تا تأیید مدیر از فروش خارج می‌شود.");
                 await loadProducts();
             } catch (error) { notify(error.message, true); }
         }
@@ -346,7 +355,20 @@
         const bookButton = event.target.closest("[data-book-shipment]");
         const handoverButton = event.target.closest("[data-handover-shipment]");
         try {
-            if (actionButton) {
+            const deleteTierButton = event.target.closest("[data-delete-tier]");
+            if (deleteTierButton) {
+                const card = deleteTierButton.closest(".vd-item");
+                const form = deleteTierButton.closest("article")?.querySelector("[data-listing-id]");
+                const listingForm = deleteTierButton.closest(".vd-item")?.querySelector("[data-listing-id]");
+                const listingId = deleteTierButton.closest("[data-listing-id]")?.dataset.listingId || deleteTierButton.closest(".vd-item")?.querySelector("[data-listing-id]")?.dataset.listingId;
+                const tierId = deleteTierButton.dataset.deleteTier;
+                const listingCard = deleteTierButton.closest("article.vd-item");
+                const id = listingCard?.querySelector("[data-listing-id]")?.dataset.listingId;
+                if (!id) { notify("شناسه محصول برای حذف پله پیدا نشد.", true); return; }
+                await request("/marketplace/api/vendor/wholesale/" + tierId + "/delete/", {method:"POST", body:JSON.stringify({})});
+                notify("پله قیمت عمده حذف شد.");
+                await loadProducts();
+            } else if (actionButton) {
                 const card = actionButton.closest("[data-order-id]");
                 await request("/marketplace/api/vendor/orders/" + card.dataset.orderId + "/action/", {method:"POST", body:JSON.stringify({action:actionButton.dataset.orderAction})});
                 notify("وضعیت سفارش به‌روزرسانی شد.");
