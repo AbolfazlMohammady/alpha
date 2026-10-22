@@ -67,6 +67,8 @@ class Vendor(models.Model):
                 or old["bank_account_name"] != self.bank_account_name
             ):
                 self.bank_details_verified_at = None
+                if kwargs.get("update_fields") is not None:
+                    kwargs["update_fields"] = set(kwargs["update_fields"]) | {"bank_details_verified_at"}
         super().save(*args, **kwargs)
 
     @property
