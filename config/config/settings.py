@@ -188,4 +188,8 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.marketplace.tasks.create_daily_settlement_batches_task",
         "schedule": 86400.0,
     },
+    "refresh-active-marketplace-shipments": {
+        "task": "apps.marketplace.tasks.refresh_active_shipments_task",
+        "schedule": 1800.0,
+    },
 }
