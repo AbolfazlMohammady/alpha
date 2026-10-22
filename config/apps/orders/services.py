@@ -546,6 +546,8 @@ def process_manual_payment(*, order, success):
                 listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=item.vendor_listing_id)
                 if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders or listing.stock_quantity < item.quantity:
                     raise ValueError(f"موجودی یا وضعیت فروشنده برای «{item.product_name}» معتبر نیست.")
+                if item.custom_design_id and not listing.supports_custom_printing:
+                    raise ValueError("فروشنده انتخاب‌شده دیگر چاپ سفارشی این محصول را پشتیبانی نمی‌کند.")
                 listing.stock_quantity -= item.quantity
                 listing.save(update_fields=["stock_quantity", "updated_at"])
                 continue
