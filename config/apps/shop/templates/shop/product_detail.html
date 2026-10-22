@@ -177,6 +177,26 @@ js/storefront.js). Nothing on this page needs !important.
                 {% endcomment %}
                 <form method="post" action="{% url 'orders:cart_add' %}" class="pd-buy" id="add-to-cart-form">
                     {% csrf_token %}<input type="hidden" name="product_id" value="{{ product.id }}"><input type="hidden" name="variant_id" id="cart-variant-id" value="">
+                    {% if vendor_listings %}
+                    <div class="pd-qty pd-seller-offer">
+                        <div class="pd-qty__head"><label for="cart-vendor-listing-id">فروشنده و قیمت</label></div>
+                        <select id="cart-vendor-listing-id" name="vendor_listing_id" required>
+                            <option value="" selected>انتخاب فروشنده</option>
+                            {% for listing in vendor_listings %}
+                            <option value="{{ listing.id }}" data-stock="{{ listing.stock_quantity }}" data-price="{{ listing.retail_price }}" data-compare-price="{{ listing.compare_at_price|default:'' }}" {% if not listing.stock_quantity %}disabled{% endif %}>
+                                {{ listing.vendor.store_name }} — {{ listing.retail_price|price }} تومان{% if listing.stock_quantity %} · موجود{% else %} · ناموجود{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% for listing in vendor_listings %}
+                            {% if listing.wholesale_enabled and listing.wholesale_tiers.all %}
+                            <small>{{ listing.vendor.store_name }} — قیمت عمده:
+                                {% for tier in listing.wholesale_tiers.all %}از {{ tier.minimum_quantity }} عدد: {{ tier.unit_price|price }} تومان{% if not forloop.last %}، {% endif %}{% endfor %}
+                            </small>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     <div class="pd-qty" data-product-quantity-wrap>
                         <div class="pd-qty__head"><label for="cart-quantity">تعداد</label></div>
                         <div class="pd-qty__control"><button type="button" data-product-quantity-button="-1" aria-label="کاهش تعداد">-</button><input id="cart-quantity" name="quantity" type="number" min="1" value="1" inputmode="numeric" aria-label="تعداد محصول"><button type="button" data-product-quantity-button="1" aria-label="افزایش تعداد">+</button></div>
@@ -298,7 +318,7 @@ js/storefront.js). Nothing on this page needs !important.
 {% endblock %}
 {% block extra_js %}
 <script>
-window.BabaeiProduct={variants:{{ variant_data }},cartVariants:{{ cart_variant_data }},initialProductPrice:{{ product.display_price|default:0 }},initialComparePrice:{{ product.display_compare_price|default:0 }}};
+window.BabaeiProduct={variants:{{ variant_data }},cartVariants:{{ cart_variant_data }},cartListings:{{ cart_listing_data|default:"{}" }},initialProductPrice:{{ product.display_price|default:0 }},initialComparePrice:{{ product.display_compare_price|default:0 }}};
 document.addEventListener("DOMContentLoaded",function(){
     const comments=document.querySelector("#comments");
     const commentToggle=document.querySelector("[data-comment-toggle]");
