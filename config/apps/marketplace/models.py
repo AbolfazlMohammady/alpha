@@ -45,8 +45,29 @@ class Vendor(models.Model):
         super().clean()
         self.store_name = " ".join((self.store_name or "").split())
         self.slug = (self.slug or "").strip().lower()
-        if self.bank_iban and not self.bank_iban.replace(" ", "").upper().startswith("IR"):
-            raise ValidationError({"bank_iban": "شماره شبا باید با IR شروع شود."})
+        iban = "".join((self.bank_iban or "").split()).upper()
+        self.bank_iban = iban
+        if iban:
+            if len(iban) != 26 or not iban.startswith("IR") or not iban[2:].isdigit():
+                raise ValidationError({"bank_iban": "شماره شبای ایران باید با IR و ۲۴ رقم ادامه پیدا کند."})
+            rearranged = iban[4:] + iban[:4]
+            remainder = 0
+            for char in rearranged:
+                digits = str(ord(char) - 55) if char.isalpha() else char
+                for digit in digits:
+                    remainder = (remainder * 10 + int(digit)) % 97
+            if remainder != 1:
+                raise ValidationError({"bank_iban": "شماره شبا از نظر checksum معتبر نیست."})
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old = type(self).objects.filter(pk=self.pk).values("bank_iban", "bank_account_name").first()
+            if old and (
+                old["bank_iban"] != self.bank_iban
+                or old["bank_account_name"] != self.bank_account_name
+            ):
+                self.bank_details_verified_at = None
+        super().save(*args, **kwargs)
 
     @property
     def can_receive_orders(self):
