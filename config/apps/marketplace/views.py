@@ -124,6 +124,48 @@ def vendor_dashboard_api(request):
 
 
 @login_required
+@require_GET
+def vendor_orders_api(request):
+    try:
+        vendor = _vendor_for_user(request.user)
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    orders = vendor.orders.select_related("order").prefetch_related("shipments").order_by("-created_at")[:100]
+    return JsonResponse({"ok": True, "results": [{
+        "id": item.id,
+        "uuid": str(item.uuid),
+        "order_number": item.order.number,
+        "status": item.status,
+        "status_label": item.get_status_display(),
+        "items": item.items_snapshot,
+        "subtotal": item.subtotal,
+        "shipping_charge": item.customer_shipping_amount,
+        "commission": item.commission_amount,
+        "vendor_payable": item.vendor_payable,
+        "currency": item.currency,
+        "created_at": item.created_at.isoformat(),
+        "recipient": {
+            "name": item.order.shipping_recipient,
+            "phone": item.order.shipping_phone,
+            "province": item.order.shipping_province,
+            "city": item.order.shipping_city,
+            "postal_code": item.order.shipping_postal_code,
+            "address": item.order.shipping_address,
+        },
+        "customer_note": item.order.customer_note,
+        "shipments": [{
+            "uuid": str(shipment.uuid),
+            "provider": shipment.provider,
+            "status": shipment.status,
+            "tracking_number": shipment.tracking_number,
+            "quoted_cost": shipment.quoted_cost,
+            "actual_cost": shipment.actual_cost,
+            "label_url": shipment.label_url,
+        } for shipment in item.shipments.all()],
+    } for item in orders]})
+
+
+@login_required
 def vendor_products_api(request):
     try:
         vendor = _vendor_for_user(request.user)
