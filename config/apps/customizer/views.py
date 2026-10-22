@@ -373,7 +373,7 @@ class SaveDesignView(View):
                 raise ValidationError("اطلاعات طراحی نامعتبر است.")
             variant_id = payload.pop("variant_id", None)
             variant = get_object_or_404(ProductVariant, id=variant_id, product=product, is_active=True) if variant_id else None
-            draft = save_design_draft(request=request, product=product, payload=payload, variant=variant, vendor_listing=vendor_listing, base_price_override=vendor_listing.retail_price if vendor_listing else None)
+            draft = save_design_draft(request=request, product=product, payload=payload, variant=variant)
             raw_layers = payload.get("layers", [])
             if raw_layers and draft.payload.get("layers"):
                 for normalized_layer, raw_layer in zip(draft.payload["layers"], raw_layers):
@@ -436,7 +436,7 @@ class AddDesignToCartView(View):
             vendor_listing = get_object_or_404(eligible_listings, pk=vendor_listing_id) if vendor_listing_id else None
             from apps.orders.services import add_design_to_cart
             with transaction.atomic():
-                draft = save_design_draft(request=request, product=product, payload=payload, variant=variant)
+                draft = save_design_draft(request=request, product=product, payload=payload, variant=variant, vendor_listing=vendor_listing, base_price_override=vendor_listing.retail_price if vendor_listing else None)
                 update_fields = []
                 if preview_front:
                     draft.temp_preview_front_path = save_design_preview_to_temp(
