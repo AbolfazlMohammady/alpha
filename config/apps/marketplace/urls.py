@@ -20,6 +20,7 @@ urlpatterns = [
     path("api/admin/accounting/trial-balance/", views.trial_balance_api, name="trial_balance_api"),
     path("api/admin/accounting/reconciliation/", views.external_reconciliation_api, name="external_reconciliation_api"),
     path("api/admin/accounting/carrier-payment/", views.carrier_invoice_payment_api, name="carrier_invoice_payment_api"),
+    path("api/admin/accounting/gateway-settlement/", views.gateway_settlement_api, name="gateway_settlement_api"),
     path("api/admin/settlements/", views.settlement_queue_api, name="settlement_queue_api"),
     path("api/admin/settlements/<int:batch_id>/approve/", views.settlement_approve_api, name="settlement_approve_api"),
     path("api/admin/settlements/<int:batch_id>/payout-result/", views.settlement_record_payout_api, name="settlement_record_payout_api"),
