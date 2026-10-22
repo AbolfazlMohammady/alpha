@@ -288,8 +288,6 @@ class CategoryRequestAdmin(admin.ModelAdmin):
                 category_request.status = CategoryRequest.Status.APPROVED
                 category_request.reviewed_by = request.user
                 category_request.reviewed_at = timezone.now()
-                if category_request.reviewer_note:
-                    category_request.reviewer_note = category_request.reviewer_note
                 category_request.save(update_fields=("status", "reviewed_by", "reviewed_at"))
                 approved_requests += 1
         self.message_user(
