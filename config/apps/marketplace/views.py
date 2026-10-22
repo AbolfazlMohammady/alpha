@@ -438,6 +438,16 @@ def shipment_quote_api(request, order_id):
         vendor_order = _vendor_order_for_user(request.user, order_id)
         if vendor_order.status != VendorOrder.Status.READY_TO_SHIP:
             return _error("برای استعلام نهایی، سفارش باید ابتدا آماده ارسال شود.", 409)
+        active_shipment = Shipment.objects.filter(
+            vendor_order=vendor_order,
+            status__in=[
+                Shipment.Status.QUOTED, Shipment.Status.BOOKED,
+                Shipment.Status.PICKUP_REQUESTED, Shipment.Status.HANDED_OVER,
+                Shipment.Status.IN_TRANSIT, Shipment.Status.EXCEPTION,
+            ],
+        ).exists()
+        if active_shipment:
+            return _error("برای این سفارش قبلاً مرسوله فعال ثبت شده است؛ ابتدا وضعیت همان مرسوله را مشخص کن.", 409)
         raw_payload = _json_body(request)
         provider = str(raw_payload.get("provider", "tipax")).lower()
         if provider not in {"tipax", "post"}:
