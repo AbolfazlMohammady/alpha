@@ -357,15 +357,9 @@
         try {
             const deleteTierButton = event.target.closest("[data-delete-tier]");
             if (deleteTierButton) {
-                const card = deleteTierButton.closest(".vd-item");
-                const form = deleteTierButton.closest("article")?.querySelector("[data-listing-id]");
-                const listingForm = deleteTierButton.closest(".vd-item")?.querySelector("[data-listing-id]");
-                const listingId = deleteTierButton.closest("[data-listing-id]")?.dataset.listingId || deleteTierButton.closest(".vd-item")?.querySelector("[data-listing-id]")?.dataset.listingId;
-                const tierId = deleteTierButton.dataset.deleteTier;
                 const listingCard = deleteTierButton.closest("article.vd-item");
-                const id = listingCard?.querySelector("[data-listing-id]")?.dataset.listingId;
-                if (!id) { notify("شناسه محصول برای حذف پله پیدا نشد.", true); return; }
-                await request("/marketplace/api/vendor/wholesale/" + tierId + "/delete/", {method:"POST", body:JSON.stringify({})});
+                if (!listingCard) { notify("محصول مرتبط با پله قیمت پیدا نشد.", true); return; }
+                await request("/marketplace/api/vendor/wholesale/" + deleteTierButton.dataset.deleteTier + "/delete/", {method:"POST", body:JSON.stringify({})});
                 notify("پله قیمت عمده حذف شد.");
                 await loadProducts();
             } else if (actionButton) {
