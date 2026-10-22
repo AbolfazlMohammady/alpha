@@ -212,7 +212,7 @@
                 <h4>آدرس گیرنده</h4>
                 <p>${escapeHtml(order.recipient.name)} · ${escapeHtml(order.recipient.phone)}<br>${escapeHtml(order.recipient.province)}، ${escapeHtml(order.recipient.city)}، کد پستی ${escapeHtml(order.recipient.postal_code)}<br>${escapeHtml(order.recipient.address)}</p>
                 <div class="vd-actions">${actionButtons(order)}</div>
-                ${order.status === "ready_to_ship" ? `
+                ${order.status === "ready_to_ship" && !order.shipments.some((shipment) => ["quoted","booked","pickup_requested","handed_over","in_transit","exception"].includes(shipment.status)) ? `
                 <form class="vd-shipping-form vd-form" style="margin-top:14px" data-order-id="${order.id}">
                     <label class="vd-field">شرکت حمل<select name="provider"><option value="tipax">تیپاکس</option><option value="post">پست</option></select></label>
                     <label class="vd-field">وزن بسته (گرم)<input name="weight_grams" type="number" min="1" required></label>
