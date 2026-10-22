@@ -2,6 +2,7 @@
     const data = window.BabaeiProduct || {};
     const variants = Array.isArray(data.variants) ? data.variants : [];
     const cartVariants = data.cartVariants && typeof data.cartVariants === "object" ? data.cartVariants : {};
+    const cartListings = data.cartListings && typeof data.cartListings === "object" ? data.cartListings : {};
     const colorButtons = [...document.querySelectorAll(".color-option")];
     const sizeButtons = [...document.querySelectorAll(".size-option")];
     const priceEl = document.getElementById("product-price");
@@ -13,6 +14,7 @@
     const selectedColorLabel = document.getElementById("selected-color-label");
     const selectedSizeLabel = document.getElementById("selected-size-label");
     const variantInput = document.getElementById("cart-variant-id");
+    const listingSelect = document.getElementById("cart-vendor-listing-id");
     const addButton = document.getElementById("add-to-cart-button");
     const inCartLink = document.getElementById("product-in-cart");
     const inCartQuantity = document.querySelector("[data-product-in-cart-quantity]");
@@ -37,6 +39,31 @@
     const findSizeName = (sizeId) => (variants.find((item) => Number(item.size_id) === Number(sizeId)) || {}).size || "";
     const cartKeyForVariant = (variant) => variant ? String(variant.id) : "base";
     const cartQuantityForVariant = (variant) => Number(cartVariants[cartKeyForVariant(variant)] || 0);
+    const selectedListingOption = () => listingSelect && listingSelect.value ? listingSelect.selectedOptions[0] : null;
+    const selectedListingStock = () => {
+        const option = selectedListingOption();
+        return option ? Math.max(0, Number(option.dataset.stock || 0)) : null;
+    };
+    const cartQuantityForCurrent = (variant) => {
+        if (listingSelect && listingSelect.value) return Number(cartListings[listingSelect.value] || 0);
+        return cartQuantityForVariant(variant);
+    };
+    const updateListingPrice = () => {
+        const option = selectedListingOption();
+        if (!option) return;
+        const price = Number(option.dataset.price || 0);
+        const compare = Number(option.dataset.comparePrice || 0);
+        if (priceEl) priceEl.textContent = formatPrice(price);
+        if (compare > price) {
+            if (oldPriceEl) oldPriceEl.textContent = formatPrice(compare);
+            if (discountEl) discountEl.textContent = formatPercent(Math.round(((compare - price) * 100) / compare));
+            oldPriceRow?.classList.remove("is-hidden");
+        } else {
+            oldPriceRow?.classList.add("is-hidden");
+            if (oldPriceEl) oldPriceEl.textContent = "";
+            if (discountEl) discountEl.textContent = "";
+        }
+    };
 
     const updateQuantityUI = () => {
         if (!quantityInput) return;
@@ -69,7 +96,7 @@
     const renderSizes = () => sizeButtons.forEach((button) => {
         const sizeId = Number(button.dataset.sizeId);
         const variant = variants.find((item) => Number(item.color_id) === Number(selectedColorId) && Number(item.size_id) === sizeId);
-        const available = Boolean(variant && Number(variant.stock) > 0);
+        const available = Boolean(variant && (listingSelect && listingSelect.value ? Number(selectedListingStock()) > 0 : Number(variant.stock) > 0));
         button.disabled = !variant || !available;
         button.classList.toggle("is-unavailable", !variant || !available);
         button.classList.toggle("is-selected", sizeId === Number(selectedSizeId));
@@ -77,30 +104,36 @@
 
     const renderColors = () => colorButtons.forEach((button) => {
         const colorId = Number(button.dataset.colorId);
-        const hasStock = availableForColor(colorId).some((variant) => Number(variant.stock) > 0);
+        const hasStock = availableForColor(colorId).some((variant) => listingSelect && listingSelect.value ? Number(selectedListingStock()) > 0 : Number(variant.stock) > 0);
         button.disabled = !hasStock;
         button.classList.toggle("is-selected", colorId === Number(selectedColorId));
         button.classList.toggle("is-unavailable", !hasStock);
     });
 
     const renderCartState = (variant) => {
-        const existingQuantity = cartQuantityForVariant(variant);
+        const existingQuantity = cartQuantityForCurrent(variant);
         const alreadyInCart = existingQuantity > 0;
+        const hasVariant = variants.length === 0 || Boolean(variant);
+        const hasListing = !listingSelect || Boolean(listingSelect.value);
+        const stock = listingSelect && listingSelect.value
+            ? selectedListingStock()
+            : (variant ? Number(variant.stock || 0) : null);
+        if (stock !== null) currentStock = stock;
 
         if (inCartLink) {
             inCartLink.hidden = !alreadyInCart;
-            if (inCartQuantity) inCartQuantity.textContent = `${formatPrice(existingQuantity)} عدد`;
+            if (inCartQuantity) inCartQuantity.textContent = formatPrice(existingQuantity) + " عدد";
         }
         if (addButton) {
             addButton.hidden = alreadyInCart;
             addButton.textContent = "افزودن به سبد خرید";
-            addButton.disabled = alreadyInCart || !variant || Number(variant.stock) <= 0;
+            addButton.disabled = alreadyInCart || !hasVariant || !hasListing || (stock !== null && stock <= 0);
         }
         if (quantityWrap) quantityWrap.classList.toggle("is-in-cart", alreadyInCart);
         if (quantityInput) quantityInput.disabled = alreadyInCart;
         if (alreadyInCart) {
             quantityButtons.forEach((button) => { button.disabled = true; });
-            if (quantityStock) quantityStock.textContent = `${formatPrice(existingQuantity)} عدد در سبد`;
+            if (quantityStock) quantityStock.textContent = formatPrice(existingQuantity) + " عدد در سبد";
         } else {
             updateQuantityUI();
         }
