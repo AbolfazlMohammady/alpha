@@ -249,10 +249,14 @@ def mark_vendor_order_delivered(vendor_order: VendorOrder, *, delivered_at=None)
         locked = VendorOrder.objects.select_for_update().select_related("vendor").get(pk=vendor_order.pk)
         if locked.status == VendorOrder.Status.CANCELLED:
             raise ValidationError("سفارش لغوشده را نمی‌توان تحویل‌شده ثبت کرد.")
-        if locked.status == VendorOrder.Status.DELIVERED:
+        if locked.status == VendorOrder.Status.DISPUTED:
+            raise ValidationError("سفارش دارای اختلاف را نمی‌توان بدون رفع اختلاف تحویل‌شده ثبت کرد.")
+        if locked.status == VendorOrder.Status.DELIVERED and locked.delivered_at and delivered_at <= locked.delivered_at:
             return locked, False
         locked.status = VendorOrder.Status.DELIVERED
         locked.delivered_at = delivered_at
+        # When an order is split into several parcels, each later delivery
+        # restarts the hold period so settlement waits after the final parcel.
         locked.settlement_eligible_at = delivered_at + timedelta(hours=locked.vendor.settlement_hold_hours)
         locked.save(update_fields=("status", "delivered_at", "settlement_eligible_at", "updated_at"))
         return locked, True
