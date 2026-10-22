@@ -3,6 +3,7 @@ from django.test import TestCase
 
 from .models import FinancialReconciliation, JournalEntry, LedgerAccount
 from .services import (
+    account_balance,
     post_journal,
     record_external_reconciliation,
     reverse_journal,
@@ -80,7 +81,8 @@ class LedgerPostingTests(TestCase):
         self.assertEqual(reversal.status, JournalEntry.Status.POSTED)
         report = trial_balance()
         self.assertTrue(report["balanced"])
-        self.assertEqual(self.clearing.lines.filter(entry__status__in=[JournalEntry.Status.POSTED, JournalEntry.Status.REVERSED]).aggregate_total if False else 0, 0)
+        self.assertEqual(account_balance(self.clearing), 0)
+        self.assertEqual(account_balance(self.revenue), 0)
 
 
 class ExternalReconciliationTests(TestCase):
