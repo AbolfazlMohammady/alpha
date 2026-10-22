@@ -1,0 +1,374 @@
+from __future__ import annotations
+
+import uuid
+
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
+from django.db.models import Q
+from django.utils import timezone
+
+
+class Vendor(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "در انتظار بررسی"
+        ACTIVE = "active", "فعال"
+        SUSPENDED = "suspended", "تعلیق‌شده"
+        REJECTED = "rejected", "ردشده"
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="vendor_profile")
+    store_name = models.CharField(max_length=160)
+    slug = models.SlugField(max_length=180, unique=True, allow_unicode=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING, db_index=True)
+    commission_bps = models.PositiveSmallIntegerField(default=1000, validators=[MaxValueValidator(10000)], help_text="کمیسیون بر حسب basis point؛ 1000 یعنی 10 درصد.")
+    supports_custom_printing = models.BooleanField(default=False)
+    settlement_hold_hours = models.PositiveSmallIntegerField(default=24, help_text="حداقل فاصله تحویل تا واجد شرایط شدن برای تسویه.")
+    bank_account_name = models.CharField(max_length=160, blank=True)
+    bank_iban = models.CharField(max_length=34, blank=True, help_text="اطلاعات بانکی فقط پس از احراز هویت و با دسترسی محدود نگهداری شود.")
+    bank_details_verified_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("store_name",)
+        indexes = [models.Index(fields=("status", "created_at"), name="market_vendor_status_idx")]
+
+    def clean(self):
+        super().clean()
+        self.store_name = " ".join((self.store_name or "").split())
+        self.slug = (self.slug or "").strip().lower()
+        if self.bank_iban and not self.bank_iban.replace(" ", "").upper().startswith("IR"):
+            raise ValidationError({"bank_iban": "شماره شبا باید با IR شروع شود."})
+
+    @property
+    def can_receive_orders(self):
+        return self.status == self.Status.ACTIVE and self.user.is_active
+
+    def __str__(self):
+        return self.store_name
+
+
+class VendorProduct(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "پیش‌نویس"
+        PENDING = "pending", "در انتظار تأیید"
+        ACTIVE = "active", "فعال"
+        PAUSED = "paused", "متوقف"
+        REJECTED = "rejected", "ردشده"
+
+    vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="listings")
+    product = models.ForeignKey("shop.Product", on_delete=models.PROTECT, related_name="vendor_listings")
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT, db_index=True)
+    retail_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    compare_at_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
+    stock_quantity = models.PositiveIntegerField(default=0)
+    wholesale_enabled = models.BooleanField(default=False)
+    supports_custom_printing = models.BooleanField(default=False)
+    handling_days = models.PositiveSmallIntegerField(default=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(fields=("vendor", "product"), name="unique_vendor_product_listing"),
+            models.CheckConstraint(condition=Q(retail_price__gt=0), name="vendor_listing_price_gt_zero"),
+            models.CheckConstraint(condition=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=0), name="vendor_listing_compare_nonnegative"),
+        ]
+        indexes = [models.Index(fields=("vendor", "status"), name="market_listing_vendor_status_idx")]
+
+    def clean(self):
+        super().clean()
+        if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
+            raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
+        if self.supports_custom_printing and not self.vendor.supports_custom_printing:
+            raise ValidationError({"supports_custom_printing": "فروشنده هنوز دسترسی چاپ سفارشی ندارد."})
+
+    def __str__(self):
+        return f"{self.vendor.store_name} — {self.product}"
+
+
+class WholesalePriceTier(models.Model):
+    listing = models.ForeignKey(VendorProduct, on_delete=models.CASCADE, related_name="wholesale_tiers")
+    minimum_quantity = models.PositiveIntegerField(validators=[MinValueValidator(2)])
+    unit_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("minimum_quantity",)
+        constraints = [
+            models.UniqueConstraint(fields=("listing", "minimum_quantity"), name="unique_wholesale_quantity_tier"),
+            models.CheckConstraint(condition=Q(minimum_quantity__gte=2), name="wholesale_min_qty_gte_two"),
+            models.CheckConstraint(condition=Q(unit_price__gt=0), name="wholesale_unit_price_gt_zero"),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.listing_id and self.unit_price > self.listing.retail_price:
+            raise ValidationError({"unit_price": "قیمت عمده نباید از قیمت خرده‌فروشی بیشتر باشد."})
+
+    def __str__(self):
+        return f"{self.listing} / {self.minimum_quantity}+"
+
+
+class VendorOrder(models.Model):
+    class Status(models.TextChoices):
+        NEW = "new", "جدید"
+        ACCEPTED = "accepted", "تأیید فروشنده"
+        PREPARING = "preparing", "در حال آماده‌سازی"
+        READY_TO_SHIP = "ready_to_ship", "آماده ارسال"
+        SHIPPED = "shipped", "ارسال‌شده"
+        DELIVERED = "delivered", "تحویل‌شده"
+        CANCELLED = "cancelled", "لغوشده"
+        DISPUTED = "disputed", "دارای اختلاف"
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    order = models.ForeignKey("orders.Order", on_delete=models.PROTECT, related_name="vendor_orders")
+    vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="orders")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW, db_index=True)
+    currency = models.CharField(max_length=3, default="IRT")
+    items_snapshot = models.JSONField(default=list)
+    subtotal = models.PositiveBigIntegerField(default=0)
+    customer_shipping_amount = models.PositiveBigIntegerField(default=0)
+    commission_amount = models.PositiveBigIntegerField(default=0)
+    shipping_cost_actual = models.PositiveBigIntegerField(null=True, blank=True)
+    vendor_payable = models.PositiveBigIntegerField(default=0)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    settlement_eligible_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(fields=("order", "vendor"), name="unique_vendor_order_per_order"),
+            models.CheckConstraint(condition=Q(vendor_payable__gte=0), name="vendor_order_payable_nonnegative"),
+        ]
+        indexes = [models.Index(fields=("vendor", "status", "created_at"), name="market_vorder_vendor_status_idx")]
+
+    def __str__(self):
+        return f"{self.order.number} / {self.vendor.store_name}"
+
+
+class Shipment(models.Model):
+    class Provider(models.TextChoices):
+        TIPAX = "tipax", "تیپاکس"
+        POST = "post", "شرکت ملی پست"
+        MANUAL = "manual", "ثبت دستی"
+        OTHER = "other", "سایر"
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "پیش‌نویس"
+        QUOTED = "quoted", "هزینه برآورد شد"
+        BOOKED = "booked", "مرسوله ثبت شد"
+        PICKUP_REQUESTED = "pickup_requested", "درخواست جمع‌آوری"
+        HANDED_OVER = "handed_over", "تحویل شرکت حمل"
+        IN_TRANSIT = "in_transit", "در مسیر"
+        DELIVERED = "delivered", "تحویل‌شده"
+        DELIVERY_FAILED = "delivery_failed", "تحویل ناموفق"
+        RETURNED = "returned", "مرجوع‌شده"
+        CANCELLED = "cancelled", "لغوشده"
+        EXCEPTION = "exception", "نیازمند بررسی"
+
+    class Payer(models.TextChoices):
+        PLATFORM = "platform", "سایت"
+        VENDOR = "vendor", "فروشنده"
+        RECIPIENT = "recipient", "گیرنده"
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    vendor_order = models.ForeignKey(VendorOrder, on_delete=models.PROTECT, related_name="shipments")
+    provider = models.CharField(max_length=16, choices=Provider.choices, default=Provider.MANUAL)
+    status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT, db_index=True)
+    payer = models.CharField(max_length=16, choices=Payer.choices, default=Payer.PLATFORM)
+    external_shipment_id = models.CharField(max_length=160, blank=True, db_index=True)
+    tracking_number = models.CharField(max_length=160, blank=True, db_index=True)
+    label_url = models.URLField(max_length=1000, blank=True)
+    quoted_cost = models.PositiveBigIntegerField(null=True, blank=True)
+    actual_cost = models.PositiveBigIntegerField(null=True, blank=True)
+    customer_charge = models.PositiveBigIntegerField(default=0)
+    quote_reference = models.CharField(max_length=160, blank=True)
+    quote_expires_at = models.DateTimeField(null=True, blank=True)
+    booked_at = models.DateTimeField(null=True, blank=True)
+    handed_over_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
+    last_event_at = models.DateTimeField(null=True, blank=True)
+    provider_payload = models.JSONField(default=dict, blank=True)
+    last_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=("provider", "status", "created_at"), name="market_ship_provider_status_idx"),
+            models.Index(fields=("vendor_order", "status"), name="market_ship_order_status_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=("provider", "external_shipment_id"), condition=~Q(external_shipment_id=""), name="unique_provider_shipment_id"),
+            models.UniqueConstraint(fields=("provider", "tracking_number"), condition=~Q(tracking_number=""), name="unique_provider_tracking"),
+        ]
+
+    def __str__(self):
+        return self.tracking_number or f"{self.provider}:{self.uuid}"
+
+
+class LedgerAccount(models.Model):
+    class Kind(models.TextChoices):
+        ASSET = "asset", "دارایی"
+        LIABILITY = "liability", "بدهی"
+        REVENUE = "revenue", "درآمد"
+        EXPENSE = "expense", "هزینه"
+        EQUITY = "equity", "حقوق مالکانه"
+
+    code = models.CharField(max_length=64, unique=True)
+    name = models.CharField(max_length=160)
+    kind = models.CharField(max_length=16, choices=Kind.choices)
+    vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="ledger_accounts", null=True, blank=True)
+    currency = models.CharField(max_length=3, default="IRT")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=("vendor", "name", "currency"), name="unique_vendor_ledger_account_name_currency"),
+        ]
+        ordering = ("code",)
+
+    def __str__(self):
+        return f"{self.code} — {self.name}"
+
+
+class JournalEntry(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "پیش‌نویس"
+        POSTED = "posted", "ثبت قطعی"
+        REVERSED = "reversed", "معکوس‌شده"
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    idempotency_key = models.CharField(max_length=180, unique=True)
+    kind = models.CharField(max_length=48, db_index=True)
+    description = models.CharField(max_length=500)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.DRAFT, db_index=True)
+    order = models.ForeignKey("orders.Order", on_delete=models.PROTECT, related_name="journal_entries", null=True, blank=True)
+    vendor_order = models.ForeignKey(VendorOrder, on_delete=models.PROTECT, related_name="journal_entries", null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="marketplace_journal_entries", null=True, blank=True)
+    posted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [models.Index(fields=("kind", "created_at"), name="market_journal_kind_date_idx")]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            old = type(self).objects.filter(pk=self.pk).values_list("status", flat=True).first()
+            if old in {self.Status.POSTED, self.Status.REVERSED}:
+                raise ValidationError("سند قطعی قابل ویرایش نیست؛ برای اصلاح باید سند معکوس ثبت شود.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.status in {self.Status.POSTED, self.Status.REVERSED}:
+            raise ValidationError("سند قطعی قابل حذف نیست.")
+        return super().delete(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.kind}: {self.idempotency_key}"
+
+
+class JournalLine(models.Model):
+    entry = models.ForeignKey(JournalEntry, on_delete=models.PROTECT, related_name="lines")
+    account = models.ForeignKey(LedgerAccount, on_delete=models.PROTECT, related_name="lines")
+    debit = models.PositiveBigIntegerField(default=0)
+    credit = models.PositiveBigIntegerField(default=0)
+    currency = models.CharField(max_length=3, default="IRT")
+    memo = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=(Q(debit__gt=0, credit=0) | Q(credit__gt=0, debit=0)), name="journal_line_one_sided_positive"),
+        ]
+        indexes = [models.Index(fields=("account", "id"), name="market_jline_account_idx")]
+
+    def save(self, *args, **kwargs):
+        if self.entry_id and self.entry.status in {JournalEntry.Status.POSTED, JournalEntry.Status.REVERSED}:
+            raise ValidationError("ردیف سند قطعی قابل ویرایش نیست.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.entry.status in {JournalEntry.Status.POSTED, JournalEntry.Status.REVERSED}:
+            raise ValidationError("ردیف سند قطعی قابل حذف نیست.")
+        return super().delete(*args, **kwargs)
+
+
+class SettlementBatch(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "پیش‌نویس"
+        PENDING_APPROVAL = "pending_approval", "در انتظار تأیید مدیر"
+        APPROVED = "approved", "تأییدشده"
+        PROCESSING = "processing", "در حال پرداخت"
+        PAID = "paid", "پرداخت‌شده"
+        FAILED = "failed", "ناموفق"
+        CANCELLED = "cancelled", "لغوشده"
+
+    uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    idempotency_key = models.CharField(max_length=180, unique=True)
+    vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="settlements")
+    status = models.CharField(max_length=24, choices=Status.choices, default=Status.DRAFT, db_index=True)
+    currency = models.CharField(max_length=3, default="IRT")
+    period_start = models.DateTimeField()
+    period_end = models.DateTimeField()
+    gross_amount = models.PositiveBigIntegerField(default=0)
+    commission_amount = models.PositiveBigIntegerField(default=0)
+    shipping_adjustment = models.BigIntegerField(default=0)
+    refund_adjustment = models.BigIntegerField(default=0)
+    other_adjustment = models.BigIntegerField(default=0)
+    payable_amount = models.PositiveBigIntegerField(default=0)
+    order_ids = models.JSONField(default=list)
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="approved_vendor_settlements", null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    payout_reference = models.CharField(max_length=180, blank=True)
+    failure_reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [models.Index(fields=("vendor", "status", "created_at"), name="market_settle_vendor_status_idx")]
+
+    def clean(self):
+        super().clean()
+        if self.period_end <= self.period_start:
+            raise ValidationError({"period_end": "پایان بازه باید بعد از شروع آن باشد."})
+        calculated = self.gross_amount - self.commission_amount + self.shipping_adjustment + self.refund_adjustment + self.other_adjustment
+        if calculated < 0:
+            raise ValidationError({"payable_amount": "مبلغ قابل پرداخت نمی‌تواند منفی باشد."})
+
+    def __str__(self):
+        return f"{self.vendor.store_name} / {self.uuid}"
+
+
+class SettlementLine(models.Model):
+    batch = models.ForeignKey(SettlementBatch, on_delete=models.PROTECT, related_name="lines")
+    vendor_order = models.ForeignKey(VendorOrder, on_delete=models.PROTECT, related_name="settlement_lines")
+    gross_amount = models.PositiveBigIntegerField()
+    commission_amount = models.PositiveBigIntegerField()
+    payable_amount = models.PositiveBigIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=("batch", "vendor_order"), name="unique_vendor_order_in_settlement")]
+        ordering = ("id",)
+
+    def save(self, *args, **kwargs):
+        if self.batch.status not in {SettlementBatch.Status.DRAFT, SettlementBatch.Status.PENDING_APPROVAL}:
+            raise ValidationError("اقلام تسویه پس از تأیید قابل تغییر نیستند.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.batch.status not in {SettlementBatch.Status.DRAFT, SettlementBatch.Status.PENDING_APPROVAL}:
+            raise ValidationError("اقلام تسویه پس از تأیید قابل حذف نیستند.")
+        return super().delete(*args, **kwargs)
