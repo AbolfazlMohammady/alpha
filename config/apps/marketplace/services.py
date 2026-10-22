@@ -368,7 +368,7 @@ def record_payout_result(*, batch_id, provider_reference, succeeded, failure_rea
                 batch.currency,
                 vendor=batch.vendor,
             )
-            clearing = get_system_account("gateway_clearing", "وجوه دریافتی درگاه", LedgerAccount.Kind.ASSET, batch.currency)
+            clearing = get_system_account("platform_bank", "حساب بانکی پلتفرم", LedgerAccount.Kind.ASSET, batch.currency)
             post_journal(
                 idempotency_key=f"vendor-payout:{batch.uuid}",
                 kind="vendor_payout",
@@ -751,7 +751,7 @@ def record_carrier_invoice_payment(*, invoice_reference: str, amount: int, actor
         raise ValidationError("شناسه صورتحساب و مبلغ پرداختی مثبت الزامی است.")
     with transaction.atomic():
         payable = get_system_account("carrier_payable", "بدهی به شرکت حمل‌ونقل", LedgerAccount.Kind.LIABILITY)
-        clearing = get_system_account("gateway_clearing", "وجوه دریافتی درگاه", LedgerAccount.Kind.ASSET)
+        clearing = get_system_account("platform_bank", "حساب بانکی پلتفرم", LedgerAccount.Kind.ASSET)
         reference = str(provider_reference or invoice_reference).strip()[:180]
         idempotency_key = f"carrier-payment:{invoice_reference}"
         lines = [
@@ -778,6 +778,50 @@ def record_carrier_invoice_payment(*, invoice_reference: str, amount: int, actor
             expected_amount=amount,
             actual_amount=amount,
             details={"provider_reference": reference, "journal_entry_id": entry.id},
+            actor=actor,
+        )
+        return entry, created
+
+
+
+def record_gateway_settlement(*, settlement_reference: str, gross_amount: int, net_amount: int, fee_amount: int, actual_bank_amount=None, actor=None):
+    """Record the gateway-to-bank transfer and its fee, then reconcile the bank deposit."""
+    reference = str(settlement_reference or "").strip()
+    gross, net, fee = int(gross_amount), int(net_amount), int(fee_amount)
+    actual = None if actual_bank_amount in (None, "") else int(actual_bank_amount)
+    if not reference:
+        raise ValidationError("شناسه تسویه درگاه الزامی است.")
+    if min(gross, net, fee) < 0 or gross <= 0:
+        raise ValidationError("مبالغ تسویه درگاه معتبر نیستند.")
+    if gross != net + fee:
+        raise ValidationError("مبلغ ناخالص باید برابر مجموع مبلغ خالص و کارمزد باشد.")
+    if actual is not None and actual < 0:
+        raise ValidationError("مبلغ واریزی بانک نمی‌تواند منفی باشد.")
+    with transaction.atomic():
+        clearing = get_system_account("gateway_clearing", "وجوه در انتظار تسویه درگاه", LedgerAccount.Kind.ASSET)
+        bank = get_system_account("platform_bank", "حساب بانکی پلتفرم", LedgerAccount.Kind.ASSET)
+        fee_account = get_system_account("payment_fee_expense", "هزینه کارمزد درگاه", LedgerAccount.Kind.EXPENSE)
+        lines = [
+            {"account": bank, "debit": net, "credit": 0, "memo": reference},
+            {"account": clearing, "debit": 0, "credit": gross, "memo": reference},
+        ]
+        if fee:
+            lines.append({"account": fee_account, "debit": fee, "credit": 0, "memo": reference})
+        entry, created = post_journal(
+            idempotency_key=f"gateway-settlement:{reference}",
+            kind="gateway_settlement",
+            description=f"تسویه درگاه به حساب بانکی {reference}",
+            lines=lines,
+            created_by=actor,
+            metadata={"settlement_reference": reference, "gross_amount": gross, "net_amount": net, "fee_amount": fee},
+        )
+        record_external_reconciliation(
+            source=FinancialReconciliation.Source.BANK_STATEMENT,
+            external_reference=f"gateway-settlement:{reference}",
+            internal_reference=entry.idempotency_key,
+            expected_amount=net,
+            actual_amount=actual,
+            details={"gross_amount": gross, "net_amount": net, "fee_amount": fee, "journal_entry_id": entry.id},
             actor=actor,
         )
         return entry, created
