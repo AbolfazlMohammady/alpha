@@ -45,7 +45,7 @@
         return option ? Math.max(0, Number(option.dataset.stock || 0)) : null;
     };
     const cartQuantityForCurrent = (variant) => {
-        if (listingSelect && listingSelect.value) return Number(cartListings[listingSelect.value] || 0);
+        if (listingSelect && listingSelect.value) return Number(cartListings[listingSelect.value + ":" + (variant?.id || 0)] || 0);
         return cartQuantityForVariant(variant);
     };
     const updateListingPrice = () => {
@@ -263,7 +263,7 @@
             if (!response.ok || !result.ok) throw new Error(result.message || "افزودن به سبد خرید انجام نشد.");
             updateHeaderCount(result.count);
             if (listingSelect && listingSelect.value) {
-                cartListings[listingSelect.value] = Number(result.quantity || quantityInput?.value || 1);
+                cartListings[listingSelect.value + ":" + (variant?.id || 0)] = Number(result.quantity || quantityInput?.value || 1);
             } else {
                 cartVariants[cartKeyForVariant(variant)] = Number(result.quantity || quantityInput?.value || 1);
             }
