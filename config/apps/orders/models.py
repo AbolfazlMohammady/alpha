@@ -120,7 +120,11 @@ class CartItem(models.Model):
         if self.vendor_listing_id:
             price = self.vendor_listing.retail_price
             if self.vendor_listing.wholesale_enabled:
-                tier = self.vendor_listing.wholesale_tiers.filter(minimum_quantity__lte=self.quantity).order_by("-minimum_quantity").first()
+                total_listing_quantity = self.cart.items.filter(
+                    vendor_listing_id=self.vendor_listing_id,
+                    custom_design__isnull=True,
+                ).aggregate(total=models.Sum("quantity"))["total"] or self.quantity
+                tier = self.vendor_listing.wholesale_tiers.filter(minimum_quantity__lte=total_listing_quantity).order_by("-minimum_quantity").first()
                 if tier:
                     price = tier.unit_price
             return price
