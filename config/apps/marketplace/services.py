@@ -765,6 +765,9 @@ def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: 
         if locked_order.payment_status == Order.PaymentStatus.REFUNDED:
             existing = JournalEntry.objects.filter(idempotency_key=refund_key).first()
             if existing:
+                metadata = existing.metadata or {}
+                if metadata.get("refund_reference") != refund_reference or int(metadata.get("amount", 0)) != actual_refund_amount:
+                    raise ValidationError("درخواست بازپرداخت با سند قبلی یکسان نیست؛ بررسی دستی لازم است.")
                 return existing, False
             raise ValidationError("سفارش بازپرداخت‌شده است اما سند مالی آن پیدا نشد؛ بررسی لازم است.")
         if locked_order.payment_status != Order.PaymentStatus.PAID:
