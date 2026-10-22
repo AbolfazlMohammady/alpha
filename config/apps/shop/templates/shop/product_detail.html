@@ -183,7 +183,7 @@ js/storefront.js). Nothing on this page needs !important.
                         <select id="cart-vendor-listing-id" name="vendor_listing_id" required>
                             <option value="" selected>انتخاب فروشنده</option>
                             {% for listing in vendor_listings %}
-                            <option value="{{ listing.id }}" data-stock="{{ listing.stock_quantity }}" data-price="{{ listing.retail_price }}" data-compare-price="{{ listing.compare_at_price|default:'' }}" {% if not listing.stock_quantity %}disabled{% endif %}>
+                            <option value="{{ listing.id }}" data-stock="{{ listing.stock_quantity }}" data-price="{{ listing.retail_price }}" data-compare-price="{{ listing.compare_at_price|default:'' }}" data-wholesale-tiers="{% for tier in listing.wholesale_tiers.all %}{{ tier.minimum_quantity }}:{{ tier.unit_price }}{% if not forloop.last %},{% endif %}{% endfor %}" {% if not listing.stock_quantity %}disabled{% endif %}>
                                 {{ listing.vendor.store_name }} — {{ listing.retail_price|price }} تومان{% if listing.stock_quantity %} · موجود{% else %} · ناموجود{% endif %}
                             </option>
                             {% endfor %}
