@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from .models import (
     JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
-    Shipment, ShippingQuote, Vendor, VendorOrder, VendorProduct,
+    FinancialReconciliation, Shipment, ShippingQuote, Vendor, VendorOrder, VendorProduct,
 )
 
 
@@ -539,7 +539,7 @@ def trial_balance(*, currency="IRT"):
     total_debit = total_credit = 0
     accounts = LedgerAccount.objects.filter(currency=currency, is_active=True).order_by("code")
     for account in accounts:
-        totals = account.lines.filter(entry__status=JournalEntry.Status.POSTED).aggregate(
+        totals = account.lines.filter(entry__status__in=[JournalEntry.Status.POSTED, JournalEntry.Status.REVERSED]).aggregate(
             debit=Sum("debit"), credit=Sum("credit")
         )
         debit, credit = int(totals["debit"] or 0), int(totals["credit"] or 0)
@@ -592,3 +592,51 @@ def record_full_order_refund(*, order, refund_reference: str, refund_confirmed: 
             updated_at=timezone.now(),
         )
         return reversal, created
+
+
+
+def record_external_reconciliation(*, source, external_reference, expected_amount=None, actual_amount=None, currency="IRT", internal_reference="", details=None, actor=None):
+    """Persist an idempotent external-vs-internal match without overwriting history."""
+    external_reference = str(external_reference or "").strip()
+    if not external_reference:
+        raise ValidationError("شناسه مرجع خارجی الزامی است.")
+    if currency != "IRT":
+        raise ValidationError("در این نسخه تطبیق چندارزی پشتیبانی نمی‌شود.")
+    expected = None if expected_amount is None else int(expected_amount)
+    actual = None if actual_amount is None else int(actual_amount)
+    if (expected is not None and expected < 0) or (actual is not None and actual < 0):
+        raise ValidationError("مبالغ تطبیق نمی‌توانند منفی باشند.")
+    if expected is None or actual is None:
+        status = FinancialReconciliation.Status.UNMATCHED
+    elif expected == actual:
+        status = FinancialReconciliation.Status.MATCHED
+    else:
+        status = FinancialReconciliation.Status.MISMATCH
+    with transaction.atomic():
+        record = FinancialReconciliation.objects.filter(
+            source=source,
+            external_reference=external_reference,
+        ).first()
+        if record:
+            same = (
+                record.expected_amount == expected
+                and record.actual_amount == actual
+                and record.currency == currency
+                and record.internal_reference == str(internal_reference or "")[:180]
+            )
+            if not same:
+                raise ValidationError("این مرجع خارجی قبلاً با مبالغ دیگری ثبت شده است؛ سابقه را بازنویسی نکنید.")
+            return record, False
+        record = FinancialReconciliation.objects.create(
+            source=source,
+            external_reference=external_reference,
+            internal_reference=str(internal_reference or "")[:180],
+            expected_amount=expected,
+            actual_amount=actual,
+            currency=currency,
+            status=status,
+            details=details or {},
+            recorded_by=actor,
+            reconciled_at=timezone.now() if status != FinancialReconciliation.Status.UNMATCHED else None,
+        )
+        return record, True
