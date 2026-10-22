@@ -273,6 +273,7 @@ def create_daily_settlement_batches(*, now=None):
                 vendor=vendor,
                 status=VendorOrder.Status.DELIVERED,
                 settlement_eligible_at__lte=now,
+                vendor_payable__gt=0,
             )
             .exclude(settlement_lines__batch__status__in=[
                 SettlementBatch.Status.PENDING_APPROVAL,
