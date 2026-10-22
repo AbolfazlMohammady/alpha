@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.db import transaction
+from django.db.models import Sum
 
 from .models import Cart, CartItem, Order, OrderItem
 from apps.customizer.models import DesignDraft
@@ -196,6 +197,18 @@ def add_to_cart(request, *, product, variant=None, custom_design=None, vendor_li
             raise ValueError("این فروشنده چاپ سفارشی این محصول را پشتیبانی نمی‌کند.")
     with transaction.atomic():
         cart = get_active_cart(request)
+        if vendor_listing is not None:
+            from apps.marketplace.models import VendorProduct, Vendor
+            vendor_listing = VendorProduct.objects.select_for_update().select_related("vendor").get(
+                pk=vendor_listing.pk,
+                product_id=product.id,
+                status=VendorProduct.Status.ACTIVE,
+                vendor__status=Vendor.Status.ACTIVE,
+                vendor__user__is_active=True,
+            )
+            cart_listing_quantity = CartItem.objects.filter(cart=cart, vendor_listing=vendor_listing).aggregate(total=Sum("quantity"))["total"] or 0
+            if cart_listing_quantity + quantity > vendor_listing.stock_quantity:
+                raise ValueError("موجودی فروشنده برای مجموع تعداد این محصول در سبد کافی نیست.")
         if variant is not None:
             if variant.product_id != product.id:
                 raise ValueError("ترکیب انتخاب‌شده متعلق به این محصول نیست.")
@@ -211,10 +224,12 @@ def add_to_cart(request, *, product, variant=None, custom_design=None, vendor_li
             "vendor_listing": vendor_listing,
         }
         item, created = CartItem.objects.select_for_update().get_or_create(**lookup, defaults={"quantity": quantity})
+        if vendor_listing is not None and item.vendor_listing_id != vendor_listing.pk:
+            raise ValueError("این طراحی قبلاً با فروشنده دیگری به سبد اضافه شده است.")
         if not created:
             new_quantity = item.quantity + quantity
             available = vendor_listing.stock_quantity if vendor_listing is not None else (variant.stock_quantity if variant is not None else None)
-            if available is not None and new_quantity > available:
+            if vendor_listing is None and available is not None and new_quantity > available:
                 raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
             item.quantity = new_quantity
             item.save(update_fields=["quantity", "updated_at"])
@@ -232,8 +247,10 @@ def update_cart_item(request, item_id: int, quantity: int) -> CartItem:
         if item.vendor_listing_id:
             from apps.marketplace.models import VendorProduct
             listing = VendorProduct.objects.select_for_update().get(pk=item.vendor_listing_id)
-            if quantity > listing.stock_quantity:
-                raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی فروشنده است.")
+            cart_listing_quantity = CartItem.objects.filter(cart=cart, vendor_listing=listing).aggregate(total=Sum("quantity"))["total"] or 0
+            requested_total = cart_listing_quantity - item.quantity + quantity
+            if requested_total > listing.stock_quantity:
+                raise ValueError("مجموع تعداد انتخاب‌شده بیشتر از موجودی فروشنده است.")
         elif item.variant_id:
             variant = type(item.variant).objects.select_for_update().get(pk=item.variant_id)
             if quantity > variant.stock_quantity:
