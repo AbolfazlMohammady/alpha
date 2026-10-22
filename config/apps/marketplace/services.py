@@ -6,6 +6,7 @@ import hashlib
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import Sum
+from django.db.models import Sum
 from django.utils import timezone
 
 from .models import (
@@ -175,12 +176,17 @@ def create_vendor_orders_for_paid_order(order):
             commission = (net_sales * vendor.commission_bps + 5000) // 10000
             commission = min(commission, net_sales)
             payable = net_sales - commission
+            shipping_share = ShippingQuote.objects.filter(
+                order=order,
+                vendor_listing__vendor=vendor,
+            ).aggregate(total=Sum("amount"))["total"] or 0
             vendor_order, _ = VendorOrder.objects.get_or_create(
                 order=order,
                 vendor=vendor,
                 defaults={
                     "items_snapshot": group["items"],
                     "subtotal": net_sales,
+                    "customer_shipping_amount": int(shipping_share),
                     "commission_amount": commission,
                     "vendor_payable": payable,
                     "currency": order.currency,
@@ -446,3 +452,58 @@ def consume_shipping_quotes(*, user, cart, address, items, quote_ids, now=None):
         used_at=now,
     )
     return total
+
+
+
+def reconcile_shipment_actual_cost(*, shipment: Shipment, actual_cost: int, actor=None):
+    """Record the carrier's final charge and post a payable/expense journal once.
+
+    If a later carrier invoice corrects the amount, post only the difference.
+    Shipments paid directly by a vendor or recipient are recorded for audit but
+    do not create a platform carrier payable.
+    """
+    actual_cost = int(actual_cost)
+    if actual_cost < 0:
+        raise ValidationError("هزینه واقعی حمل نمی‌تواند منفی باشد.")
+    with transaction.atomic():
+        locked = Shipment.objects.select_for_update().select_related("vendor_order", "vendor_order__vendor").get(pk=shipment.pk)
+        previous = locked.actual_cost
+        locked.actual_cost = actual_cost
+        locked.save(update_fields=("actual_cost", "updated_at"))
+        if locked.payer != Shipment.Payer.PLATFORM:
+            return locked, False
+        if previous == actual_cost:
+            return locked, False
+        expense = get_system_account("shipping_expense", "هزینه حمل‌ونقل", LedgerAccount.Kind.EXPENSE, locked.vendor_order.currency)
+        carrier_payable = get_system_account("carrier_payable", "بدهی به شرکت حمل‌ونقل", LedgerAccount.Kind.LIABILITY, locked.vendor_order.currency)
+        delta = actual_cost - int(previous or 0)
+        if delta == 0:
+            return locked, False
+        lines = []
+        if delta > 0:
+            lines.extend([
+                {"account": expense, "debit": delta, "credit": 0, "memo": str(locked.uuid)},
+                {"account": carrier_payable, "debit": 0, "credit": delta, "memo": str(locked.uuid)},
+            ])
+        else:
+            lines.extend([
+                {"account": carrier_payable, "debit": abs(delta), "credit": 0, "memo": str(locked.uuid)},
+                {"account": expense, "debit": 0, "credit": abs(delta), "memo": str(locked.uuid)},
+            ])
+        post_journal(
+            idempotency_key=f"shipment-cost:{locked.uuid}:{actual_cost}",
+            kind="shipping_cost",
+            description=f"تطبیق هزینه نهایی حمل مرسوله {locked.tracking_number or locked.uuid}",
+            lines=lines,
+            vendor_order=locked.vendor_order,
+            created_by=actor,
+            metadata={
+                "shipment_uuid": str(locked.uuid),
+                "quoted_cost": locked.quoted_cost,
+                "previous_actual_cost": previous,
+                "actual_cost": actual_cost,
+                "delta": delta,
+                "provider": locked.provider,
+            },
+        )
+        return locked, True
