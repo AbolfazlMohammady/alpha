@@ -413,6 +413,8 @@ def _vendor_group_quote_payload(*, items, vendor, address, user, lock_listings=F
     if len(listings) != len(listing_ids):
         raise ValidationError("یکی از محصولات فروشنده دیگر در دسترس نیست.")
     quantity_by_listing = {}
+    for item in items:
+        quantity_by_listing[item.vendor_listing_id] = quantity_by_listing.get(item.vendor_listing_id, 0) + int(item.quantity)
     snapshot = []
     total_weight = total_quantity = declared_value = 0
     length_cm = width_cm = height_cm = 0
@@ -433,11 +435,10 @@ def _vendor_group_quote_payload(*, items, vendor, address, user, lock_listings=F
         else:
             unit_price = int(listing.retail_price)
             if listing.wholesale_enabled:
-                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=item.quantity).order_by("-minimum_quantity").first()
+                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=quantity_by_listing[listing.pk]).order_by("-minimum_quantity").first()
                 if tier:
                     unit_price = int(tier.unit_price)
         quantity = int(item.quantity)
-        quantity_by_listing[listing.pk] = quantity_by_listing.get(listing.pk, 0) + quantity
         total_quantity += quantity
         total_weight += int(listing.weight_grams) * quantity
         declared_value += unit_price * quantity
