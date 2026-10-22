@@ -469,3 +469,33 @@ class FinancialReconciliation(models.Model):
 
     def __str__(self):
         return f"{self.source} / {self.external_reference} / {self.status}"
+
+
+
+class CategoryRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "در انتظار بررسی"
+        APPROVED = "approved", "تأییدشده"
+        REJECTED = "rejected", "ردشده"
+
+    vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="category_requests")
+    name = models.CharField(max_length=120)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True)
+    reviewer_note = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="reviewed_marketplace_category_requests", null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [models.Index(fields=("status", "created_at"), name="market_category_request_idx")]
+
+    def clean(self):
+        super().clean()
+        self.name = " ".join((self.name or "").split())
+        if len(self.name) < 2:
+            raise ValidationError({"name": "نام دسته‌بندی باید حداقل دو نویسه باشد."})
+
+    def __str__(self):
+        return f"{self.name} — {self.vendor.store_name}"
