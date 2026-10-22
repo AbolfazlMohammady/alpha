@@ -13,8 +13,8 @@ All monetary amounts use the repository's integer IRT convention. Keep one unit 
 1. Admin creates and approves a Vendor; bank details must be verified before settlement approval.
 2. Seller creates a VendorProduct listing. New listings and seller price changes enter pending review; admin activates them.
 3. Each listing can hold its own inventory, retail price, wholesale quantity tiers, parcel weight/dimensions, and custom-printing capability. The product page and 3D designer let the buyer choose an active seller; custom designs use the selected seller retail price as their base price plus the existing print-layer charges.
-4. At checkout, the authenticated buyer selects an address. The server obtains a short-lived quote from the chosen carrier using the seller's configured pickup postal code and the saved destination address. The quote is bound to the buyer, cart line, listing, quantity, price, and address fingerprint; it expires after 15 minutes if the provider does not return a shorter validity.
-5. The quote amount becomes part of the order total. Once payment succeeds, each order line retains the exact vendor listing and the system creates one VendorOrder per seller only if every line has an explicit seller. Mixed legacy/seller carts are rejected at quote consumption instead of being partially routed.
+4. At checkout, the authenticated buyer selects an address. The server obtains one short-lived quote per seller (one combined parcel per seller order) from the chosen carrier using the seller's configured pickup postal code and the saved destination address. Combined dimensions are an estimate; the seller enters final packed dimensions before booking. The quote is bound to the buyer, cart line, listing, quantity, price, and address fingerprint; it expires after 15 minutes if the provider does not return a shorter validity.
+5. The quote amount becomes part of the order total. Once payment succeeds, each order line retains the exact vendor listing and the system creates one VendorOrder per seller only if every line has an explicit seller. Mixed legacy/seller carts are rejected before checkout; split them into separate orders until platform-owned fulfilment is implemented.
 6. Seller accepts, prepares, and marks the seller order ready to ship. Seller requests a final packed-parcel quote, books a shipment, and hands the package to the carrier or carrier pickup service. Booking timeouts are treated as ambiguous; check the carrier portal before retrying.
 7. Carrier tracking is polled every 30 minutes when Celery Beat and workers are running. Unknown provider statuses are not guessed as delivered. Staff can apply a verified manual status as a fallback.
 8. Delivery starts the vendor-specific settlement hold period. The daily task creates a batch for delivered seller orders; a centrally-paid shipment is not eligible until its actual carrier cost is recorded.
@@ -68,7 +68,7 @@ Seller dashboard UI is available at /marketplace/vendor/dashboard/. All seller e
 - GET /marketplace/api/vendor/settlements/
 - POST /marketplace/api/vendor/profile/shipping/
 - GET|POST /marketplace/api/vendor/products/
-- POST /marketplace/api/vendor/products/<listing_id>/
+- GET /marketplace/api/vendor/catalog-products/?q=text\n- POST /marketplace/api/vendor/products/<listing_id>/
 - POST /marketplace/api/vendor/products/<listing_id>/wholesale/
 - POST /marketplace/api/vendor/wholesale/<tier_id>/delete/
 - POST /marketplace/api/vendor/categories/request/
