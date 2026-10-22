@@ -8,8 +8,8 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Sum
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.http import HttpResponseForbidden, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
@@ -97,6 +97,37 @@ def _vendor_order_for_user(user, order_id):
         pk=order_id,
         vendor=vendor,
     )
+
+
+@login_required
+def vendor_dashboard_page(request):
+    try:
+        vendor = _vendor_for_user(request.user)
+    except PermissionDenied:
+        return HttpResponseForbidden("این حساب به پنل فروشنده دسترسی ندارد.")
+    return render(request, "marketplace/vendor_dashboard.html", {"vendor": vendor})
+
+
+@login_required
+@require_POST
+def vendor_shipping_profile_api(request):
+    try:
+        vendor = _vendor_for_user(request.user)
+        payload = _json_body(request)
+        allowed = {"pickup_postal_code", "pickup_address", "pickup_city", "pickup_province", "contact_phone"}
+        if set(payload) - allowed:
+            return _error("فقط اطلاعات مبدأ ارسال قابل ویرایش است.")
+        postal = str(payload.get("pickup_postal_code", vendor.pickup_postal_code)).strip()
+        if postal and (len(postal) != 10 or not postal.isdigit()):
+            return _error("کد پستی مبدأ باید ۱۰ رقم باشد.")
+        for field in allowed.intersection(payload):
+            setattr(vendor, field, str(payload[field] or "").strip())
+        vendor.save(update_fields=tuple(allowed.intersection(payload)) + ("updated_at",))
+        return JsonResponse({"ok": True, "pickup_postal_code": vendor.pickup_postal_code, "message": "اطلاعات مبدأ ارسال ذخیره شد."})
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    except (TypeError, ValueError) as exc:
+        return _error(exc)
 
 
 @login_required
