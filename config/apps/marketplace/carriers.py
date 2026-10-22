@@ -118,8 +118,21 @@ class JsonCarrierClient:
                     break
         if value is None:
             raise CarrierError("کلید مبلغ در پاسخ API پیدا نشد؛ مسیر مبلغ را مطابق مستندات رسمی تنظیم کنید.")
+        prefix = self.provider_code.upper()
         try:
-            amount = int(Decimal(str(value)))
+            raw_amount = Decimal(str(value))
+            divisor = Decimal(os.environ.get(f"{prefix}_AMOUNT_DIVISOR", "1"))
+            raw_currency = str(data.get("currency", "")).strip().upper()
+            if divisor <= 0:
+                raise InvalidOperation
+            if raw_currency in {"IRR", "RIAL", "RIALS", "ریال"} and divisor == 1:
+                raise CarrierError("API مبلغ را به ریال اعلام کرده؛ ضریب تبدیل به واحد پروژه را تنظیم کنید.")
+            normalized = raw_amount / divisor
+            if normalized != normalized.to_integral_value():
+                raise CarrierError("مبلغ حمل پس از تبدیل واحد، عدد صحیح قابل ثبت در حسابداری نیست.")
+            amount = int(normalized)
+        except CarrierError:
+            raise
         except (InvalidOperation, ValueError, TypeError, OverflowError) as exc:
             raise CarrierError("مبلغ اعلام‌شده توسط شرکت حمل‌ونقل قابل‌خواندن نیست.") from exc
         if amount < 0:
@@ -136,7 +149,7 @@ class JsonCarrierClient:
         return ShippingQuote(
             provider=self.provider_code,
             amount=self._amount(data),
-            currency=str(data.get("currency", "IRT"))[:3],
+            currency="IRT",
             reference=str(reference or data.get("quote_id") or data.get("reference") or data.get("id") or "")[:160],
             expires_at=expiry or data.get("expires_at"),
             raw=data,
@@ -176,6 +189,14 @@ class JsonCarrierClient:
         if status is not None:
             data = {**data, "status": status}
         if cost is not None:
+            try:
+                divisor = Decimal(os.environ.get(f"{prefix}_AMOUNT_DIVISOR", "1"))
+                normalized_cost = Decimal(str(cost)) / divisor
+                if normalized_cost != normalized_cost.to_integral_value():
+                    raise CarrierError("هزینه رهگیری پس از تبدیل واحد عدد صحیح نیست.")
+                cost = int(normalized_cost)
+            except (InvalidOperation, ValueError, TypeError) as exc:
+                raise CarrierError("هزینه نهایی حمل قابل تبدیل به واحد پروژه نیست.") from exc
             data = {**data, "actual_cost": cost}
         return data
 
