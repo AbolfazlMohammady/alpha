@@ -68,7 +68,8 @@ Seller dashboard UI is available at /marketplace/vendor/dashboard/. All seller e
 - GET /marketplace/api/vendor/settlements/
 - POST /marketplace/api/vendor/profile/shipping/
 - GET|POST /marketplace/api/vendor/products/
-- GET /marketplace/api/vendor/catalog-products/?q=text\n- POST /marketplace/api/vendor/products/<listing_id>/
+- GET /marketplace/api/vendor/catalog-products/?q=text
+- POST /marketplace/api/vendor/products/<listing_id>/
 - POST /marketplace/api/vendor/products/<listing_id>/wholesale/
 - POST /marketplace/api/vendor/wholesale/<tier_id>/delete/
 - POST /marketplace/api/vendor/categories/request/
