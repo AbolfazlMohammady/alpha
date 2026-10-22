@@ -191,6 +191,9 @@ class JsonCarrierClient:
         if cost is not None:
             try:
                 divisor = Decimal(os.environ.get(f"{prefix}_AMOUNT_DIVISOR", "1"))
+                raw_currency = str(data.get("currency", "")).strip().upper()
+                if raw_currency in {"IRR", "RIAL", "RIALS", "ریال"} and divisor == 1:
+                    raise CarrierError("API مبلغ را به ریال اعلام کرده؛ ضریب تبدیل به واحد پروژه را تنظیم کنید.")
                 normalized_cost = Decimal(str(cost)) / divisor
                 if normalized_cost != normalized_cost.to_integral_value():
                     raise CarrierError("هزینه رهگیری پس از تبدیل واحد عدد صحیح نیست.")
