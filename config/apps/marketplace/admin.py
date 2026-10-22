@@ -4,7 +4,7 @@ from django.utils.html import format_html
 
 from .models import (
     JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
-    Shipment, Vendor, VendorOrder, VendorProduct, WholesalePriceTier,
+    Shipment, ShippingQuote, Vendor, VendorOrder, VendorProduct, WholesalePriceTier,
 )
 
 
@@ -14,6 +14,9 @@ class ReadOnlyAuditAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_active and request.user.is_staff
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -79,6 +82,14 @@ class VendorOrderAdmin(ReadOnlyAuditAdmin):
     readonly_fields = tuple(field.name for field in VendorOrder._meta.fields)
 
 
+@admin.register(ShippingQuote)
+class ShippingQuoteAdmin(ReadOnlyAuditAdmin):
+    list_display = ("uuid", "user", "cart_item", "vendor_listing", "provider", "amount", "status", "expires_at", "order")
+    list_filter = ("provider", "status", "created_at", "expires_at")
+    search_fields = ("uuid", "quote_reference", "user__phone", "order__number")
+    list_select_related = ("user", "cart_item", "vendor_listing", "order")
+
+
 @admin.register(Shipment)
 class ShipmentAdmin(admin.ModelAdmin):
     list_display = ("vendor_order", "provider", "status", "tracking_number", "quoted_cost", "actual_cost", "created_at")
@@ -139,6 +150,36 @@ class SettlementBatchAdmin(ReadOnlyAuditAdmin):
     list_select_related = ("vendor", "approved_by")
     inlines = (SettlementLineInline,)
     readonly_fields = tuple(field.name for field in SettlementBatch._meta.fields)
+    actions = ("approve_and_submit_selected",)
+
+    @admin.action(description="تأیید و ارسال تسویه‌های انتخاب‌شده برای واریز")
+    def approve_and_submit_selected(self, request, queryset):
+        from django.contrib import messages
+        from django.core.exceptions import PermissionDenied, ValidationError
+        from .services import approve_settlement
+        from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
+        approved = 0
+        submitted = 0
+        errors = []
+        for batch in queryset:
+            try:
+                if batch.status == SettlementBatch.Status.PENDING_APPROVAL:
+                    approve_settlement(batch_id=batch.pk, approver=request.user)
+                    approved += 1
+                refreshed = SettlementBatch.objects.get(pk=batch.pk)
+                if refreshed.status == SettlementBatch.Status.APPROVED:
+                    submit_settlement_payout(refreshed.pk)
+                    submitted += 1
+            except PayoutNotConfigured:
+                errors.append(f"تسویه {batch.pk}: سرویس واریز پیکربندی نشده است؛ فقط تأیید ثبت شد.")
+            except (PermissionDenied, ValidationError, PayoutError) as exc:
+                errors.append(f"تسویه {batch.pk}: {str(exc)}")
+        if approved:
+            self.message_user(request, f"{approved} تسویه تأیید شد.", messages.SUCCESS)
+        if submitted:
+            self.message_user(request, f"{submitted} درخواست واریز به سرویس مالی ارسال شد.", messages.SUCCESS)
+        for error in errors[:10]:
+            self.message_user(request, error, messages.WARNING)
 
 
 @admin.register(SettlementLine)
