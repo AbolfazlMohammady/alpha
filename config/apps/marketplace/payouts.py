@@ -55,8 +55,15 @@ def submit_settlement_payout(batch_id: int):
         batch.status = SettlementBatch.Status.PROCESSING
         batch.failure_reason = ""
         batch.save(update_fields=("status", "failure_reason"))
+        multiplier_value = os.environ.get("PAYOUT_AMOUNT_MULTIPLIER", "").strip()
+        payout_currency = os.environ.get("PAYOUT_API_CURRENCY", "").strip().upper()
+        if not multiplier_value or not payout_currency:
+            raise PayoutNotConfigured(
+                "قبل از واریز باید واحد مبالغ فروشگاه و واحد موردنیاز بانک بررسی و "
+                "PAYOUT_AMOUNT_MULTIPLIER و PAYOUT_API_CURRENCY صریحاً تنظیم شوند."
+            )
         try:
-            multiplier = int(os.environ.get("PAYOUT_AMOUNT_MULTIPLIER", "1"))
+            multiplier = int(multiplier_value)
         except ValueError as exc:
             raise PayoutNotConfigured("PAYOUT_AMOUNT_MULTIPLIER باید عدد صحیح باشد.") from exc
         if multiplier <= 0:
@@ -65,7 +72,7 @@ def submit_settlement_payout(batch_id: int):
             "idempotency_key": batch.idempotency_key,
             "client_reference": str(batch.uuid),
             "amount": batch.payable_amount * multiplier,
-            "currency": os.environ.get("PAYOUT_API_CURRENCY", batch.currency),
+            "currency": payout_currency,
             "beneficiary": {
                 "iban": batch.vendor.bank_iban.replace(" ", "").upper(),
                 "account_name": batch.vendor.bank_account_name,
