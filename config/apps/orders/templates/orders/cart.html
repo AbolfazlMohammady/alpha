@@ -92,9 +92,17 @@
                             <input type="hidden" name="quantity" value="{{ item.quantity }}">
                             <button type="submit" data-quantity-button="-1" data-quantity-minus aria-label="کاهش تعداد" {% if item.quantity <= 1 %}disabled{% endif %}>−</button>
                             <span data-quantity-value data-value="{{ item.quantity }}">{{ item.quantity }}</span>
+                            <small class="cart-product-card__unit">{% if item.vendor_listing_id %}{{ item.vendor_sale_unit_snapshot }}{% else %}عدد{% endif %}</small>
                             <button type="submit" data-quantity-button="1" data-quantity-plus aria-label="افزایش تعداد" {% if item.variant and item.quantity >= item.variant.stock_quantity %}disabled{% endif %}>+</button>
                         </form>
                     </div>
+                    {% if item.vendor_listing_id %}
+                        {% if item.vendor_sale_unit_snapshot != item.vendor_listing.sale_unit or item.vendor_units_per_order_snapshot != item.vendor_listing.units_per_order %}
+                            <p class="cart-product-card__unit-warning" role="alert" style="color:#b45309;font-size:13px;margin:8px 0">واحد فروش این محصول تغییر کرده؛ برای جلوگیری از ثبت تعداد اشتباه، آن را حذف و دوباره اضافه کن.</p>
+                        {% elif item.vendor_listing.status != "active" %}
+                            <p class="cart-product-card__unit-warning" role="alert">این محصول فعلاً برای سفارش متوقف است.</p>
+                        {% endif %}
+                    {% endif %}
 
                     <form method="post"
                           action="{% url 'orders:cart_remove' item.id %}"

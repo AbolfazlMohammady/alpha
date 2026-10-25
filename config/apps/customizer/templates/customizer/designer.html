@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static shop_tags %}
 
 {% block title %}استودیو طراحی سه‌بعدی | BABAEI{% endblock %}
 {% block meta_description %}{{ og_description }}{% endblock %}
@@ -166,9 +166,12 @@
                     <div class="selected-label-tools__hint">اندازه، زاویه و موقعیت را از همین بخش کنترل کن.</div>
                 </div>
 
-                <button type="button" class="save-design-button premium-save-button premium-save-button--left" id="add-to-cart-design">
+                {% if marketplace_unavailable %}
+                <p class="designer-marketplace-unavailable" id="marketplace-unavailable-note" role="status">فعلاً فروشنده‌ای با موجودی و قابلیت چاپ برای این محصول فعال نیست. می‌توانی طراحی را آماده کنی و بعداً دوباره بررسی کنی.</p>
+                {% endif %}
+                <button type="button" class="save-design-button premium-save-button premium-save-button--left" id="add-to-cart-design"{% if marketplace_unavailable %} disabled aria-describedby="marketplace-unavailable-note"{% endif %}>
                     <span>افزودن به سبد خرید</span>
-                    <small>ثبت نهایی طراحی</small>
+                    <small>{% if marketplace_unavailable %}فعلاً امکان سفارش نیست{% else %}ثبت نهایی طراحی{% endif %}</small>
                 </button>
                 <div id="save-status" class="save-status" aria-live="polite"></div>
             </div>
@@ -263,6 +266,20 @@
                 </div>
             </div>
             <div class="variant-card" id="variant-card"><select id="variant-select" aria-label="انتخاب رنگ و سایز"><option value="">انتخاب رنگ و سایز</option></select></div>
+            {% if vendor_listings %}
+            <div class="variant-card" id="printing-vendor-card">
+                <label for="designer-vendor-listing">فروشنده محصول چاپی</label>
+                <select id="designer-vendor-listing" aria-label="انتخاب فروشنده چاپ">
+                    <option value="">انتخاب فروشنده</option>
+                    {% for listing in vendor_listings %}
+                    <option value="{{ listing.id }}" data-price="{{ listing.retail_price }}" data-sale-unit="{{ listing.sale_unit }}" data-units-per-order="{{ listing.units_per_order }}" data-stock="{{ listing.stock_quantity }}" {% if not listing.stock_quantity %}disabled{% endif %}>
+                        {{ listing.vendor.store_name }} — {{ listing.retail_price|price }} تومان / {{ listing.sale_unit }}{% if listing.units_per_order > 1 %} (شامل {{ listing.units_per_order }} قلم){% endif %}{% if listing.stock_quantity %} · موجود{% else %} · ناموجود{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                <small>قیمت پایه طراحی بر اساس فروشنده انتخاب‌شده محاسبه می‌شود؛ هزینه لیبل‌ها جداگانه اضافه می‌شود.</small>
+            </div>
+            {% endif %}
             <div class="premium-label-summary" id="premium-label-summary"></div>
             <div class="price-breakdown" id="price-breakdown"></div>
         </aside>

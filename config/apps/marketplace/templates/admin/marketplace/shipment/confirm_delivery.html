@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block content %}
+  <div id="content-main">
+    <p>
+      برای آزادسازی تسویه، تحویل باید با اطلاعات قابل پیگیری تأیید شود.
+      مرجع می‌تواند کد رویداد تحویل در پنل شرکت حمل یا مرجع تأیید گیرنده باشد.
+    </p>
+
+    {% for shipment in queryset %}
+      <div class="module" style="margin-bottom: 1rem; padding: 1rem;">
+        <p><strong>سفارش:</strong> {{ shipment.vendor_order.order.number }}</p>
+        <p><strong>فروشگاه:</strong> {{ shipment.vendor_order.vendor.store_name }}</p>
+        <p><strong>شرکت حمل:</strong> {{ shipment.get_provider_display }}</p>
+        <p><strong>کد رهگیری:</strong> {{ shipment.tracking_number|default:"ثبت نشده" }}</p>
+        <p><strong>وضعیت فعلی:</strong> {{ shipment.get_status_display }}</p>
+      </div>
+    {% endfor %}
+
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="confirm_delivery_with_evidence">
+      <input type="hidden" name="index" value="0">
+      {% for shipment in queryset %}
+        <input type="hidden" name="{{ action_checkbox_name }}" value="{{ shipment.pk }}">
+      {% endfor %}
+
+      <div class="form-row">
+        <label for="delivery_evidence_reference">مرجع مدرک تحویل <span style="color:#b91c1c">*</span></label>
+        <input id="delivery_evidence_reference" name="delivery_evidence_reference" type="text" maxlength="180" required style="width:100%;max-width:48rem;">
+        <p class="help">حداکثر ۱۸۰ نویسه؛ این مقدار در سابقه مالی و مرسوله نگهداری می‌شود.</p>
+      </div>
+
+      <div class="form-row">
+        <label for="delivery_evidence_note">توضیح تکمیلی (اختیاری)</label>
+        <textarea id="delivery_evidence_note" name="delivery_evidence_note" rows="3" maxlength="1000" style="width:100%;max-width:48rem;"></textarea>
+      </div>
+
+      <div class="submit-row">
+        <input type="submit" name="apply" value="ثبت تأیید تحویل" class="default">
+        <a href="../" class="button cancel-link">انصراف</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

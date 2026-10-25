@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
@@ -62,6 +63,7 @@ class Cart(models.Model):
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("shop.Product", on_delete=models.PROTECT, related_name="cart_items")
+    vendor_listing = models.ForeignKey("marketplace.VendorProduct", on_delete=models.PROTECT, related_name="cart_items", null=True, blank=True)
     variant = models.ForeignKey(
         "shop.ProductVariant",
         on_delete=models.PROTECT,
@@ -76,6 +78,8 @@ class CartItem(models.Model):
         null=True,
         blank=True,
     )
+    vendor_sale_unit_snapshot = models.CharField(max_length=40, default="عدد")
+    vendor_units_per_order_snapshot = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     quantity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
     added_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -85,13 +89,23 @@ class CartItem(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=("cart", "variant"),
-                condition=Q(variant__isnull=False, custom_design__isnull=True),
+                condition=Q(variant__isnull=False, custom_design__isnull=True, vendor_listing__isnull=True),
                 name="unique_cart_variant_item",
             ),
             models.UniqueConstraint(
+                fields=("cart", "variant", "vendor_listing"),
+                condition=Q(variant__isnull=False, custom_design__isnull=True, vendor_listing__isnull=False),
+                name="unique_cart_vendor_variant_item",
+            ),
+            models.UniqueConstraint(
                 fields=("cart", "product"),
-                condition=Q(variant__isnull=True, custom_design__isnull=True),
+                condition=Q(variant__isnull=True, custom_design__isnull=True, vendor_listing__isnull=True),
                 name="unique_cart_product_item",
+            ),
+            models.UniqueConstraint(
+                fields=("cart", "product", "vendor_listing"),
+                condition=Q(variant__isnull=True, custom_design__isnull=True, vendor_listing__isnull=False),
+                name="unique_cart_vendor_product_item",
             ),
             models.UniqueConstraint(
                 fields=("cart", "custom_design"),
@@ -99,6 +113,7 @@ class CartItem(models.Model):
                 name="unique_cart_custom_design_item",
             ),
             models.CheckConstraint(check=Q(quantity__gt=0), name="cart_item_quantity_gt_zero"),
+            models.CheckConstraint(check=Q(vendor_units_per_order_snapshot__gt=0), name="cart_item_vendor_units_gt_zero"),
         ]
         indexes = [models.Index(fields=("cart", "product")), models.Index(fields=("cart", "variant"))]
 
@@ -106,6 +121,17 @@ class CartItem(models.Model):
     def unit_price(self):
         if self.custom_design_id:
             return self.custom_design.total_price
+        if self.vendor_listing_id:
+            price = self.vendor_listing.retail_price
+            if self.vendor_listing.wholesale_enabled:
+                total_listing_quantity = self.cart.items.filter(
+                    vendor_listing_id=self.vendor_listing_id,
+                    custom_design__isnull=True,
+                ).aggregate(total=models.Sum("quantity"))["total"] or self.quantity
+                tier = self.vendor_listing.wholesale_tiers.filter(minimum_quantity__lte=total_listing_quantity).order_by("-minimum_quantity").first()
+                if tier:
+                    price = tier.unit_price
+            return price
         return self.variant.effective_price if self.variant_id else self.product.base_price
 
     @property
@@ -114,6 +140,8 @@ class CartItem(models.Model):
 
     @property
     def available_stock(self):
+        if self.vendor_listing_id:
+            return self.vendor_listing.stock_quantity
         return self.variant.stock_quantity if self.variant_id else None
 
     def __str__(self):
@@ -198,6 +226,7 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey("shop.Product", on_delete=models.PROTECT, related_name="order_items")
+    vendor_listing = models.ForeignKey("marketplace.VendorProduct", on_delete=models.PROTECT, related_name="order_items", null=True, blank=True)
     variant = models.ForeignKey(
         "shop.ProductVariant",
         on_delete=models.PROTECT,
@@ -214,6 +243,8 @@ class OrderItem(models.Model):
     )
     custom_design_code = models.CharField(max_length=40, blank=True, db_index=True)
     custom_design_snapshot = models.JSONField(default=dict, blank=True)
+    vendor_sale_unit_snapshot = models.CharField(max_length=40, default="عدد")
+    vendor_units_per_order_snapshot = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
 
     # Product information is intentionally snapshotted for historical accuracy.
     product_name = models.CharField(max_length=200)
@@ -227,13 +258,47 @@ class OrderItem(models.Model):
 
     class Meta:
         ordering = ("id",)
-        constraints = [models.CheckConstraint(check=Q(quantity__gt=0), name="order_item_quantity_gt_zero")]
+        constraints = [
+            models.CheckConstraint(check=Q(quantity__gt=0), name="order_item_quantity_gt_zero"),
+            models.CheckConstraint(check=Q(vendor_units_per_order_snapshot__gt=0), name="order_item_vendor_units_gt_zero"),
+        ]
         indexes = [models.Index(fields=("order", "product"))]
 
     def save(self, *args, **kwargs):
         if not self.line_total:
             self.line_total = self.unit_price * self.quantity
+        if self.pk:
+            old = type(self).objects.filter(pk=self.pk).values(
+                "order_id", "product_id", "vendor_listing_id", "variant_id", "custom_design_id",
+                "custom_design_code", "custom_design_snapshot", "vendor_sale_unit_snapshot",
+                "vendor_units_per_order_snapshot", "product_name", "variant_sku", "color_name",
+                "size_name", "unit_price", "compare_at_price", "quantity", "line_total",
+            ).first()
+            current = {
+                "order_id": self.order_id,
+                "product_id": self.product_id,
+                "vendor_listing_id": self.vendor_listing_id,
+                "variant_id": self.variant_id,
+                "custom_design_id": self.custom_design_id,
+                "custom_design_code": self.custom_design_code,
+                "custom_design_snapshot": self.custom_design_snapshot,
+                "vendor_sale_unit_snapshot": self.vendor_sale_unit_snapshot,
+                "vendor_units_per_order_snapshot": self.vendor_units_per_order_snapshot,
+                "product_name": self.product_name,
+                "variant_sku": self.variant_sku,
+                "color_name": self.color_name,
+                "size_name": self.size_name,
+                "unit_price": self.unit_price,
+                "compare_at_price": self.compare_at_price,
+                "quantity": self.quantity,
+                "line_total": self.line_total,
+            }
+            if old and old != current:
+                raise ValidationError("اقلام سفارش و Snapshot مالی آن پس از ثبت قابل تغییر نیستند.")
         super().save(*args, **kwargs)
 
+    def delete(self, *args, **kwargs):
+        raise ValidationError("قلم سفارش حذف نمی‌شود؛ از گردش رسمی لغو یا بازپرداخت استفاده کنید.")
+
     def __str__(self):
-        return f"{self.order.number} / {self.product_name} × {self.quantity}"
+        return f"{self.order.number} / {self.product_name} × {self.quantity} {self.vendor_sale_unit_snapshot}"

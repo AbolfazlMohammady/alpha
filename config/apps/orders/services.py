@@ -1,9 +1,24 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django.db import transaction
+from django.db.models import Sum
 
 from .models import Cart, CartItem, Order, OrderItem
 from apps.customizer.models import DesignDraft
+
+
+def _strict_quantity(value):
+    if isinstance(value, bool) or isinstance(value, float):
+        raise ValueError("تعداد باید عدد صحیح باشد.")
+    if isinstance(value, Decimal):
+        if not value.is_finite() or value != value.to_integral_value():
+            raise ValueError("تعداد باید عدد صحیح باشد.")
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("تعداد باید عدد صحیح باشد.") from exc
 
 
 CART_SESSION_KEY = "babaei_cart_session"
@@ -100,7 +115,7 @@ def merge_guest_cart(request, user) -> None:
         return
     with transaction.atomic():
         user_cart, _ = Cart.objects.get_or_create(user=user, status=Cart.Status.ACTIVE)
-        for guest_item in guest.items.select_related("product", "variant", "custom_design").select_for_update(of=("self",)):
+        for guest_item in guest.items.select_related("product", "variant", "custom_design", "vendor_listing").select_for_update(of=("self",)):
             if guest_item.custom_design_id:
                 design = guest_item.custom_design
                 design.user = user
@@ -112,6 +127,7 @@ def merge_guest_cart(request, user) -> None:
                     defaults={
                         "product": guest_item.product,
                         "variant": guest_item.variant,
+                        "vendor_listing": guest_item.vendor_listing,
                         "quantity": guest_item.quantity,
                     },
                 )
@@ -120,11 +136,15 @@ def merge_guest_cart(request, user) -> None:
                     cart=user_cart,
                     product=guest_item.product,
                     variant=guest_item.variant,
+                    vendor_listing=guest_item.vendor_listing,
+                    custom_design=None,
                     defaults={"quantity": guest_item.quantity},
                 )
             if not created:
                 item.quantity += guest_item.quantity
-                if item.variant_id:
+                if item.vendor_listing_id:
+                    item.quantity = min(item.quantity, item.vendor_listing.stock_quantity)
+                elif item.variant_id:
                     item.quantity = min(item.quantity, item.variant.stock_quantity)
                 item.save(update_fields=["quantity", "updated_at"])
         guest.status = Cart.Status.CONVERTED
@@ -136,52 +156,132 @@ def merge_guest_cart(request, user) -> None:
     request._babaei_cart_item_count = merged_count
 
 
-def add_design_to_cart(request, *, design: DesignDraft, quantity=1) -> CartItem:
-    quantity = int(quantity)
+def add_design_to_cart(request, *, design: DesignDraft, quantity=1, vendor_listing=None) -> CartItem:
+    quantity = _strict_quantity(quantity)
     if quantity < 1:
         raise ValueError("تعداد باید حداقل ۱ باشد.")
     if design.status != DesignDraft.Status.DRAFT:
         raise ValueError("این طراحی دیگر قابل افزودن به سبد نیست.")
+    if design.product.marketplace_only and vendor_listing is None:
+        raise ValueError("این محصول فقط از طریق فروشنده فعال قابل سفارش است.")
     session_key = _ensure_session_key(request)
     user_id = _authenticated_user_id(request)
     if design.user_id and str(design.user_id) != str(user_id):
         raise ValueError("این طراحی متعلق به کاربر دیگری است.")
     if not design.user_id and design.session_key != session_key:
         raise ValueError("این طراحی متعلق به نشست فعلی نیست.")
+
     with transaction.atomic():
+        if vendor_listing is not None:
+            from apps.marketplace.models import VendorProduct, Vendor
+            vendor_listing = VendorProduct.objects.select_for_update().select_related("vendor").get(
+                pk=vendor_listing.pk,
+                product_id=design.product_id,
+                status=VendorProduct.Status.ACTIVE,
+                vendor__status=Vendor.Status.ACTIVE,
+                vendor__user__is_active=True,
+                supports_custom_printing=True,
+            )
         cart = get_active_cart(request)
         item = CartItem.objects.filter(cart=cart, custom_design=design).select_for_update().first()
+        if item and item.vendor_listing_id != getattr(vendor_listing, "id", None):
+            raise ValueError("این طراحی قبلاً با فروشنده دیگری به سبد اضافه شده است.")
+        if vendor_listing is not None:
+            if item and (
+                item.vendor_sale_unit_snapshot != vendor_listing.sale_unit
+                or item.vendor_units_per_order_snapshot != vendor_listing.units_per_order
+            ):
+                raise ValueError("واحد فروش این محصول تغییر کرده است؛ طراحی را از سبد حذف و دوباره اضافه کن.")
+            cart_listing_quantity = CartItem.objects.filter(
+                cart=cart, vendor_listing=vendor_listing
+            ).aggregate(total=Sum("quantity"))["total"] or 0
+            if cart_listing_quantity + quantity > vendor_listing.stock_quantity:
+                raise ValueError("موجودی فروشنده برای مجموع تعداد این طراحی در سبد کافی نیست.")
         if item:
             item.quantity += quantity
             item.save(update_fields=("quantity", "updated_at"))
         else:
-            item = CartItem.objects.create(cart=cart, product=design.product, variant=design.variant, custom_design=design, quantity=quantity)
+            item = CartItem.objects.create(
+                cart=cart,
+                product=design.product,
+                variant=design.variant,
+                custom_design=design,
+                vendor_listing=vendor_listing,
+                quantity=quantity,
+                vendor_sale_unit_snapshot=vendor_listing.sale_unit if vendor_listing is not None else "عدد",
+                vendor_units_per_order_snapshot=vendor_listing.units_per_order if vendor_listing is not None else 1,
+            )
     return item
 
-
-def add_to_cart(request, *, product, variant=None, custom_design=None, quantity=1) -> CartItem:
-    quantity = int(quantity)
+def add_to_cart(request, *, product, variant=None, custom_design=None, vendor_listing=None, quantity=1) -> CartItem:
+    quantity = _strict_quantity(quantity)
     if quantity < 1:
         raise ValueError("تعداد باید حداقل ۱ باشد.")
     if custom_design is not None and (custom_design.product_id != product.id or custom_design.status not in {"draft", "cart"}):
         raise ValueError("طراحی انتخاب‌شده معتبر نیست.")
+    if getattr(product, "marketplace_only", False) and vendor_listing is None:
+        raise ValueError("این محصول فقط از طریق فروشنده فعال قابل سفارش است.")
+    if vendor_listing is not None:
+        from apps.marketplace.models import VendorProduct, Vendor
+        vendor_listing = VendorProduct.objects.select_related("vendor").get(
+            pk=vendor_listing.pk,
+            product_id=product.id,
+            status=VendorProduct.Status.ACTIVE,
+            vendor__status=Vendor.Status.ACTIVE,
+            vendor__user__is_active=True,
+        )
+        if vendor_listing.stock_quantity < quantity:
+            raise ValueError("موجودی این فروشنده برای تعداد انتخاب‌شده کافی نیست.")
+        if custom_design is not None and not vendor_listing.supports_custom_printing:
+            raise ValueError("این فروشنده چاپ سفارشی این محصول را پشتیبانی نمی‌کند.")
     with transaction.atomic():
         cart = get_active_cart(request)
+        if vendor_listing is not None:
+            from apps.marketplace.models import VendorProduct, Vendor
+            vendor_listing = VendorProduct.objects.select_for_update().select_related("vendor").get(
+                pk=vendor_listing.pk,
+                product_id=product.id,
+                status=VendorProduct.Status.ACTIVE,
+                vendor__status=Vendor.Status.ACTIVE,
+                vendor__user__is_active=True,
+            )
+            cart_listing_quantity = CartItem.objects.filter(cart=cart, vendor_listing=vendor_listing).aggregate(total=Sum("quantity"))["total"] or 0
+            if cart_listing_quantity + quantity > vendor_listing.stock_quantity:
+                raise ValueError("موجودی فروشنده برای مجموع تعداد این محصول در سبد کافی نیست.")
         if variant is not None:
             if variant.product_id != product.id:
                 raise ValueError("ترکیب انتخاب‌شده متعلق به این محصول نیست.")
             variant = type(variant).objects.select_for_update().get(pk=variant.pk)
             if not variant.is_active or not product.is_active or not product.category.is_active:
                 raise ValueError("این محصول دیگر قابل خرید نیست.")
-            if variant.stock_quantity < quantity:
+            if vendor_listing is None and variant.stock_quantity < quantity:
                 raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
         elif product.variants.filter(is_active=True).exists():
             raise ValueError("لطفاً رنگ و سایز محصول را انتخاب کنید.")
-        lookup = {"cart": cart, "custom_design": custom_design} if custom_design is not None else {"cart": cart, "product": product, "variant": variant, "custom_design": None}
-        item, created = CartItem.objects.select_for_update().get_or_create(**lookup, defaults={"quantity": quantity})
+        lookup = {"cart": cart, "custom_design": custom_design} if custom_design is not None else {
+            "cart": cart, "product": product, "variant": variant, "custom_design": None,
+            "vendor_listing": vendor_listing,
+        }
+        item, created = CartItem.objects.select_for_update().get_or_create(
+            **lookup,
+            defaults={
+                "quantity": quantity,
+                "vendor_sale_unit_snapshot": vendor_listing.sale_unit if vendor_listing is not None else "عدد",
+                "vendor_units_per_order_snapshot": vendor_listing.units_per_order if vendor_listing is not None else 1,
+            },
+        )
+        expected_listing_id = vendor_listing.pk if vendor_listing is not None else None
+        if custom_design is not None and item.vendor_listing_id != expected_listing_id:
+            raise ValueError("این طراحی قبلاً با فروشنده دیگری به سبد اضافه شده است.")
+        if vendor_listing is not None and (
+            item.vendor_sale_unit_snapshot != vendor_listing.sale_unit
+            or item.vendor_units_per_order_snapshot != vendor_listing.units_per_order
+        ):
+            raise ValueError("واحد فروش این محصول تغییر کرده است؛ آن را از سبد حذف و دوباره اضافه کن.")
         if not created:
             new_quantity = item.quantity + quantity
-            if variant is not None and new_quantity > variant.stock_quantity:
+            available = vendor_listing.stock_quantity if vendor_listing is not None else (variant.stock_quantity if variant is not None else None)
+            if vendor_listing is None and available is not None and new_quantity > available:
                 raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
             item.quantity = new_quantity
             item.save(update_fields=["quantity", "updated_at"])
@@ -190,13 +290,26 @@ def add_to_cart(request, *, product, variant=None, custom_design=None, quantity=
 
 
 def update_cart_item(request, item_id: int, quantity: int) -> CartItem:
-    quantity = int(quantity)
+    quantity = _strict_quantity(quantity)
     if quantity < 1:
         raise ValueError("تعداد باید حداقل ۱ باشد.")
     with transaction.atomic():
         cart = get_active_cart(request)
-        item = CartItem.objects.select_for_update().select_related("variant").get(cart=cart, pk=item_id)
-        if item.variant_id:
+        item = CartItem.objects.select_for_update().select_related("variant", "vendor_listing").get(cart=cart, pk=item_id)
+        if item.vendor_listing_id:
+            from apps.marketplace.models import VendorProduct
+            listing = VendorProduct.objects.select_for_update().get(pk=item.vendor_listing_id)
+            if (
+                listing.status != VendorProduct.Status.ACTIVE
+                or item.vendor_sale_unit_snapshot != listing.sale_unit
+                or item.vendor_units_per_order_snapshot != listing.units_per_order
+            ):
+                raise ValueError("وضعیت یا واحد فروش این محصول تغییر کرده است؛ آن را حذف و دوباره از صفحه محصول اضافه کن.")
+            cart_listing_quantity = CartItem.objects.filter(cart=cart, vendor_listing=listing).aggregate(total=Sum("quantity"))["total"] or 0
+            requested_total = cart_listing_quantity - item.quantity + quantity
+            if requested_total > listing.stock_quantity:
+                raise ValueError("مجموع تعداد انتخاب‌شده بیشتر از موجودی فروشنده است.")
+        elif item.variant_id:
             variant = type(item.variant).objects.select_for_update().get(pk=item.variant_id)
             if quantity > variant.stock_quantity:
                 raise ValueError("تعداد انتخاب‌شده بیشتر از موجودی است.")
@@ -254,7 +367,7 @@ def clear_cart(request) -> None:
     invalidate_product_cart_cache(request)
 
 
-def create_order_from_cart(*, user, cart, address, customer_note=""):
+def create_order_from_cart(*, user, cart, address, customer_note="", shipping_quote_ids=None):
     """Convert the active cart into an immutable order snapshot."""
     from apps.shop.models import ProductVariant
 
@@ -281,16 +394,35 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
 
         order_rows = []
         subtotal = 0
+        listing_quantities = {}
+        listing_stock_quantities = {}
+        for cart_item in items:
+            if cart_item.vendor_listing_id:
+                listing_stock_quantities[cart_item.vendor_listing_id] = listing_stock_quantities.get(cart_item.vendor_listing_id, 0) + cart_item.quantity
+                if cart_item.custom_design_id is None:
+                    listing_quantities[cart_item.vendor_listing_id] = listing_quantities.get(cart_item.vendor_listing_id, 0) + cart_item.quantity
 
         for item in items:
             product = item.product
             design = item.custom_design
             if not product.is_active or not product.category.is_active:
                 raise ValueError("این لباس دیگر قابل سفارش نیست.")
+            if product.marketplace_only and not item.vendor_listing_id:
+                raise ValidationError("این محصول فقط از طریق فروشنده فعال قابل سفارش است.")
             if design is not None and (design.status not in {DesignDraft.Status.DRAFT, DesignDraft.Status.CART} or design.product_id != product.id):
                 raise ValueError("طراحی این آیتم دیگر قابل سفارش نیست.")
 
             if design is not None:
+                listing = None
+                if item.vendor_listing_id:
+                    from apps.marketplace.models import VendorProduct
+                    listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=item.vendor_listing_id)
+                    if item.vendor_sale_unit_snapshot != listing.sale_unit or item.vendor_units_per_order_snapshot != listing.units_per_order:
+                        raise ValidationError("واحد فروش این محصول از زمان افزودن به سبد تغییر کرده است؛ آن را حذف و دوباره اضافه کن.")
+                    if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders or not listing.supports_custom_printing:
+                        raise ValueError("فروشنده انتخاب‌شده امکان اجرای طراحی سفارشی را ندارد.")
+                    if listing.stock_quantity < listing_stock_quantities.get(listing.pk, 0):
+                        raise ValueError("ظرفیت/موجودی فروشنده برای مجموع تعداد سفارش کافی نیست.")
                 if design.user_id and design.user_id != user.id:
                     raise ValueError("طراحی سفارشی متعلق به این کاربر نیست.")
                 unit_price = design.total_price
@@ -302,9 +434,14 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
                     "total_price": design.total_price,
                     "shirt_color": design.shirt_color,
                     "variant_id": design.variant_id,
+                    "sale_unit": item.vendor_listing.sale_unit if item.vendor_listing_id else "عدد",
+                    "units_per_order": item.vendor_listing.units_per_order if item.vendor_listing_id else 1,
                 })
+                if listing is not None and not listing.supports_custom_printing:
+                    raise ValueError("فروشنده انتخاب‌شده چاپ سفارشی را پشتیبانی نمی‌کند.")
                 order_rows.append({
                     "cart_item": item,
+                    "vendor_listing": item.vendor_listing,
                     "variant": design.variant,
                     "unit_price": unit_price,
                     "compare_at_price": None,
@@ -318,6 +455,16 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
                 subtotal += line_total
                 continue
 
+            listing = None
+            if item.vendor_listing_id:
+                from apps.marketplace.models import VendorProduct
+                listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=item.vendor_listing_id)
+                if item.vendor_sale_unit_snapshot != listing.sale_unit or item.vendor_units_per_order_snapshot != listing.units_per_order:
+                    raise ValidationError("واحد فروش این محصول از زمان افزودن به سبد تغییر کرده است؛ آن را حذف و دوباره اضافه کن.")
+                if listing.status != VendorProduct.Status.ACTIVE or not listing.vendor.can_receive_orders:
+                    raise ValueError(f"فروشنده محصول «{product.name}» در حال حاضر سفارش نمی‌پذیرد.")
+                if listing.stock_quantity < listing_stock_quantities.get(listing.pk, 0):
+                    raise ValueError(f"موجودی فروشنده برای مجموع تعداد محصول «{product.name}» کافی نیست.")
             variant = None
             if item.variant_id:
                 variant = (
@@ -328,24 +475,29 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
                 )
                 if not variant.is_active:
                     raise ValueError(f"ترکیب «{product.name}» دیگر قابل سفارش نیست.")
-                if variant.stock_quantity < item.quantity:
+                if listing is None and variant.stock_quantity < item.quantity:
                     raise ValueError(f"موجودی «{product.name}» برای تعداد انتخاب‌شده کافی نیست.")
-                unit_price = variant.effective_price
-                compare_at_price = variant.effective_compare_at_price
+                unit_price = listing.retail_price if listing else variant.effective_price
+                compare_at_price = listing.compare_at_price if listing else variant.effective_compare_at_price
                 variant_sku = variant.sku
                 color_name = variant.color.name
                 size_name = variant.size.name
             else:
-                unit_price = product.base_price
-                compare_at_price = product.compare_at_price
+                unit_price = listing.retail_price if listing else product.base_price
+                compare_at_price = listing.compare_at_price if listing else product.compare_at_price
                 variant_sku = ""
                 color_name = ""
                 size_name = ""
+            if listing is not None and listing.wholesale_enabled:
+                tier = listing.wholesale_tiers.filter(minimum_quantity__lte=listing_quantities.get(listing.pk, 0)).order_by("-minimum_quantity").first()
+                if tier:
+                    unit_price = tier.unit_price
 
             line_total = unit_price * item.quantity
             subtotal += line_total
             order_rows.append({
                 "cart_item": item,
+                "vendor_listing": listing,
                 "variant": variant,
                 "unit_price": unit_price,
                 "compare_at_price": compare_at_price,
@@ -356,6 +508,22 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
                 "custom_design": None,
                 "custom_design_snapshot": {},
             })
+
+        has_vendor_items = any(row.get("vendor_listing") is not None for row in order_rows)
+        has_platform_items = any(row.get("vendor_listing") is None for row in order_rows)
+        if has_vendor_items and has_platform_items:
+            raise ValidationError("سبد خرید شامل کالاهای فروشندگان و کالاهای خارج از مارکت‌پلیس است؛ لطفاً آن‌ها را در سفارش‌های جداگانه ثبت کنید.")
+
+        from apps.marketplace.services import consume_shipping_quotes
+        shipping_amount, used_shipping_quotes = consume_shipping_quotes(
+            user=user,
+            cart=locked_cart,
+            address=address,
+            items=items,
+            quote_ids=shipping_quote_ids or [],
+        )
+        if subtotal + shipping_amount <= 0:
+            raise ValidationError("مبلغ نهایی سفارش باید مثبت باشد؛ سفارش رایگان باید از گردش جداگانه ثبت شود.")
 
         recipient_name = " ".join(str(address.recipient_display_name or "").split())
         if len(recipient_name) < 2:
@@ -375,16 +543,20 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
             shipping_address=address.description or address.title,
             subtotal=subtotal,
             discount_amount=0,
-            shipping_amount=0,
-            total_amount=subtotal,
+            shipping_amount=shipping_amount,
+            total_amount=subtotal + shipping_amount,
             currency="IRT",
             customer_note=customer_note.strip(),
         )
+        if used_shipping_quotes:
+            from apps.marketplace.models import ShippingQuote
+            ShippingQuote.objects.filter(pk__in=[quote.pk for quote in used_shipping_quotes]).update(order=order)
 
         OrderItem.objects.bulk_create([
             OrderItem(
                 order=order,
                 product=row["cart_item"].product,
+                vendor_listing=row.get("vendor_listing"),
                 variant=row["variant"],
                 product_name=(row["custom_design"].design_code if row.get("custom_design") else row["cart_item"].product.name),
                 variant_sku=row["variant_sku"],
@@ -397,26 +569,11 @@ def create_order_from_cart(*, user, cart, address, customer_note=""):
                 custom_design=row.get("custom_design"),
                 custom_design_code=row["custom_design"].design_code if row.get("custom_design") else "",
                 custom_design_snapshot=row.get("custom_design_snapshot", {}),
+                vendor_sale_unit_snapshot=row["vendor_listing"].sale_unit if row.get("vendor_listing") else "عدد",
+                vendor_units_per_order_snapshot=row["vendor_listing"].units_per_order if row.get("vendor_listing") else 1,
             )
             for row in order_rows
         ])
-
-        design_ids = [
-            row["custom_design"].id
-            for row in order_rows
-            if row.get("custom_design") is not None
-        ]
-        if design_ids:
-            from django.utils import timezone
-            DesignDraft.objects.filter(
-                id__in=design_ids,
-                status__in=[DesignDraft.Status.DRAFT, DesignDraft.Status.CART],
-            ).update(
-                status=DesignDraft.Status.CONFIRMED,
-                confirmed_at=timezone.now(),
-                user=user,
-                session_key="",
-            )
 
         locked_cart.status = Cart.Status.CONVERTED
         locked_cart.save(update_fields=["status", "updated_at"])
@@ -440,6 +597,8 @@ def process_manual_payment(*, order, success):
         if locked_order.payment_status == Order.PaymentStatus.PAID:
             from apps.customizer.services import promote_design_assets_for_order
             promote_design_assets_for_order(locked_order)
+            from apps.marketplace.services import create_vendor_orders_for_paid_order
+            create_vendor_orders_for_paid_order(locked_order)
             return locked_order, False
 
         if locked_order.status in {Order.Status.CANCELLED, Order.Status.REFUNDED}:
@@ -451,8 +610,30 @@ def process_manual_payment(*, order, success):
             locked_order.save(update_fields=["payment_status", "payment_reference", "updated_at"])
             return locked_order, True
 
-        order_items = list(locked_order.items.select_related("product", "variant").select_for_update(of=("self",)))
+        order_items = list(locked_order.items.select_related("product", "variant", "vendor_listing__vendor").select_for_update(of=("self",)))
         for item in order_items:
+            if item.vendor_listing_id:
+                from apps.marketplace.models import VendorProduct
+                listing = VendorProduct.objects.select_for_update().select_related("vendor").get(pk=item.vendor_listing_id)
+                if (
+                    listing.status != VendorProduct.Status.ACTIVE
+                    or not listing.vendor.can_receive_orders
+                    or listing.stock_quantity < item.quantity
+                ):
+                    raise ValueError(f"موجودی یا وضعیت فروشنده برای «{item.product_name}» معتبر نیست.")
+                if (
+                    item.vendor_sale_unit_snapshot != listing.sale_unit
+                    or item.vendor_units_per_order_snapshot != listing.units_per_order
+                ):
+                    raise ValueError(
+                        f"واحد فروش محصول «{item.product_name}» پس از ثبت سفارش تغییر کرده است؛ "
+                        "پرداخت متوقف شد تا سفارش با بسته‌بندی جدید اصلاح شود."
+                    )
+                if item.custom_design_id and not listing.supports_custom_printing:
+                    raise ValueError("فروشنده انتخاب‌شده دیگر چاپ سفارشی این محصول را پشتیبانی نمی‌کند.")
+                listing.stock_quantity -= item.quantity
+                listing.save(update_fields=["stock_quantity", "updated_at"])
+                continue
             if not item.variant_id:
                 continue
             variant = ProductVariant.objects.select_for_update().get(pk=item.variant_id)
@@ -478,4 +659,9 @@ def process_manual_payment(*, order, success):
                 "updated_at",
             ]
         )
+        # Split seller orders and post the financial journal only when every
+        # order line has an explicit vendor listing. Legacy catalog orders keep
+        # their existing workflow until sellers are assigned.
+        from apps.marketplace.services import create_vendor_orders_for_paid_order
+        create_vendor_orders_for_paid_order(locked_order)
         return locked_order, True

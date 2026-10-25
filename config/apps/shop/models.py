@@ -74,6 +74,11 @@ class Product(models.Model):
         validators=[MinValueValidator(0)],
         help_text=_("اگر محصول تخفیف دارد، قیمت قبل از تخفیف را وارد کنید."),
     )
+    marketplace_only = models.BooleanField(
+        _("فروش فقط از طریق فروشندگان"),
+        default=False,
+        help_text=_("برای محصولاتی که توسط فروشنده ثبت شده‌اند و نباید بدون آگهی فعال فروشگاه خریداری شوند."),
+    )
     is_active = models.BooleanField(_("فعال"), default=True, db_index=True)
     is_featured = models.BooleanField(_("ویژه"), default=False, db_index=True)
     seo_title = models.CharField(_("عنوان سئو"), max_length=70, blank=True)

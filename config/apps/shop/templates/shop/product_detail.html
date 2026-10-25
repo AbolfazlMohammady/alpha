@@ -142,7 +142,7 @@ js/storefront.js). Nothing on this page needs !important.
                 <div class="pd-price" aria-live="polite">
                     <div class="pd-price__row">
                         <strong id="product-price" class="pd-price__value">{{ product.display_price|price }}</strong>
-                        <span class="pd-price__unit">تومان</span>
+                        <span class="pd-price__unit">تومان</span><span id="product-sale-unit" class="pd-price__unit" hidden></span>
                         <span id="product-old-price-row" class="pd-price__meta{% if not product.has_discount %} is-hidden{% endif %}"><del id="product-old-price">{{ product.display_compare_price|price }}</del><span id="product-discount" class="pd-discount">{{ product.discount_percent|discount_percent }}</span></span>
                     </div>
                     {% if product.active_variants %}
@@ -175,15 +175,42 @@ js/storefront.js). Nothing on this page needs !important.
                 dock: two stacked sticky layers on a phone was the worst thing on
                 this page, and the buy column is one short scroll away regardless.
                 {% endcomment %}
+                {% if marketplace_unavailable %}
+                    <div class="pd-buy pd-unavailable" role="status">
+                        <strong>فعلاً فروشنده‌ای با موجودی فعال برای این محصول نداریم.</strong>
+                        <p>می‌توانی بعداً دوباره بررسی کنی یا محصولات مشابه را ببینی.</p>
+                    </div>
+                {% else %}
                 <form method="post" action="{% url 'orders:cart_add' %}" class="pd-buy" id="add-to-cart-form">
                     {% csrf_token %}<input type="hidden" name="product_id" value="{{ product.id }}"><input type="hidden" name="variant_id" id="cart-variant-id" value="">
+                    {% if vendor_listings %}
+                    <div class="pd-qty pd-seller-offer">
+                        <div class="pd-qty__head"><label for="cart-vendor-listing-id">فروشنده و قیمت</label></div>
+                        <select id="cart-vendor-listing-id" name="vendor_listing_id" required>
+                            <option value="" selected>انتخاب فروشنده</option>
+                            {% for listing in vendor_listings %}
+                            <option value="{{ listing.id }}" data-stock="{{ listing.stock_quantity }}" data-price="{{ listing.retail_price }}" data-compare-price="{{ listing.compare_at_price|default:'' }}" data-sale-unit="{{ listing.sale_unit }}" data-units-per-order="{{ listing.units_per_order }}" data-wholesale-tiers="{% if listing.wholesale_enabled %}{% for tier in listing.wholesale_tiers.all %}{{ tier.minimum_quantity }}:{{ tier.unit_price }}{% if not forloop.last %},{% endif %}{% endfor %}{% endif %}" {% if not listing.stock_quantity %}disabled{% endif %}>
+                                {{ listing.vendor.store_name }} — {{ listing.retail_price|price }} تومان / {{ listing.sale_unit }}{% if listing.units_per_order > 1 %} (شامل {{ listing.units_per_order }} قلم){% endif %}{% if listing.stock_quantity %} · موجود{% else %} · ناموجود{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        {% for listing in vendor_listings %}
+                            {% if listing.wholesale_enabled and listing.wholesale_tiers.all %}
+                            <small>{{ listing.vendor.store_name }} — قیمت عمده:
+                                {% for tier in listing.wholesale_tiers.all %}از {{ tier.minimum_quantity }} {{ listing.sale_unit }}: {{ tier.unit_price|price }} تومان{% if not forloop.last %}، {% endif %}{% endfor %}
+                            </small>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                     <div class="pd-qty" data-product-quantity-wrap>
-                        <div class="pd-qty__head"><label for="cart-quantity">تعداد</label></div>
+                        <div class="pd-qty__head"><label for="cart-quantity" id="cart-quantity-label">تعداد</label></div>
                         <div class="pd-qty__control"><button type="button" data-product-quantity-button="-1" aria-label="کاهش تعداد">-</button><input id="cart-quantity" name="quantity" type="number" min="1" value="1" inputmode="numeric" aria-label="تعداد محصول"><button type="button" data-product-quantity-button="1" aria-label="افزایش تعداد">+</button></div>
                     </div>
                     <button id="add-to-cart-button" class="pd-buy__button" type="submit"{% if product.active_variants %} disabled{% endif %}>افزودن به سبد خرید</button>
                     <a id="product-in-cart" class="pd-incart" href="{% url 'orders:cart' %}" hidden><span>این مدل در سبد خرید است</span><strong data-product-in-cart-quantity></strong><small>مشاهده سبد خرید ←</small></a>
                 </form>
+                {% endif %}
 
             </article>
         </div>
@@ -298,7 +325,7 @@ js/storefront.js). Nothing on this page needs !important.
 {% endblock %}
 {% block extra_js %}
 <script>
-window.BabaeiProduct={variants:{{ variant_data }},cartVariants:{{ cart_variant_data }},initialProductPrice:{{ product.display_price|default:0 }},initialComparePrice:{{ product.display_compare_price|default:0 }}};
+window.BabaeiProduct={variants:{{ variant_data }},cartVariants:{{ cart_variant_data }},cartListings:{{ cart_listing_data|default:"{}" }},initialProductPrice:{{ product.display_price|default:0 }},initialComparePrice:{{ product.display_compare_price|default:0 }}};
 document.addEventListener("DOMContentLoaded",function(){
     const comments=document.querySelector("#comments");
     const commentToggle=document.querySelector("[data-comment-toggle]");

@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.utils import timezone
 
 from .models import Artwork, ArtworkAreaPrice, CustomizerPricingSettings, DesignDraft, DesignLayer, PrintAreaView
 from .temp_storage import delete_customizer_temp_file, resolve_customizer_temp_path, save_bytes_to_temp, save_uploaded_file_to_temp
@@ -111,6 +112,10 @@ def promote_design_assets_for_order(order) -> None:
     )
 
     for draft in designs:
+        if draft.status != DesignDraft.Status.CONFIRMED:
+            draft.status = DesignDraft.Status.CONFIRMED
+            draft.confirmed_at = timezone.now()
+            draft.save(update_fields=("status", "confirmed_at", "updated_at"))
         artworks = {
             layer.artwork
             for layer in draft.layers.all()
@@ -299,7 +304,7 @@ def validate_body_placement(placement: Placement, existing):
     # the customer sees on the shirt.
 
 
-def validate_design_payload(product, payload, variant=None, request=None):
+def validate_design_payload(product, payload, variant=None, request=None, vendor_listing=None):
     if not isinstance(payload, dict):
         raise ValidationError("اطلاعات طراحی نامعتبر است.")
 
@@ -310,7 +315,7 @@ def validate_design_payload(product, payload, variant=None, request=None):
     if variant is not None and (
         variant.product_id != product.id
         or not variant.is_active
-        or variant.stock_quantity <= 0
+        or (vendor_listing is None and variant.stock_quantity <= 0)
     ):
         raise ValidationError("رنگ و سایز انتخاب‌شده موجود نیست.")
     if variant is None and product.variants.filter(is_active=True).exists():
@@ -516,12 +521,20 @@ def validate_design_payload(product, payload, variant=None, request=None):
 
 
 @transaction.atomic
-def save_design_draft(*, request, product, payload, variant=None):
+def save_design_draft(*, request, product, payload, variant=None, vendor_listing=None, base_price_override=None):
     if not request.session.session_key:
         request.session.create()
     normalized, total_price, base_price = validate_design_payload(
-        product, payload, variant=variant, request=request
+        product, payload, variant=variant, request=request, vendor_listing=vendor_listing
     )
+    if base_price_override is not None:
+        base_price_override = int(base_price_override)
+        if base_price_override <= 0:
+            raise ValidationError("قیمت پایه فروشنده معتبر نیست.")
+        print_surcharge_per_item = max(int(total_price) - int(base_price), 0)
+        units_per_order = int(vendor_listing.units_per_order) if vendor_listing is not None else 1
+        total_price = base_price_override + print_surcharge_per_item * units_per_order
+        base_price = base_price_override
     draft = DesignDraft.objects.create(
         product=product,
         variant=variant,

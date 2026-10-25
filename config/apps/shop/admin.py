@@ -101,7 +101,7 @@ class ProductAdmin(ShopAdminMixin, admin.ModelAdmin):
     fieldsets = (
         ("محصول", {"fields": ("name", "category", "slug", "short_description", "description")}),
         ("قیمت‌گذاری", {"fields": ("base_price", "compare_at_price")}),
-        ("انتشار", {"fields": ("is_active", "is_featured")}),
+        ("انتشار", {"fields": ("is_active", "is_featured", "marketplace_only")}),
         ("سئو", {"fields": ("seo_title", "seo_description"), "classes": ("collapse",)}),
         ("سیستم", {"fields": ("public_link", "uuid", "created_at", "updated_at"), "classes": ("collapse",)}),
     )

@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}پنل فروشنده | BABAEI{% endblock %}
+{% block content %}
+<style>
+.vendor-dashboard{direction:rtl;max-width:1240px;margin:32px auto;padding:0 18px;color:var(--text-primary,#1f2937)}
+.vendor-dashboard *{box-sizing:border-box}
+.vd-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.vd-header h1{margin:0;font-size:clamp(24px,3vw,34px)}
+.vd-muted{color:var(--text-secondary,#6b7280);font-size:14px}
+.vd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px}
+.vd-card{background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:16px;padding:18px;min-width:0}
+.vd-card h2{font-size:18px;margin:0 0 14px}
+.vd-number{font-size:25px;font-weight:800;display:block;margin-top:8px}
+.vd-section{margin:18px 0}
+.vd-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}
+.vd-field{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.vd-field input,.vd-field select,.vd-field textarea{width:100%;min-width:0;border:1px solid var(--border,#d1d5db);border-radius:9px;padding:10px;background:var(--surface,#fff);color:inherit}
+.vd-field textarea{min-height:78px;resize:vertical}
+.vd-btn{border:0;border-radius:9px;padding:10px 14px;background:var(--primary,#1f2937);color:white;cursor:pointer;font-weight:700}
+.vd-btn:disabled{opacity:.55;cursor:not-allowed}
+.vd-btn--soft{background:var(--surface-secondary,#f3f4f6);color:inherit;border:1px solid var(--border,#e5e7eb)}
+.vd-list{display:grid;gap:12px}
+.vd-item{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:14px}
+.vd-item-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+.vd-item h3{margin:0;font-size:16px}
+.vd-badge{display:inline-block;border-radius:999px;padding:4px 9px;background:var(--surface-secondary,#f3f4f6);font-size:12px}
+.vd-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.vd-error{color:#b91c1c}.vd-success{color:#047857}
+.vd-message{min-height:22px;margin:8px 0;font-size:13px}
+.vd-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:12px;font-size:13px}
+.vd-order-items{padding-right:20px}
+@media(max-width:600px){.vendor-dashboard{padding:0 12px}.vd-card{padding:14px}}
+</style>
+
+<div class="vendor-dashboard">
+    <header class="vd-header">
+        <div>
+            <h1>پنل فروشنده</h1>
+            <p class="vd-muted">{{ vendor.store_name }} · مدیریت محصولات، سفارش‌ها و تسویه‌ها</p>
+        </div>
+        <span class="vd-badge">وضعیت فروشگاه: {{ vendor.get_status_display }}</span>
+    </header>
+
+    <div id="vd-message" class="vd-message" role="status" aria-live="polite"></div>
+
+    <section class="vd-grid" aria-label="خلاصه فروشگاه">
+        <div class="vd-card"><span class="vd-muted">سفارش‌های در جریان</span><strong class="vd-number" id="vd-pending-orders">—</strong></div>
+        <div class="vd-card"><span class="vd-muted">سفارش‌های تحویل‌شده</span><strong class="vd-number" id="vd-delivered-orders">—</strong></div>
+        <div class="vd-card"><span class="vd-muted">در انتظار تسویه / پرداخت</span><strong class="vd-number" id="vd-pending-settlement">—</strong><span class="vd-muted">تومان</span></div>
+        <div class="vd-card"><span class="vd-muted">تسویه‌های پرداخت‌شده</span><strong class="vd-number" id="vd-paid-settlement">—</strong><span class="vd-muted">تومان</span></div>
+    </section>
+
+    <section class="vd-card vd-section">
+        <h2>اطلاعات مبدأ ارسال</h2>
+        <p class="vd-muted">این اطلاعات برای استعلام هزینه حمل و ثبت مرسوله استفاده می‌شود. کد پستی باید متعلق به محل واقعی آماده‌سازی بسته‌ها باشد.</p>
+        <form id="vd-shipping-profile" class="vd-form">
+            {% csrf_token %}
+            <label class="vd-field">کد پستی مبدأ<input name="pickup_postal_code" value="{{ vendor.pickup_postal_code }}" inputmode="numeric" maxlength="10" required></label>
+            <label class="vd-field">استان<input name="pickup_province" value="{{ vendor.pickup_province }}"></label>
+            <label class="vd-field">شهر<input name="pickup_city" value="{{ vendor.pickup_city }}"></label>
+            <label class="vd-field">تلفن تماس<input name="contact_phone" value="{{ vendor.contact_phone }}"></label>
+            <label class="vd-field" style="grid-column:1/-1">نشانی مبدأ<textarea name="pickup_address">{{ vendor.pickup_address }}</textarea></label>
+            <button class="vd-btn" type="submit">ذخیره اطلاعات ارسال</button>
+        </form>
+    </section>
+
+    <section class="vd-card vd-section">
+        <h2>اطلاعات حساب تسویه</h2>
+        <p class="vd-muted">برای واریز سهم فروش، نام صاحب حساب و شبای متعلق به خودت را وارد کن. اطلاعات بانکی پس از بررسی مدیر تأیید می‌شود و شماره شبا در پنل کامل نمایش داده نمی‌شود.</p>
+        <p id="vd-financial-status" class="vd-muted" role="status" aria-live="polite">وضعیت حساب در حال بررسی است…</p>
+        <form id="vd-financial-profile" class="vd-form">
+            {% csrf_token %}
+            <label class="vd-field">نام صاحب حساب<input name="bank_account_name" maxlength="160" autocomplete="name" required></label>
+            <label class="vd-field">شماره شبا<input name="bank_iban" maxlength="34" placeholder="IR و ۲۴ رقم" autocomplete="off" inputmode="text" required></label>
+            <button class="vd-btn" type="submit">ذخیره اطلاعات حساب</button>
+        </form>
+    </section>
+
+    <section class="vd-card vd-section">
+        <h2>ثبت محصول جدید</h2>
+        <p class="vd-muted">اگر محصولت در کاتالوگ نیست، این فرم را پر کن. پس از بررسی مدیر، محصول و آگهی فروش با قیمت و موجودی ثبت‌شده فعال می‌شوند. موجودی، قیمت، وزن و ابعاد برحسب واحد فروش ثبت می‌شوند؛ برای جعبه ۱۲تایی، واحد فروش را «جعبه ۱۲تایی» و تعداد اقلام را ۱۲ بگذار. تصویر اصلی حداکثر ۵ مگابایت باشد.</p>
+        <form id="vd-product-submission" class="vd-form" enctype="multipart/form-data">
+            {% csrf_token %}
+            <label class="vd-field">نام محصول<input name="name" maxlength="200" required></label>
+            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد یا جعبه ۱۲تایی" required></label>
+            <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="1" required></label>
+            <label class="vd-field">دسته‌بندی<select name="category_id" id="vd-submission-category" required><option value="">در حال بارگذاری…</option></select></label>
+            <label class="vd-field">توضیح کوتاه<input name="short_description" maxlength="500"></label>
+            <label class="vd-field" style="grid-column:1/-1">توضیحات کامل<textarea name="description" rows="3"></textarea></label>
+            <label class="vd-field">تصویر اصلی<input name="image" type="file" accept="image/*" required></label>
+            <label class="vd-field">قیمت هر واحد فروش (تومان)<input name="retail_price" type="number" min="1" required></label>
+            <label class="vd-field">قیمت قبل از تخفیف<input name="compare_at_price" type="number" min="0"></label>
+            <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="0" required></label>
+            <label class="vd-field">وزن هر واحد فروش (گرم)<input name="weight_grams" type="number" min="1" required></label>
+            <label class="vd-field">طول هر واحد فروش (سانتی‌متر)<input name="package_length_cm" type="number" min="1" required></label>
+            <label class="vd-field">عرض هر واحد فروش (سانتی‌متر)<input name="package_width_cm" type="number" min="1" required></label>
+            <label class="vd-field">ارتفاع هر واحد فروش (سانتی‌متر)<input name="package_height_cm" type="number" min="1" required></label>
+            <label class="vd-field">زمان آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="2" required></label>
+            <label class="vd-field"><span>قابلیت چاپ سفارشی</span><select name="supports_custom_printing"><option value="false">ندارد</option><option value="true">دارد</option></select></label>
+            <button class="vd-btn" type="submit">ارسال محصول برای بررسی</button>
+        </form>
+        <div id="vd-product-submissions" class="vd-list" style="margin-top:14px"></div>
+    </section>
+
+    <section class="vd-card vd-section">
+        <h2>ثبت محصول برای فروش</h2>
+        <p class="vd-muted">برای کالایی که از قبل در کاتالوگ وجود دارد، آن را انتخاب کن. قیمت و پله‌های عمده برحسب واحد فروش محاسبه می‌شوند.</p>
+        <p class="vd-muted">محصول باید از کاتالوگ مرکزی سایت انتخاب شود؛ قیمت جدید و تغییر قیمت پس از بررسی مدیر فعال می‌شود. وزن و ابعاد واردشده باید مربوط به بسته‌بندی نهایی باشند.</p>
+        <div class="vd-field" style="margin-bottom:12px">
+            <label for="vd-catalog-search">جستجوی محصول در کاتالوگ</label>
+            <input id="vd-catalog-search" autocomplete="off" placeholder="حداقل دو حرف از نام محصول را وارد کن">
+            <div id="vd-catalog-results" class="vd-list" role="listbox"></div>
+        </div>
+        <form id="vd-product-create" class="vd-form">
+            {% csrf_token %}
+            <label class="vd-field">شناسه محصول انتخاب‌شده<input name="product_id" id="vd-product-id" type="number" min="1" required readonly></label>
+            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد یا جعبه ۱۲تایی" required></label>
+            <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="1" required></label>
+            <label class="vd-field">قیمت هر واحد فروش (تومان)<input name="retail_price" type="number" min="1" required></label>
+            <label class="vd-field">قیمت قبل از تخفیف (اختیاری)<input name="compare_at_price" type="number" min="0"></label>
+            <label class="vd-field">موجودی انبار<input name="stock_quantity" type="number" min="0" value="0" required></label>
+            <label class="vd-field">وزن هر واحد فروش (گرم)<input name="weight_grams" type="number" min="1" required></label>
+            <label class="vd-field">طول هر واحد فروش (سانتی‌متر)<input name="package_length_cm" type="number" min="1" required></label>
+            <label class="vd-field">عرض هر واحد فروش (سانتی‌متر)<input name="package_width_cm" type="number" min="1" required></label>
+            <label class="vd-field">ارتفاع هر واحد فروش (سانتی‌متر)<input name="package_height_cm" type="number" min="1" required></label>
+            <label class="vd-field">زمان آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="2" required></label>
+            <p class="vd-muted" style="grid-column:1/-1">برای فروش عمده، ابتدا محصول را ثبت کن؛ سپس از بخش «محصولات من» پله‌های قیمت عمده را اضافه کن.</p>
+            <label class="vd-field"><span>چاپ سفارشی</span><select name="supports_custom_printing"><option value="false">خیر</option><option value="true">بله</option></select></label>
+            <button class="vd-btn" type="submit">ثبت برای بررسی</button>
+        </form>
+    </section>
+
+    <section class="vd-card vd-section">
+        <div class="vd-item-head"><h2>محصولات من</h2><button class="vd-btn vd-btn--soft" type="button" id="vd-refresh-products">به‌روزرسانی</button></div>
+        <div id="vd-products" class="vd-list"><p class="vd-muted">در حال بارگذاری...</p></div>
+    </section>
+
+    <section class="vd-card vd-section">
+        <h2>درخواست دسته‌بندی جدید</h2>
+        <form id="vd-category-request" class="vd-form">
+            {% csrf_token %}
+            <label class="vd-field">نام دسته‌بندی<input name="name" minlength="2" required></label>
+            <label class="vd-field" style="grid-column:span 2">توضیحات<textarea name="description"></textarea></label>
+            <button class="vd-btn" type="submit">ارسال درخواست</button>
+        </form>
+    </section>
+
+    <section class="vd-card vd-section">
+        <div class="vd-item-head"><h2>تاریخچه تسویه‌ها</h2><button class="vd-btn vd-btn--soft" type="button" id="vd-refresh-settlements">به‌روزرسانی</button></div>
+        <div id="vd-settlements" class="vd-list"><p class="vd-muted">در حال بارگذاری...</p></div>
+    </section>
+
+    <section class="vd-card vd-section">
+        <div class="vd-item-head"><h2>سفارش‌ها و ارسال</h2><button class="vd-btn vd-btn--soft" type="button" id="vd-refresh-orders">به‌روزرسانی</button></div>
+        <div id="vd-orders" class="vd-list"><p class="vd-muted">در حال بارگذاری...</p></div>
+    </section>
+</div>
+
+<script>
+(() => {
+    const root = document.querySelector(".vendor-dashboard");
+    if (!root) return;
+    const csrf = root.querySelector("input[name='csrfmiddlewaretoken']")?.value || "";
+    const message = document.getElementById("vd-message");
+    const money = (value) => new Intl.NumberFormat("fa-IR").format(Number(value || 0));
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+    const notify = (text, error = false) => {
+        message.textContent = text;
+        message.className = "vd-message " + (error ? "vd-error" : "vd-success");
+    };
+    const request = async (url, options = {}) => {
+        const headers = {"Accept":"application/json", ...(options.headers || {})};
+        if (options.body && !(options.body instanceof FormData)) {
+            headers["Content-Type"] = "application/json";
+            headers["X-CSRFToken"] = csrf;
+        }
+        const response = await fetch(url, {...options, headers, credentials:"same-origin"});
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.error || data.message || "درخواست ناموفق بود.");
+        return data;
+    };
+    const formJson = (form) => {
+        const data = Object.fromEntries(new FormData(form).entries());
+        delete data.csrfmiddlewaretoken;
+        ["product_id","retail_price","compare_at_price","units_per_order","stock_quantity","weight_grams","package_length_cm","package_width_cm","package_height_cm","handling_days"].forEach((key) => {
+            if (data[key] === "" && key === "compare_at_price") data[key] = null;
+            else if (data[key] === "") delete data[key];
+            else if (data[key] !== undefined) data[key] = Number(data[key]);
+        });
+        ["wholesale_enabled","supports_custom_printing"].forEach((key) => {
+            if (data[key] !== undefined) data[key] = data[key] === "true";
+        });
+        return data;
+    };
+    async function loadFinancialProfile() {
+        const data = await request("/marketplace/api/vendor/profile/financial/");
+        const status = document.getElementById("vd-financial-status");
+        if (status) {
+            const iban = data.bank_iban_masked ? "شبا: " + data.bank_iban_masked + " · " : "";
+            status.textContent = iban + (data.bank_details_verified ? "حساب تأیید شده است." : (data.bank_iban_masked ? "در انتظار بررسی مدیر." : "هنوز اطلاعات حساب ثبت نشده است."));
+        }
+        const form = document.getElementById("vd-financial-profile");
+        if (form && data.bank_account_name) form.elements.bank_account_name.value = data.bank_account_name;
+    }
+    async function loadProductSubmissions() {
+        const data = await request("/marketplace/api/vendor/product-submissions/");
+        const categorySelect = document.getElementById("vd-submission-category");
+        if (categorySelect) {
+            const selected = categorySelect.value;
+            categorySelect.innerHTML = '<option value="">انتخاب دسته‌بندی</option>' + data.categories.map((category) =>
+                `<option value="${category.id}">${escapeHtml(category.name)}</option>`
+            ).join("");
+            if (selected) categorySelect.value = selected;
+        }
+        const box = document.getElementById("vd-product-submissions");
+        if (!box) return;
+        if (!data.results.length) {
+            box.innerHTML = '<p class="vd-muted">درخواست محصول جدیدی ثبت نکرده‌ای.</p>';
+            return;
+        }
+        box.innerHTML = data.results.map((item) => `
+            <article class="vd-item">
+                <div class="vd-item-head"><h3>${escapeHtml(item.name)}</h3><span class="vd-badge">${escapeHtml(item.status_label)}</span></div>
+                <p class="vd-muted">دسته‌بندی: ${escapeHtml(item.category)} · ثبت: ${escapeHtml(item.created_at.slice(0, 10))}</p>
+                ${item.reviewer_note ? `<p class="vd-muted">${escapeHtml(item.reviewer_note)}</p>` : ""}
+                ${item.product_id ? `<p class="vd-success">محصول تأیید و فعال شده است.</p>` : ""}
+            </article>
+        `).join("");
+    }
+    async function loadSummary() {
+        const data = await request("/marketplace/api/vendor/dashboard/");
+        document.getElementById("vd-pending-orders").textContent = money(data.orders.pending_fulfilment);
+        document.getElementById("vd-delivered-orders").textContent = money(data.orders.delivered);
+        document.getElementById("vd-pending-settlement").textContent = money(data.settlement.pending_amount);
+        document.getElementById("vd-paid-settlement").textContent = money(data.settlement.paid_amount);
+    }
+    async function loadProducts() {
+        const data = await request("/marketplace/api/vendor/products/");
+        const box = document.getElementById("vd-products");
+        if (!data.results.length) { box.innerHTML = '<p class="vd-muted">هنوز محصولی ثبت نکرده‌ای.</p>'; return; }
+        box.innerHTML = data.results.map((item) => `
+            <article class="vd-item">
+                <div class="vd-item-head"><h3>${escapeHtml(item.product_name)}</h3><span class="vd-badge">${escapeHtml(item.status_label || item.status)}</span></div>
+                <div class="vd-details">
+                    <span>شناسه محصول: ${item.product_id}</span>
+                    <span>قیمت: ${money(item.retail_price)} تومان</span>
+                    <span>موجودی: ${money(item.stock_quantity)}</span>
+                    <span>واحد فروش: ${escapeHtml(item.sale_unit)} · هر واحد شامل ${money(item.units_per_order)} قلم</span>
+                    <span>وزن واحد فروش: ${money(item.weight_grams)} گرم</span>
+                    <span>ابعاد واحد فروش: ${item.package_dimensions_cm.map(money).join(" × ")} سانتی‌متر</span>
+                    <span>عمده: ${item.wholesale_enabled ? "فعال" : "غیرفعال"}</span>
+                </div>
+                <form class="vd-stock-form vd-form" data-listing-id="${item.id}" style="margin-top:12px">
+                    <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="${escapeHtml(item.sale_unit)}" required></label>
+                    <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="${item.units_per_order}" required></label>
+                    <label class="vd-field">قیمت هر واحد فروش (تومان)<input name="retail_price" type="number" min="1" value="${item.retail_price}" required></label>
+                    <label class="vd-field">قیمت قبل تخفیف (خالی = بدون تخفیف)<input name="compare_at_price" type="number" min="0" value="${item.compare_at_price ?? ""}"></label>
+                    <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="${item.stock_quantity}" required></label>
+                    <label class="vd-field">وزن هر واحد فروش (گرم)<input name="weight_grams" type="number" min="1" value="${item.weight_grams}" required></label>
+                    <label class="vd-field">طول هر واحد فروش (سانتی‌متر)<input name="package_length_cm" type="number" min="1" value="${item.package_dimensions_cm[0]}" required></label>
+                    <label class="vd-field">عرض هر واحد فروش (سانتی‌متر)<input name="package_width_cm" type="number" min="1" value="${item.package_dimensions_cm[1]}" required></label>
+                    <label class="vd-field">ارتفاع هر واحد فروش (سانتی‌متر)<input name="package_height_cm" type="number" min="1" value="${item.package_dimensions_cm[2]}" required></label>
+                    <label class="vd-field">آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="${item.handling_days}" required></label>
+                    <label class="vd-field">چاپ سفارشی<select name="supports_custom_printing"><option value="false" ${item.supports_custom_printing ? "" : "selected"}>خیر</option><option value="true" ${item.supports_custom_printing ? "selected" : ""}>بله</option></select></label>
+                    <button class="vd-btn vd-btn--soft" type="submit">ذخیره تغییرات محصول</button>
+                </form>
+                <form class="vd-tier-form vd-form" data-listing-id="${item.id}" style="margin-top:10px">
+                    <label class="vd-field">حداقل تعداد عمده<input name="minimum_quantity" type="number" min="2" value="3" required></label>
+                    <label class="vd-field">قیمت هر واحد عمده<input name="unit_price" type="number" min="1" required></label>
+                    <button class="vd-btn vd-btn--soft" type="submit">افزودن پله عمده</button>
+                </form>
+                <div class="vd-list" style="margin-top:10px">
+                    ${item.wholesale_tiers.map((tier) => `
+                        <form class="vd-tier-update vd-form" data-tier-id="${tier.id}">
+                            <label class="vd-field">حداقل تعداد<input name="minimum_quantity" type="number" min="2" value="${tier.minimum_quantity}" required></label>
+                            <label class="vd-field">قیمت واحد عمده<input name="unit_price" type="number" min="1" value="${tier.unit_price}" required></label>
+                            <button class="vd-btn vd-btn--soft" type="submit">به‌روزرسانی پله</button>
+                            <button class="vd-btn vd-btn--soft" type="button" data-delete-tier="${tier.id}">حذف پله</button>
+                        </form>
+                    `).join("") || '<p class="vd-muted">پله عمده ثبت نشده است.</p>'}
+                </div>
+            </article>
+        `).join("");
+    }
+    const actionButtons = (order) => {
+        const buttons = [];
+        if (order.status === "new") buttons.push('<button class="vd-btn" data-order-action="accept">پذیرش سفارش</button>');
+        if (order.status === "accepted") buttons.push('<button class="vd-btn" data-order-action="prepare">شروع آماده‌سازی</button>');
+        if (order.status === "preparing") buttons.push('<button class="vd-btn" data-order-action="ready_to_ship">آماده ارسال</button>');
+        return buttons.join("");
+    };
+    async function loadOrders() {
+        const data = await request("/marketplace/api/vendor/orders/");
+        const box = document.getElementById("vd-orders");
+        if (!data.results.length) { box.innerHTML = '<p class="vd-muted">هنوز سفارشی نداری.</p>'; return; }
+        box.innerHTML = data.results.map((order) => `
+            <article class="vd-item" data-order-id="${order.id}">
+                <div class="vd-item-head"><h3>سفارش ${escapeHtml(order.order_number)}</h3><span class="vd-badge">${escapeHtml(order.status_label)}</span></div>
+                <div class="vd-details">
+                    <span>مبلغ کالا: ${money(order.subtotal)} تومان</span>
+                    <span>کمیسیون: ${money(order.commission)} تومان</span>
+                    <span>سهم فروشنده: ${money(order.vendor_payable)} تومان</span>
+                    <span>هزینه ارسال از مشتری: ${money(order.shipping_charge)} تومان</span>
+                </div>
+                <h4>اقلام</h4>
+                <ul class="vd-order-items">${order.items.map((item) => `<li>${escapeHtml(item.product_name)} × ${money(item.quantity)} ${escapeHtml(item.sale_unit || "عدد")} — ${money(item.line_total)} تومان</li>`).join("")}</ul>
+                <h4>آدرس گیرنده</h4>
+                <p>${escapeHtml(order.recipient.name)} · ${escapeHtml(order.recipient.phone)}<br>${escapeHtml(order.recipient.province)}، ${escapeHtml(order.recipient.city)}، کد پستی ${escapeHtml(order.recipient.postal_code)}<br>${escapeHtml(order.recipient.address)}</p>
+                <div class="vd-actions">${actionButtons(order)}</div>
+                ${order.status === "ready_to_ship" && !order.shipments.some((shipment) => ["quoted","booked","pickup_requested","handed_over","in_transit","exception"].includes(shipment.status)) ? `
+                <form class="vd-shipping-form vd-form" style="margin-top:14px" data-order-id="${order.id}">
+                    <label class="vd-field" style="grid-column:1/-1">روش ارسال<select name="provider"><option value="manual">ارسال توسط خودم</option><option value="tipax">استعلام تیپاکس</option><option value="post">استعلام پست</option></select></label>
+                    <label class="vd-field vd-manual-shipping-field">نام شرکت حمل یا پیک<input name="carrier_name" maxlength="120" placeholder="مثلاً پست، تیپاکس یا پیک محلی"></label>
+                    <label class="vd-field vd-manual-shipping-field">کد رهگیری<input name="tracking_number" maxlength="160" placeholder="کد رهگیری مرسوله"></label>
+                    <label class="vd-field vd-carrier-shipping-field">وزن بسته (گرم)<input name="weight_grams" type="number" min="1" required></label>
+                    <label class="vd-field vd-carrier-shipping-field">طول (سانتی‌متر)<input name="length_cm" type="number" min="1" required></label>
+                    <label class="vd-field vd-carrier-shipping-field">عرض (سانتی‌متر)<input name="width_cm" type="number" min="1" required></label>
+                    <label class="vd-field vd-carrier-shipping-field">ارتفاع (سانتی‌متر)<input name="height_cm" type="number" min="1" required></label>
+                    <button class="vd-btn" type="submit">ثبت ارسال</button>
+                </form>
+                ` : ""}
+                ${order.shipments.map((shipment) => `
+                    <div class="vd-item" style="margin-top:12px">
+                        <p>مرسوله: ${escapeHtml(shipment.carrier_name || shipment.provider)} · وضعیت: ${escapeHtml(shipment.status)}</p>
+                        <p>هزینه برآوردی: ${money(shipment.quoted_cost)} تومان · کد رهگیری: ${escapeHtml(shipment.tracking_number || "هنوز ثبت نشده")}</p>
+                        ${shipment.label_url ? `<p><a href="${escapeHtml(shipment.label_url)}" target="_blank" rel="noopener">برچسب مرسوله</a></p>` : ""}
+                        ${shipment.status === "quoted" ? `<button class="vd-btn" data-book-shipment="${escapeHtml(shipment.uuid)}">ثبت مرسوله نزد شرکت</button>` : ""}
+                        ${["booked","pickup_requested","in_transit"].includes(shipment.status) ? `<button class="vd-btn vd-btn--soft" data-handover-shipment="${escapeHtml(shipment.uuid)}">تحویل به شرکت حمل</button>` : ""}
+                    </div>
+                `).join("")}
+            </article>
+        `).join("");
+        box.querySelectorAll(".vd-shipping-form").forEach(syncShippingMode);
+    }
+    async function loadSettlements() {
+        const data = await request("/marketplace/api/vendor/settlements/");
+        const box = document.getElementById("vd-settlements");
+        if (!data.results.length) { box.innerHTML = '<p class="vd-muted">هنوز تسویه‌ای ثبت نشده است.</p>'; return; }
+        box.innerHTML = data.results.map((batch) => `
+            <article class="vd-item">
+                <div class="vd-item-head"><h3>تسویه شماره ${batch.id}</h3><span class="vd-badge">${escapeHtml(batch.status_label)}</span></div>
+                <div class="vd-details">
+                    <span>فروش ناخالص: ${money(batch.gross_amount)} تومان</span>
+                    <span>کمیسیون: ${money(batch.commission_amount)} تومان</span>
+                    <span>تعدیل ارسال فروشنده: ${money(batch.shipping_adjustment || 0)} تومان</span>
+                    <span>تعدیل بازپرداخت: ${money(batch.refund_adjustment || 0)} تومان</span>
+                    <span>سایر تعدیلات: ${money(batch.other_adjustment || 0)} تومان</span>
+                    <span>مبلغ تسویه: ${money(batch.payable_amount)} تومان</span>
+                    <span>ایجاد: ${escapeHtml(batch.created_at.slice(0, 10))}</span>
+                    <span>پرداخت: ${escapeHtml(batch.paid_at ? batch.paid_at.slice(0, 10) : "هنوز پرداخت نشده")}</span>
+                    <span>مرجع واریز: ${escapeHtml(batch.payout_reference || "ثبت نشده")}</span>
+                </div>
+                ${batch.failure_reason ? `<p class="vd-error">${escapeHtml(batch.failure_reason)}</p>` : ""}
+            </article>
+        `).join("");
+    }
+    document.getElementById("vd-shipping-profile").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        try {
+            const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+            delete payload.csrfmiddlewaretoken;
+            await request("/marketplace/api/vendor/profile/shipping/", {method:"POST", body:JSON.stringify(payload)});
+            notify("اطلاعات مبدأ ارسال ذخیره شد.");
+        } catch (error) { notify(error.message, true); }
+    });
+    let catalogSearchTimer = null;
+    const catalogSearch = document.getElementById("vd-catalog-search");
+    const catalogResults = document.getElementById("vd-catalog-results");
+    catalogSearch?.addEventListener("input", () => {
+        if (catalogSearchTimer) clearTimeout(catalogSearchTimer);
+        catalogSearchTimer = setTimeout(async () => {
+            const query = catalogSearch.value.trim();
+            if (query.length < 2) { catalogResults.innerHTML = ""; return; }
+            try {
+                const data = await request("/marketplace/api/vendor/catalog-products/?q=" + encodeURIComponent(query));
+                catalogResults.innerHTML = data.results.map((product) =>
+                    '<button type="button" class="vd-btn vd-btn--soft" data-catalog-product="' + product.id + '" data-catalog-name="' + escapeHtml(product.name) + '">' +
+                    escapeHtml(product.name) + ' · ' + escapeHtml(product.category) + ' · شناسه ' + product.id + '</button>'
+                ).join("") || '<p class="vd-muted">محصولی پیدا نشد.</p>';
+            } catch (error) { notify(error.message, true); }
+        }, 250);
+    });
+    catalogResults?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-catalog-product]");
+        if (!button) return;
+        document.getElementById("vd-product-id").value = button.dataset.catalogProduct;
+        catalogSearch.value = button.dataset.catalogName;
+        catalogResults.innerHTML = "";
+        notify("محصول انتخاب شد؛ قیمت و موجودی فروشگاه را تکمیل کن.");
+    });
+    document.getElementById("vd-product-create").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        try {
+            const payload = formJson(event.currentTarget);
+            payload.wholesale_enabled = payload.wholesale_enabled === "true";
+            payload.supports_custom_printing = payload.supports_custom_printing === "true";
+            await request("/marketplace/api/vendor/products/", {method:"POST", body:JSON.stringify(payload)});
+            event.currentTarget.reset();
+            notify("محصول برای بررسی مدیر ثبت شد.");
+            await loadProducts();
+        } catch (error) { notify(error.message, true); }
+    });
+    document.getElementById("vd-category-request").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        try {
+            await request("/marketplace/api/vendor/categories/request/", {method:"POST", body:JSON.stringify(formJson(event.currentTarget))});
+            event.currentTarget.reset();
+            notify("درخواست دسته‌بندی ثبت شد.");
+        } catch (error) { notify(error.message, true); }
+    });
+    document.getElementById("vd-refresh-products").addEventListener("click", () => loadProducts().catch((error) => notify(error.message, true)));
+    document.getElementById("vd-refresh-orders").addEventListener("click", () => loadOrders().catch((error) => notify(error.message, true)));
+    document.getElementById("vd-refresh-settlements").addEventListener("click", () => loadSettlements().catch((error) => notify(error.message, true)));
+    document.addEventListener("submit", async (event) => {
+        if (event.target.matches("#vd-product-submission")) {
+            event.preventDefault();
+            try {
+                const formData = new FormData(event.target);
+                const data = await request("/marketplace/api/vendor/product-submissions/", {method:"POST", body:formData});
+                notify(data.message || "محصول برای بررسی ارسال شد.");
+                event.target.reset();
+                await loadProductSubmissions();
+            } catch (error) { notify(error.message, true); }
+        }
+        if (event.target.matches("#vd-financial-profile")) {
+            event.preventDefault();
+            try {
+                const payload = Object.fromEntries(new FormData(event.target).entries());
+                delete payload.csrfmiddlewaretoken;
+                const data = await request("/marketplace/api/vendor/profile/financial/", {method:"POST", body:JSON.stringify(payload)});
+                event.target.elements.bank_iban.value = "";
+                notify(data.message || "اطلاعات حساب ذخیره شد.");
+                await loadFinancialProfile();
+            } catch (error) { notify(error.message, true); }
+        }
+        if (event.target.matches(".vd-stock-form")) {
+            event.preventDefault();
+            try {
+                const payload = Object.fromEntries(new FormData(event.target).entries());
+                ["retail_price","units_per_order","stock_quantity","weight_grams","package_length_cm","package_width_cm","package_height_cm","handling_days"].forEach((key) => payload[key] = Number(payload[key]));
+                payload.compare_at_price = payload.compare_at_price === "" ? null : Number(payload.compare_at_price);
+                payload.supports_custom_printing = payload.supports_custom_printing === "true";
+                payload.wholesale_enabled = payload.wholesale_enabled === "true";
+                await request("/marketplace/api/vendor/products/" + event.target.dataset.listingId + "/", {method:"POST", body:JSON.stringify(payload)});
+                notify("تغییرات ثبت شد؛ تغییر قیمت تا تأیید مدیر از فروش خارج می‌شود.");
+                await loadProducts();
+            } catch (error) { notify(error.message, true); }
+        }
+        if (event.target.matches(".vd-tier-update")) {
+            event.preventDefault();
+            try {
+                const payload = Object.fromEntries(new FormData(event.target).entries());
+                payload.minimum_quantity = Number(payload.minimum_quantity);
+                payload.unit_price = Number(payload.unit_price);
+                await request("/marketplace/api/vendor/wholesale-tiers/" + event.target.dataset.tierId + "/", {method:"PATCH", body:JSON.stringify(payload)});
+                notify("پله عمده به‌روزرسانی شد و برای بررسی مدیر ارسال شد.");
+                await loadProducts();
+            } catch (error) { notify(error.message, true); }
+        }
+        if (event.target.matches(".vd-tier-form")) {
+            event.preventDefault();
+            try {
+                const payload = Object.fromEntries(new FormData(event.target).entries());
+                payload.minimum_quantity = Number(payload.minimum_quantity);
+                payload.unit_price = Number(payload.unit_price);
+                await request("/marketplace/api/vendor/products/" + event.target.dataset.listingId + "/wholesale/", {method:"POST", body:JSON.stringify(payload)});
+                notify("پله قیمت عمده ثبت شد.");
+                await loadProducts();
+            } catch (error) { notify(error.message, true); }
+        }
+        if (event.target.matches(".vd-shipping-form")) {
+            event.preventDefault();
+            try {
+                const form = event.target;
+                const values = Object.fromEntries(new FormData(form).entries());
+                if (values.provider === "manual") {
+                    const payload = {
+                        carrier_name: values.carrier_name,
+                        tracking_number: values.tracking_number,
+                    };
+                    const data = await request("/marketplace/api/vendor/orders/" + form.dataset.orderId + "/shipping/manual/", {method:"POST", body:JSON.stringify(payload)});
+                    notify(data.message || "ارسال توسط فروشنده ثبت شد.");
+                } else {
+                    const payload = {
+                        provider: values.provider,
+                        weight_grams: Number(values.weight_grams),
+                        length_cm: Number(values.length_cm),
+                        width_cm: Number(values.width_cm),
+                        height_cm: Number(values.height_cm),
+                    };
+                    const data = await request("/marketplace/api/vendor/orders/" + form.dataset.orderId + "/shipping/quote/", {method:"POST", body:JSON.stringify(payload)});
+                    notify("هزینه برآوردی: " + money(data.quoted_cost) + " تومان. حالا ثبت مرسوله را انجام بده.");
+                }
+                await loadOrders();
+            } catch (error) { notify(error.message, true); }
+        }
+    });
+    const syncShippingMode = (form) => {
+        if (!form) return;
+        const manual = form.querySelector('[name="provider"]').value === "manual";
+        form.querySelectorAll(".vd-manual-shipping-field").forEach((field) => {
+            field.hidden = !manual;
+            const input = field.querySelector("input");
+            if (input) input.required = manual && input.name !== "actual_cost";
+        });
+        form.querySelectorAll(".vd-carrier-shipping-field").forEach((field) => {
+            field.hidden = manual;
+            const input = field.querySelector("input");
+            if (input) input.required = !manual;
+        });
+        const button = form.querySelector('button[type="submit"]');
+        if (button) button.textContent = manual ? "ثبت کد رهگیری و ارسال" : "استعلام هزینه نهایی بسته";
+    };
+    document.addEventListener("change", (event) => {
+        if (event.target.matches(".vd-shipping-form [name='provider']")) syncShippingMode(event.target.closest(".vd-shipping-form"));
+    });
+    document.addEventListener("click", async (event) => {
+        const actionButton = event.target.closest("[data-order-action]");
+        const bookButton = event.target.closest("[data-book-shipment]");
+        const handoverButton = event.target.closest("[data-handover-shipment]");
+        try {
+            const deleteTierButton = event.target.closest("[data-delete-tier]");
+            if (deleteTierButton) {
+                const listingCard = deleteTierButton.closest("article.vd-item");
+                if (!listingCard) { notify("محصول مرتبط با پله قیمت پیدا نشد.", true); return; }
+                await request("/marketplace/api/vendor/wholesale/" + deleteTierButton.dataset.deleteTier + "/delete/", {method:"POST", body:JSON.stringify({})});
+                notify("پله قیمت عمده حذف شد.");
+                await loadProducts();
+            } else if (actionButton) {
+                const card = actionButton.closest("[data-order-id]");
+                await request("/marketplace/api/vendor/orders/" + card.dataset.orderId + "/action/", {method:"POST", body:JSON.stringify({action:actionButton.dataset.orderAction})});
+                notify("وضعیت سفارش به‌روزرسانی شد.");
+                await loadOrders();
+            } else if (bookButton) {
+                const card = bookButton.closest("[data-order-id]");
+                const data = await request("/marketplace/api/vendor/orders/" + card.dataset.orderId + "/shipping/book/", {method:"POST", body:JSON.stringify({shipment_id:bookButton.dataset.bookShipment})});
+                notify("مرسوله ثبت شد. کد رهگیری: " + (data.tracking_number || "در انتظار ثبت"));
+                await loadOrders();
+            } else if (handoverButton) {
+                const card = handoverButton.closest("[data-order-id]");
+                await request("/marketplace/api/vendor/orders/" + card.dataset.orderId + "/shipping/" + handoverButton.dataset.handoverShipment + "/handed-over/", {method:"POST", body:JSON.stringify({})});
+                notify("تحویل مرسوله ثبت شد.");
+                await loadOrders();
+            }
+        } catch (error) { notify(error.message, true); }
+    });
+    Promise.all([loadSummary(), loadProducts(), loadOrders(), loadSettlements(), loadFinancialProfile(), loadProductSubmissions()]).catch((error) => notify(error.message, true));
+})();
+</script>
+{% endblock %}

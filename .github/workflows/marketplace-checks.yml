@@ -1,0 +1,107 @@
+name: Marketplace Django checks
+
+on:
+  push:
+    branches:
+      - feature/marketplace-logistics-accounting-release
+    paths:
+      - "config/apps/marketplace/**"
+      - "config/apps/orders/**"
+      - "config/apps/shop/**"
+      - "config/apps/customizer/**"
+      - "config/config/settings.py"
+      - "config/requirements.txt"
+      - "docs/marketplace-logistics-accounting.md"
+      - ".github/workflows/marketplace-checks.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "config/apps/marketplace/**"
+      - "config/apps/orders/**"
+      - "config/apps/shop/**"
+      - "config/apps/customizer/**"
+      - "config/config/settings.py"
+      - "config/requirements.txt"
+      - "docs/marketplace-logistics-accounting.md"
+      - ".github/workflows/marketplace-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  django-checks:
+    runs-on: ubuntu-latest
+    container: python:3.11-slim
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: config
+    env:
+      DEBUG: "True"
+      SECRET_KEY: "ci-only-not-for-production"
+      ALLOWED_HOSTS: "localhost,127.0.0.1"
+      REDIS_URL: redis://redis:6379/0
+      REDIS_CACHE_URL: redis://redis:6379/1
+      POSTGRES_DB: babaei
+      POSTGRES_USER: babaei
+      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      DJANGO_SETTINGS_MODULE: config.settings
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: babaei
+          POSTGRES_USER: babaei
+          POSTGRES_PASSWORD: supersecretpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U babaei -d babaei"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - name: Install system dependencies
+        working-directory: ${{ github.workspace }}
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git build-essential
+          rm -rf /var/lib/apt/lists/*
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install test dependencies
+        id: install
+        run: |
+          grep -vE '^(rembg\[cpu\]|onnxruntime==)' requirements.txt > /tmp/requirements-ci.txt
+          python -m pip install --upgrade pip
+          python -m pip install -r /tmp/requirements-ci.txt
+          python -m pip install pytest pytest-django freezegun
+
+      - name: Django system check
+        run: python manage.py check
+
+      - name: Check migration state
+        run: |
+          if ! python manage.py makemigrations --check --dry-run --verbosity 3; then
+            echo "Migration drift detected; showing the proposed migration state for diagnosis."
+            python manage.py makemigrations --dry-run --verbosity 3 || true
+            exit 1
+          fi
+
+      - name: Run marketplace accounting and logistics tests
+        if: always() && steps.install.outcome == 'success'
+        run: pytest -vv
