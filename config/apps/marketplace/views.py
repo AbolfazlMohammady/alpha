@@ -980,6 +980,8 @@ def shipment_handed_over_api(request, order_id, shipment_uuid):
 def shipment_update_status_api(request, shipment_uuid):
     try:
         payload = _json_body(request)
+        if set(payload) - {"status", "actual_cost", "delivery_evidence_reference", "delivery_evidence_note"}:
+            return _error("فیلد ارسالی برای تغییر وضعیت مرسوله مجاز نیست.")
         target = payload.get("status")
         allowed = {
             Shipment.Status.IN_TRANSIT,
