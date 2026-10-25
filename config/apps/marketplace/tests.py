@@ -716,6 +716,18 @@ class VendorShippingSettlementTests(TestCase):
         self.assertEqual(confirmation["confirmed_by_user_id"], staff.pk)
 
 
+    def test_delivery_evidence_action_is_available_in_readonly_admin_changelist(self):
+        staff = get_user_model().objects.create(
+            phone="+989121234570",
+            is_staff=True,
+            is_superuser=True,
+        )
+        self.client.force_login(staff)
+        response = self.client.get("/admin/marketplace/shipment/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'value="confirm_delivery_with_evidence"')
+
+
 class SettlementPayoutSafetyTests(TestCase):
     def setUp(self):
         now = timezone.now()
