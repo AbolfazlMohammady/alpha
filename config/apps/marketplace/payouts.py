@@ -55,6 +55,14 @@ def submit_settlement_payout(batch_id: int):
         raise PayoutNotConfigured("PAYOUT_AMOUNT_MULTIPLIER باید عدد صحیح باشد.") from exc
     if multiplier <= 0:
         raise PayoutNotConfigured("PAYOUT_AMOUNT_MULTIPLIER باید مثبت باشد.")
+    if payout_currency == "IRT":
+        if multiplier != 1:
+            raise PayoutNotConfigured("برای واحد تومان (IRT)، ضریب واریز باید ۱ باشد.")
+    elif payout_currency == "IRR":
+        if multiplier != 10:
+            raise PayoutNotConfigured("برای تبدیل تومان داخلی به ریال بانکی، ضریب واریز باید ۱۰ باشد.")
+    else:
+        raise PayoutNotConfigured("واحد پول API واریز باید IRT یا IRR باشد؛ ارزهای دیگر پشتیبانی نمی‌شوند.")
     response_paths = {
         "reference": os.environ.get("PAYOUT_RESPONSE_REFERENCE_PATH", "").strip(),
         "status": os.environ.get("PAYOUT_RESPONSE_STATUS_PATH", "").strip(),
