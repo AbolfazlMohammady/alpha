@@ -117,6 +117,10 @@ class VendorProduct(models.Model):
             models.CheckConstraint(check=Q(retail_price__gt=0), name="vendor_listing_price_gt_zero"),
             models.CheckConstraint(check=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=0), name="vendor_listing_compare_nonnegative"),
             models.CheckConstraint(check=Q(units_per_order__gt=0), name="vendor_listing_units_per_order_gt_zero"),
+            models.CheckConstraint(check=Q(weight_grams__gt=0), name="vendor_listing_weight_gt_zero"),
+            models.CheckConstraint(check=Q(package_length_cm__gt=0), name="vendor_listing_length_gt_zero"),
+            models.CheckConstraint(check=Q(package_width_cm__gt=0), name="vendor_listing_width_gt_zero"),
+            models.CheckConstraint(check=Q(package_height_cm__gt=0), name="vendor_listing_height_gt_zero"),
         ]
         indexes = [models.Index(fields=("vendor", "status"), name="market_listing_v_status_idx")]
 
@@ -669,6 +673,10 @@ class VendorProductSubmission(models.Model):
             models.CheckConstraint(check=Q(retail_price__gt=0), name="vendor_submission_price_gt_zero"),
             models.CheckConstraint(check=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=0), name="vendor_submission_compare_nonnegative"),
             models.CheckConstraint(check=Q(units_per_order__gt=0), name="vendor_submission_units_gt_zero"),
+            models.CheckConstraint(check=Q(weight_grams__gt=0), name="vendor_submission_weight_gt_zero"),
+            models.CheckConstraint(check=Q(package_length_cm__gt=0), name="vendor_submission_length_gt_zero"),
+            models.CheckConstraint(check=Q(package_width_cm__gt=0), name="vendor_submission_width_gt_zero"),
+            models.CheckConstraint(check=Q(package_height_cm__gt=0), name="vendor_submission_height_gt_zero"),
         ]
         indexes = [models.Index(fields=("vendor", "status", "created_at"), name="market_prod_sub_status_idx")]
 
