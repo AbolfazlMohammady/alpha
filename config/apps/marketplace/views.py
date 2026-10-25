@@ -480,7 +480,12 @@ def vendor_product_update_api(request, listing_id):
             unknown = set(payload) - allowed
             if unknown:
                 return _error("فیلدهای غیرمجاز: " + ", ".join(sorted(unknown)))
-            price_changed = False
+            review_required = False
+            review_fields = {
+                "retail_price", "compare_at_price", "sale_unit", "units_per_order",
+                "wholesale_enabled", "supports_custom_printing", "weight_grams",
+                "package_length_cm", "package_width_cm", "package_height_cm", "handling_days",
+            }
             for field in allowed.intersection(payload):
                 value = payload[field]
                 if field in {"retail_price", "units_per_order", "stock_quantity", "weight_grams", "package_length_cm", "package_width_cm", "package_height_cm", "handling_days"}:
@@ -492,14 +497,20 @@ def vendor_product_update_api(request, listing_id):
                 elif field in {"wholesale_enabled", "supports_custom_printing"}:
                     if not isinstance(value, bool):
                         return _error(f"{field} باید true یا false باشد.")
-                if field in {"retail_price", "compare_at_price", "sale_unit", "units_per_order", "wholesale_enabled", "supports_custom_printing"} and getattr(listing, field) != value:
-                    price_changed = True
+                if field in review_fields and getattr(listing, field) != value:
+                    review_required = True
                 setattr(listing, field, value)
-            if listing.status == VendorProduct.Status.ACTIVE and price_changed:
+            if listing.status == VendorProduct.Status.ACTIVE and review_required:
                 listing.status = VendorProduct.Status.PENDING
             listing.full_clean()
             listing.save()
-        return JsonResponse({"ok": True, "listing_id": listing.id, "status": listing.status, "commercial_reapproval_required": price_changed})
+        return JsonResponse({
+            "ok": True,
+            "listing_id": listing.id,
+            "status": listing.status,
+            "review_required": review_required,
+            "commercial_reapproval_required": review_required,
+        })
     except PermissionDenied as exc:
         return _error(exc, 403)
     except (ValidationError, TypeError, ValueError) as exc:
