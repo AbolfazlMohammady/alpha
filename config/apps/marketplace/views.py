@@ -777,7 +777,7 @@ def manual_shipment_api(request, order_id):
             return _error("ابتدا سفارش را به وضعیت «آماده ارسال» برسان.", 409)
         payload = _json_body(request)
         if set(payload) - {"carrier_name", "tracking_number"}:
-            return _error("فقط نام شرکت حمل، کد رهگیری و هزینه واقعی حمل مجاز است.")
+            return _error("فقط نام شرکت حمل و کد رهگیری مجاز است.")
         carrier_name = " ".join(str(payload.get("carrier_name") or "").split())
         tracking_number = " ".join(str(payload.get("tracking_number") or "").split())
         if len(carrier_name) < 2 or len(carrier_name) > 120:
