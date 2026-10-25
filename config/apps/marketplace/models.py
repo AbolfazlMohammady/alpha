@@ -115,7 +115,7 @@ class VendorProduct(models.Model):
         constraints = [
             models.UniqueConstraint(fields=("vendor", "product"), name="unique_vendor_product_listing"),
             models.CheckConstraint(check=Q(retail_price__gt=0), name="vendor_listing_price_gt_zero"),
-            models.CheckConstraint(check=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=models.F("retail_price")), name="vendor_listing_compare_nonnegative"),
+            models.CheckConstraint(check=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=models.F("retail_price")), name="vendor_listing_compare_gte_retail"),
             models.CheckConstraint(check=Q(units_per_order__gt=0), name="vendor_listing_units_per_order_gt_zero"),
             models.CheckConstraint(check=Q(weight_grams__gt=0), name="vendor_listing_weight_gt_zero"),
             models.CheckConstraint(check=Q(package_length_cm__gt=0), name="vendor_listing_length_gt_zero"),
@@ -671,7 +671,7 @@ class VendorProductSubmission(models.Model):
         ordering = ("-created_at",)
         constraints = [
             models.CheckConstraint(check=Q(retail_price__gt=0), name="vendor_submission_price_gt_zero"),
-            models.CheckConstraint(check=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=models.F("retail_price")), name="vendor_submission_compare_nonnegative"),
+            models.CheckConstraint(check=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=models.F("retail_price")), name="vendor_submission_compare_gte_retail"),
             models.CheckConstraint(check=Q(units_per_order__gt=0), name="vendor_submission_units_gt_zero"),
             models.CheckConstraint(check=Q(weight_grams__gt=0), name="vendor_submission_weight_gt_zero"),
             models.CheckConstraint(check=Q(package_length_cm__gt=0), name="vendor_submission_length_gt_zero"),
