@@ -89,6 +89,7 @@ jobs:
           grep -vE '^(rembg\[cpu\]|onnxruntime==)' requirements.txt > /tmp/requirements-ci.txt
           python -m pip install --upgrade pip
           python -m pip install -r /tmp/requirements-ci.txt
+          python -m pip install pytest pytest-django
 
       - name: Django system check
         run: python manage.py check
@@ -103,4 +104,4 @@ jobs:
 
       - name: Run marketplace accounting and logistics tests
         if: always() && steps.install.outcome == 'success'
-        run: python manage.py test apps.marketplace apps.orders apps.shop apps.customizer apps.control_center apps.backups apps.users.tests --verbosity 2
+        run: pytest -vv
