@@ -84,7 +84,7 @@ class WholesaleTierInline(admin.TabularInline):
 
 @admin.register(VendorProduct)
 class VendorProductAdmin(admin.ModelAdmin):
-    list_display = ("product", "vendor", "status", "retail_price", "stock_quantity", "wholesale_enabled", "supports_custom_printing")
+    list_display = ("product", "vendor", "status", "retail_price", "sale_unit", "units_per_order", "stock_quantity", "wholesale_enabled", "supports_custom_printing")
     list_filter = ("status", "wholesale_enabled", "supports_custom_printing", "vendor")
     search_fields = ("product__name", "vendor__store_name", "product__slug")
     autocomplete_fields = ("vendor", "product")
@@ -253,7 +253,7 @@ class FinancialReconciliationAdmin(ReadOnlyAuditAdmin):
 
 @admin.register(VendorProductSubmission)
 class VendorProductSubmissionAdmin(admin.ModelAdmin):
-    list_display = ("name", "vendor", "category", "retail_price", "status", "created_at")
+    list_display = ("name", "vendor", "category", "retail_price", "sale_unit", "units_per_order", "stock_quantity", "weight_grams", "status", "created_at")
     list_filter = ("status", "category", "created_at")
     search_fields = ("name", "vendor__store_name", "category__name")
     autocomplete_fields = ("vendor", "category", "product")
