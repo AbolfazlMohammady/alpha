@@ -11,6 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .models import SettlementBatch
+from .services import validate_settlement_batch_eligibility
 
 
 class PayoutError(Exception):
@@ -76,7 +77,7 @@ def submit_settlement_payout(batch_id: int):
         if batch.payable_amount <= 0:
             raise ValidationError("مبلغ واریز باید مثبت باشد.")
         from .models import LedgerAccount
-        from .services import account_balance, get_system_account, validate_settlement_batch_eligibility
+        from .services import account_balance, get_system_account
         bank_account = get_system_account(
             "platform_bank",
             "حساب بانکی پلتفرم",
