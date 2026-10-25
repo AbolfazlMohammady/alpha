@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from django.utils.text import slugify
-from django.db import transaction
+from django.db import IntegrityError, transaction
 
 from apps.shop.models import Category, Product, ProductImage
 
@@ -348,7 +348,7 @@ class VendorProductSubmissionAdmin(admin.ModelAdmin):
                         "reviewer_note", "updated_at",
                     ))
                     approved += 1
-            except (ValidationError, ValueError) as exc:
+            except (ValidationError, ValueError, IntegrityError) as exc:
                 VendorProductSubmission.objects.filter(
                     pk=submission.pk,
                     status=VendorProductSubmission.Status.PENDING,
