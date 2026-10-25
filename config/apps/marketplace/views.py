@@ -1033,11 +1033,30 @@ def shipment_update_status_api(request, shipment_uuid):
             shipment.status = target
             shipment.last_event_at = now
             if target == Shipment.Status.DELIVERED:
+                evidence_reference = " ".join(str(payload.get("delivery_evidence_reference") or "").split())
+                evidence_note = " ".join(str(payload.get("delivery_evidence_note") or "").split())
+                if not evidence_reference or len(evidence_reference) > 180:
+                    return _error(
+                        "برای تأیید تحویل، مرجع قابل پیگیری از پنل شرکت حمل یا تأیید گیرنده را وارد کن.",
+                        400,
+                    )
+                if len(evidence_note) > 1000:
+                    return _error("توضیح مدرک تحویل حداکثر ۱۰۰۰ نویسه باشد.", 400)
                 shipment.delivered_at = now
+                shipment.provider_payload = {
+                    **(shipment.provider_payload or {}),
+                    "delivery_confirmation": {
+                        "source": "staff_manual",
+                        "reference": evidence_reference,
+                        "note": evidence_note,
+                        "confirmed_by_user_id": request.user.pk,
+                        "confirmed_at": now.isoformat(),
+                    },
+                }
             if target == Shipment.Status.RETURNED:
                 vendor_order.status = VendorOrder.Status.DISPUTED
                 vendor_order.save(update_fields=("status", "updated_at"))
-            shipment.save(update_fields=("status", "last_event_at", "delivered_at", "updated_at"))
+            shipment.save(update_fields=("status", "last_event_at", "delivered_at", "provider_payload", "updated_at"))
             if payload.get("actual_cost") is not None:
                 reconcile_shipment_actual_cost(
                     shipment=shipment,
