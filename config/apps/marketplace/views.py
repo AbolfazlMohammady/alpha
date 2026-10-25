@@ -439,6 +439,11 @@ def vendor_products_api(request):
         product = get_object_or_404(Product, pk=product_id, is_active=True, category__is_active=True)
         if vendor.listings.filter(product=product).exists():
             return _error("این محصول قبلاً توسط فروشگاه شما ثبت شده است.", 409)
+        for flag in ("wholesale_enabled", "supports_custom_printing"):
+            if flag in payload and not isinstance(payload[flag], bool):
+                return _error(f"{flag} باید true یا false باشد.")
+        if payload.get("wholesale_enabled") is True:
+            return _error("ابتدا محصول را بدون فروش عمده ثبت کن؛ پس از ذخیره، پله‌های قیمت عمده را اضافه کن.")
         listing = VendorProduct(
             vendor=vendor,
             product=product,
