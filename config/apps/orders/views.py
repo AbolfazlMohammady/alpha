@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Case, CharField, Count, ExpressionWrapper, F, OuterRef, PositiveBigIntegerField, Prefetch, Subquery, Sum, When, Value
@@ -10,6 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.shop.models import Product, ProductImage, ProductVariant
+from apps.marketplace.models import VendorProduct, Vendor
 
 from apps.users.models import Address
 from apps.customizer.models import DesignDraft
@@ -46,11 +48,13 @@ def _remember_cart_count(request, count):
 
 
 def _cart_totals(cart, request=None):
-    unit_price = Case(When(custom_design__isnull=False, then=F("custom_design__total_price")), When(variant__isnull=False, then=F("variant__price")), default=F("product__base_price"), output_field=PositiveBigIntegerField())
-    line_total = ExpressionWrapper(F("quantity") * unit_price, output_field=PositiveBigIntegerField())
-    totals = cart.items.aggregate(count=Sum("quantity", default=0), subtotal=Sum(line_total, default=0))
-    count = _remember_cart_count(request, totals["count"] or 0) if request is not None else totals["count"] or 0
-    return {"count": count, "subtotal": totals["subtotal"] or 0}
+    # Seller-specific wholesale tiers cannot be represented by the old catalog
+    # SQL expression; calculate against the exact listing selected in the cart.
+    items = list(cart.items.select_related("product", "variant", "custom_design", "vendor_listing"))
+    count = sum(item.quantity for item in items)
+    subtotal = sum(item.line_total for item in items)
+    count = _remember_cart_count(request, count) if request is not None else count
+    return {"count": count, "subtotal": subtotal}
 
 
 def _cart_items_queryset(request):
@@ -69,7 +73,7 @@ def _cart_items_queryset(request):
     )
     queryset = (
         CartItem.objects
-        .select_related("cart", "product__category", "variant__color", "variant__size", "custom_design")
+        .select_related("cart", "product__category", "variant__color", "variant__size", "custom_design", "vendor_listing__vendor")
         .annotate(primary_image_url=primary_image_url, primary_image_alt=primary_image_alt)
     )
     user_id = request.session.get(AUTH_USER_SESSION_KEY)
@@ -104,8 +108,30 @@ def custom_design_cart_add_view(request, slug):
             payload = json.loads(request.body.decode("utf-8"))
             preview_front = preview_back = None
         variant_id = payload.pop("variant_id", None)
+        vendor_listing_id = payload.pop("vendor_listing_id", None)
         variant = get_object_or_404(ProductVariant, id=variant_id, product=product, is_active=True) if variant_id else None
-        design = save_design_draft(request=request, product=product, payload=payload, variant=variant)
+        vendor_listing = get_object_or_404(
+            VendorProduct.objects.select_related("vendor"),
+            pk=vendor_listing_id,
+            product=product,
+            status=VendorProduct.Status.ACTIVE,
+            vendor__status=Vendor.Status.ACTIVE,
+            vendor__user__is_active=True,
+            supports_custom_printing=True,
+        ) if vendor_listing_id else None
+        if product.marketplace_only and vendor_listing is None:
+            return JsonResponse({
+                "ok": False,
+                "message": "این محصول فقط از طریق فروشنده فعال قابل سفارش است.",
+            }, status=400)
+        design = save_design_draft(
+            request=request,
+            product=product,
+            payload=payload,
+            variant=variant,
+            vendor_listing=vendor_listing,
+            base_price_override=vendor_listing.retail_price if vendor_listing is not None else None,
+        )
         update_fields = []
         if preview_front:
             design.temp_preview_front_path = save_design_preview_to_temp(
@@ -124,7 +150,7 @@ def custom_design_cart_add_view(request, slug):
         if update_fields:
             update_fields.append("updated_at")
             design.save(update_fields=update_fields)
-        item = add_design_to_cart(request, design=design, quantity=1)
+        item = add_design_to_cart(request, design=design, quantity=1, vendor_listing=vendor_listing)
     except Exception as exc:
         return JsonResponse({"ok": False, "message": str(exc) or "طراحی قابل افزودن به سبد نیست."}, status=400)
     totals = _cart_totals(item.cart, request)
@@ -134,13 +160,22 @@ def custom_design_cart_add_view(request, slug):
 def cart_add_view(request):
     product_id = request.POST.get("product_id")
     variant_id = request.POST.get("variant_id") or None
+    vendor_listing_id = request.POST.get("vendor_listing_id") or None
     quantity = request.POST.get("quantity", "1")
     product = get_object_or_404(Product.objects.select_related("category"), pk=product_id, is_active=True, category__is_active=True)
+    vendor_listing = get_object_or_404(
+        VendorProduct.objects.select_related("vendor"),
+        pk=vendor_listing_id,
+        product=product,
+        status=VendorProduct.Status.ACTIVE,
+        vendor__status=Vendor.Status.ACTIVE,
+        vendor__user__is_active=True,
+    ) if vendor_listing_id else None
     variant = None
     if variant_id:
         variant = get_object_or_404(ProductVariant, pk=variant_id, product=product, is_active=True)
     try:
-        item = add_to_cart(request, product=product, variant=variant, quantity=quantity)
+        item = add_to_cart(request, product=product, variant=variant, vendor_listing=vendor_listing, quantity=quantity)
     except (ValueError, TypeError):
         message = "اطلاعات انتخاب‌شده برای افزودن به سبد صحیح نیست."
         try:
@@ -156,7 +191,7 @@ def cart_add_view(request):
 
     totals = _cart_totals(item.cart, request)
     if _is_json_request(request):
-        return JsonResponse({"ok": True, **totals, "item_id": item.id, "variant_id": item.variant_id, "quantity": item.quantity, "message": "محصول به سبد خرید اضافه شد."})
+        return JsonResponse({"ok": True, **totals, "item_id": item.id, "variant_id": item.variant_id, "vendor_listing_id": item.vendor_listing_id, "quantity": item.quantity, "message": "محصول به سبد خرید اضافه شد."})
     messages.success(request, "محصول به سبد خرید اضافه شد.")
     return redirect("orders:cart")
 
@@ -215,7 +250,7 @@ def checkout_view(request):
     )
     items = list(
         cart.items
-        .select_related("product", "variant__color", "variant__size")
+        .select_related("product", "variant__color", "variant__size", "custom_design", "vendor_listing__vendor")
         .order_by("added_at", "id")
     )
 
@@ -223,9 +258,11 @@ def checkout_view(request):
         messages.info(request, "سبد خرید شما خالی است.")
         return redirect("orders:cart")
 
+    shipping_quote_ids = []
     if request.method == "POST":
         address_id = request.POST.get("address_id")
         note = request.POST.get("customer_note", "")
+        shipping_quote_ids = [value.strip() for value in request.POST.get("shipping_quote_ids", "").split(",") if value.strip()]
         try:
             address = Address.objects.select_related("city", "city__province", "user").get(
                 pk=address_id,
@@ -236,8 +273,9 @@ def checkout_view(request):
                 cart=cart,
                 address=address,
                 customer_note=note,
+                shipping_quote_ids=shipping_quote_ids,
             )
-        except (Address.DoesNotExist, ValueError) as exc:
+        except (Address.DoesNotExist, ValueError, ValidationError) as exc:
             messages.error(request, str(exc) or "لطفاً یک آدرس معتبر انتخاب کنید.")
         else:
             _remember_cart_count(request, 0)
@@ -245,6 +283,20 @@ def checkout_view(request):
             return redirect("orders:payment", order_uuid=order.uuid)
 
     subtotal = sum(item.line_total for item in items)
+    has_stale_vendor_units = any(
+        item.vendor_listing_id and (
+            item.vendor_sale_unit_snapshot != item.vendor_listing.sale_unit
+            or item.vendor_units_per_order_snapshot != item.vendor_listing.units_per_order
+        )
+        for item in items
+    )
+    has_unavailable_vendor_items = any(
+        item.vendor_listing_id and (
+            item.vendor_listing.status != "active"
+            or not item.vendor_listing.vendor.can_receive_orders
+        )
+        for item in items
+    )
     selected_address_id = request.POST.get("address_id") if request.method == "POST" else None
     if not selected_address_id:
         selected_address = next((address for address in addresses if address.is_default), None)
@@ -261,6 +313,11 @@ def checkout_view(request):
             "subtotal": subtotal,
             "shipping_amount": 0,
             "total_amount": subtotal,
+            "shipping_quote_ids": ",".join(shipping_quote_ids),
+            "has_vendor_listings": any(item.vendor_listing_id for item in items),
+            "mixed_fulfilment": any(item.vendor_listing_id for item in items) and any(not item.vendor_listing_id for item in items),
+            "has_stale_vendor_units": has_stale_vendor_units,
+            "has_unavailable_vendor_items": has_unavailable_vendor_items,
         },
     )
 
@@ -355,6 +412,15 @@ def order_payment_view(request, order_uuid):
     if order.payment_status == Order.PaymentStatus.PAID:
         return redirect("orders:detail", order_uuid=order.uuid)
 
+    # This endpoint is a development-only simulator, not a real payment
+    # gateway. Never let a customer self-report "success" in production.
+    if not settings.DEBUG:
+        messages.error(
+            request,
+            "پرداخت آزمایشی در محیط عملیاتی غیرفعال است؛ تا اتصال درگاه واقعی امکان پرداخت وجود ندارد.",
+        )
+        return redirect("orders:detail", order_uuid=order.uuid)
+
     if request.method == "POST":
         result = request.POST.get("result")
         if result not in {"success", "failed"}:
@@ -415,6 +481,7 @@ def invoice_view(request, order_uuid):
                     "quantity",
                     "unit_price",
                     "line_total",
+                    "vendor_sale_unit_snapshot",
                 ).order_by("id"),
             )
         ),

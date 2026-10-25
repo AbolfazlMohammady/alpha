@@ -593,6 +593,25 @@ body.product-detail-page .pd-buy {
     gap: 12px;
 }
 
+body.product-detail-page .pd-unavailable {
+    padding: 16px;
+    border: 1px solid var(--sh-line);
+    border-radius: var(--sh-radius);
+    background: var(--pdp-panel);
+    color: var(--pdp-ink-2);
+    line-height: 1.9;
+}
+
+body.product-detail-page .pd-unavailable strong {
+    color: var(--pdp-ink);
+    font-size: 14px;
+}
+
+body.product-detail-page .pd-unavailable p {
+    margin: 6px 0 0;
+    font-size: 13px;
+}
+
 body.product-detail-page .pd-qty {
     display: grid;
     gap: 8px;

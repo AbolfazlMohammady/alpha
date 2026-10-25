@@ -65,8 +65,8 @@
                     <tr>
                         <td data-label="محصول"><strong>{{ item.product_name }}</strong></td>
                         <td data-label="مشخصات">{{ item.color_name }}{% if item.color_name and item.size_name %} / {% endif %}{{ item.size_name }}{% if item.variant_sku %}<small dir="ltr">{{ item.variant_sku }}</small>{% endif %}</td>
-                        <td data-label="تعداد">{{ item.quantity }}</td>
-                        <td data-label="قیمت واحد">{{ item.unit_price|price }}</td>
+                        <td data-label="تعداد">{{ item.quantity }} {{ item.vendor_sale_unit_snapshot }}</td>
+                        <td data-label="قیمت واحد فروش">{{ item.unit_price|price }}</td>
                         <td data-label="جمع">{{ item.line_total|price }}</td>
                     </tr>
                     {% endfor %}

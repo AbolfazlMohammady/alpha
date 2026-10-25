@@ -143,10 +143,10 @@
                 </div>
                 <div class="order-item__qty">
                     <span>تعداد</span>
-                    <b>× {{ item.quantity }}</b>
+                    <b>× {{ item.quantity }} {{ item.vendor_sale_unit_snapshot }}</b>
                 </div>
                 <div class="order-item__unit">
-                    <span>قیمت واحد</span>
+                    <span>قیمت هر واحد فروش</span>
                     <strong>{{ item.unit_price|price }} <small>تومان</small></strong>
                 </div>
                 <div class="order-item__price">

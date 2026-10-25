@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "apps.users",
     "apps.shop",
     "apps.orders",
+    "apps.marketplace.apps.MarketplaceConfig",
     "apps.customizer",
     "apps.saved",
     "apps.control_center",
@@ -182,5 +183,13 @@ CELERY_BEAT_SCHEDULE = {
     "cleanup-orphan-media": {
         "task": "apps.customizer.tasks.cleanup_orphan_media",
         "schedule": 21600.0,
+    },
+    "create-daily-vendor-settlement-batches": {
+        "task": "apps.marketplace.tasks.create_daily_settlement_batches_task",
+        "schedule": 86400.0,
+    },
+    "refresh-active-marketplace-shipments": {
+        "task": "apps.marketplace.tasks.refresh_active_shipments_task",
+        "schedule": 1800.0,
     },
 }

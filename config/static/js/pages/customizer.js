@@ -17,6 +17,7 @@
     const priceBreakdown = document.getElementById("price-breakdown");
     const totalEl = document.getElementById("designer-total");
     const variantSelect = document.getElementById("variant-select");
+    const vendorListingSelect = document.getElementById("designer-vendor-listing");
     const saveButton = document.getElementById("save-design");
     const saveStatus = document.getElementById("save-status");
     const uploadInput = document.getElementById("artwork-upload");
@@ -317,15 +318,21 @@
 
     function renderPrices() {
         const variant = variants.find((item) => String(item.id) === String(variantSelect.value));
-        const base = variant ? Number(variant.price) : basePrice;
+        const selectedVendorOption = vendorListingSelect && vendorListingSelect.value ? vendorListingSelect.selectedOptions[0] : null;
+        const base = selectedVendorOption ? Number(selectedVendorOption.dataset.price || 0) : (variant ? Number(variant.price) : basePrice);
+        const saleUnitBase = selectedVendorOption?.dataset.saleUnit || "عدد";
+        const saleUnit = saleUnitBase + (selectedVendorOption && Number(selectedVendorOption.dataset.unitsPerOrder || 1) > 1 ? " (" + formatPrice(selectedVendorOption.dataset.unitsPerOrder) + " قلم)" : "");
+        const unitsPerOrder = Math.max(1, Number(selectedVendorOption?.dataset.unitsPerOrder || 1));
         let total = base;
-        const lines = [`<div class="price-line"><span>لباس</span><strong>${formatPrice(base)} تومان</strong></div>`];
+        const lines = [`<div class="price-line"><span>لباس (${escapeHtml(saleUnit)})</span><strong>${formatPrice(base)} تومان</strong></div>`];
         layers.forEach((layer) => {
-            const price = layerPrice(layer);
+            const perItemPrice = layerPrice(layer);
+            const price = perItemPrice * unitsPerOrder;
             total += price;
             const artwork = artworkById(layer.artwork_id);
             const area = views.flatMap((view) => view.areas || []).find((item) => Number(item.id) === Number(layer.area_id));
-            lines.push(`<div class="price-line"><span>${escapeHtml(artwork?.name || "لیبل")} · ${escapeHtml(area?.name || "ناحیه")}</span><strong>+ ${formatPrice(price)}</strong></div>`);
+            const multiplier = unitsPerOrder > 1 ? ` × ${formatPrice(unitsPerOrder)} قلم` : "";
+            lines.push(`<div class="price-line"><span>${escapeHtml(artwork?.name || "لیبل")} · ${escapeHtml(area?.name || "ناحیه")}${multiplier}</span><strong>+ ${formatPrice(price)}</strong></div>`);
         });
         priceBreakdown.innerHTML = lines.join("");
         totalEl.textContent = formatPrice(total);
@@ -551,12 +558,19 @@
     }
 
     variantSelect.addEventListener("change", renderPrices);
+    vendorListingSelect?.addEventListener("change", renderPrices);
 
     if (saveButton) saveButton.addEventListener("click", async () => {
         saveButton.disabled = true;
         saveStatus.textContent = "در حال بررسی و ذخیره طراحی…";
+        if (vendorListingSelect && !vendorListingSelect.value) {
+            saveStatus.textContent = "برای چاپ سفارشی، ابتدا فروشنده را انتخاب کن.";
+            saveButton.disabled = false;
+            return;
+        }
         const payload = {
             variant_id: variantSelect.value || null,
+            vendor_listing_id: vendorListingSelect?.value || null,
             version: 1,
             layers: layers.map(({ artwork_id, area_id, x, y, width, height, rotation }) => ({ artwork_id, area_id, x, y, width, height, rotation })),
         };

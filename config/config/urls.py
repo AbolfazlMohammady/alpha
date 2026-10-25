@@ -30,6 +30,7 @@ urlpatterns = [
     path("control/", include("apps.control_center.urls")),
     path("shop/", include("apps.shop.urls")),
     path("customizer/", include("apps.customizer.urls")),
+    path("marketplace/", include("apps.marketplace.urls")),
     path("", include("apps.orders.urls")),
     path("", include("apps.home.urls")),
     path("", include("apps.users.urls")),
