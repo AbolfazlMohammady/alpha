@@ -74,6 +74,7 @@ jobs:
           --health-retries 20
     steps:
       - name: Install system dependencies
+        working-directory: ${{ github.workspace }}
         run: |
           apt-get update
           apt-get install -y --no-install-recommends git build-essential
