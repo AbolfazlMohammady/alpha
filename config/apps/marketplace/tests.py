@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
-from .models import FinancialReconciliation, JournalEntry, LedgerAccount, SettlementBatch, SettlementLine, Shipment, Vendor, VendorOrder, VendorProduct, WholesalePriceTier
+from .models import FinancialReconciliation, JournalEntry, LedgerAccount, SettlementBatch, SettlementLine, Shipment, Vendor, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from apps.shop.models import Category, Product
 from apps.orders.models import Cart, CartItem, Order, OrderItem
 from .payouts import submit_settlement_payout
@@ -358,6 +358,21 @@ class WholesalePricingValidationTests(TestCase):
         self.listing.retail_price = 600
         with self.assertRaises(ValidationError):
             self.listing.full_clean()
+
+    def test_new_product_submission_requires_shipping_dimensions(self):
+        submission = VendorProductSubmission(
+            vendor=self.listing.vendor,
+            category=self.listing.product.category,
+            name="محصول بدون ابعاد",
+            retail_price=1000,
+            weight_grams=0,
+            package_length_cm=0,
+            package_width_cm=0,
+            package_height_cm=0,
+        )
+        with self.assertRaises(ValidationError) as context:
+            submission.clean()
+        self.assertIn("weight_grams", context.exception.message_dict)
 
 
 class VendorShippingSettlementTests(TestCase):
