@@ -172,6 +172,11 @@ class JsonCarrierClient:
         tracking = tracking or data.get("tracking_number") or data.get("tracking_code") or data.get("barcode") or ""
         shipment_id = shipment_id or data.get("shipment_id") or data.get("id") or data.get("reference") or ""
         label = label or data.get("label_url") or data.get("label") or ""
+        label = str(label or "").strip()
+        if label:
+            parsed_label = urllib.parse.urlparse(label)
+            if parsed_label.scheme != "https" or not parsed_label.netloc:
+                raise CarrierError("لینک برچسب مرسوله باید یک آدرس HTTPS معتبر باشد.")
         actual_cost = None
         if os.environ.get(f"{prefix}_SHIPMENT_COST_PATH"):
             actual_cost = self._amount(data, amount_path_env="SHIPMENT_COST_PATH", currency_path_env="SHIPMENT_CURRENCY_PATH")
