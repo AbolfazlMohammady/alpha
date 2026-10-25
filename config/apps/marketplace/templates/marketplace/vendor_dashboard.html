@@ -313,10 +313,10 @@
                     <label class="vd-field" style="grid-column:1/-1">روش ارسال<select name="provider"><option value="manual">ارسال توسط خودم</option><option value="tipax">استعلام تیپاکس</option><option value="post">استعلام پست</option></select></label>
                     <label class="vd-field vd-manual-shipping-field">نام شرکت حمل یا پیک<input name="carrier_name" maxlength="120" placeholder="مثلاً پست، تیپاکس یا پیک محلی"></label>
                     <label class="vd-field vd-manual-shipping-field">کد رهگیری<input name="tracking_number" maxlength="160" placeholder="کد رهگیری مرسوله"></label>
-                    <label class="vd-field vd-carrier-shipping-field">وزن بسته (گرم)<input name="weight_grams" type="number" min="1"></label>
-                    <label class="vd-field vd-carrier-shipping-field">طول (سانتی‌متر)<input name="length_cm" type="number" min="1"></label>
-                    <label class="vd-field vd-carrier-shipping-field">عرض (سانتی‌متر)<input name="width_cm" type="number" min="1"></label>
-                    <label class="vd-field vd-carrier-shipping-field">ارتفاع (سانتی‌متر)<input name="height_cm" type="number" min="1"></label>
+                    <label class="vd-field vd-carrier-shipping-field">وزن بسته (گرم)<input name="weight_grams" type="number" min="1" required></label>
+                    <label class="vd-field vd-carrier-shipping-field">طول (سانتی‌متر)<input name="length_cm" type="number" min="1" required></label>
+                    <label class="vd-field vd-carrier-shipping-field">عرض (سانتی‌متر)<input name="width_cm" type="number" min="1" required></label>
+                    <label class="vd-field vd-carrier-shipping-field">ارتفاع (سانتی‌متر)<input name="height_cm" type="number" min="1" required></label>
                     <button class="vd-btn" type="submit">ثبت ارسال</button>
                 </form>
                 ` : ""}
