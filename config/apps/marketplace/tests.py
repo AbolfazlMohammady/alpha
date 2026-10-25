@@ -493,13 +493,16 @@ class VendorShippingSettlementTests(TestCase):
 
         with patch("apps.marketplace.carriers.get_carrier") as get_carrier:
             get_carrier.return_value.track.side_effect = lambda tracking: {
-                "status": "delivered" if tracking == first.tracking_number else "in_transit"
+                "status": "delivered" if tracking == first.tracking_number else "in_transit",
+                "recipient_phone": "09120000000",
             }
             result = refresh_active_shipments_task.run()
 
         self.assertEqual(result["updated"], 2)
-        self.assertEqual(Shipment.objects.get(pk=first.pk).status, Shipment.Status.DELIVERED)
+        delivered_parcel = Shipment.objects.get(pk=first.pk)
+        self.assertEqual(delivered_parcel.status, Shipment.Status.DELIVERED)
         self.assertEqual(Shipment.objects.get(pk=second.pk).status, Shipment.Status.IN_TRANSIT)
+        self.assertNotIn("recipient_phone", delivered_parcel.provider_payload["last_tracking_response"])
         self.vendor_order.refresh_from_db()
         self.assertEqual(self.vendor_order.status, VendorOrder.Status.SHIPPED)
         self.assertIsNone(self.vendor_order.delivered_at)
