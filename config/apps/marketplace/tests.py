@@ -142,6 +142,23 @@ class CarrierSafetyTests(TestCase):
                 with self.assertRaises(CarrierError):
                     client.track("TRACK-1300")
 
+    def test_tracking_rial_cost_normalizes_with_its_own_divisor(self):
+        client = TipaxClient(
+            base_url="https://carrier.example",
+            token="test-token",
+            tracking_path="/track/{tracking_number}",
+        )
+        with patch.object(client, "_request", return_value={"amount": "1300", "currency": "IRR", "state": "delivered"}):
+            with patch.dict("os.environ", {
+                "TIPAX_TRACKING_COST_PATH": "amount",
+                "TIPAX_TRACKING_CURRENCY_PATH": "currency",
+                "TIPAX_TRACKING_AMOUNT_DIVISOR": "10",
+                "TIPAX_TRACKING_STATUS_PATH": "state",
+            }, clear=True):
+                result = client.track("TRACK-1300")
+        self.assertEqual(result["actual_cost"], 130)
+        self.assertEqual(result["status"], "delivered")
+
     def test_tracking_cost_rejects_toman_amount_with_rial_divisor(self):
         client = TipaxClient(
             base_url="https://carrier.example",
