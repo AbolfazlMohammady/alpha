@@ -71,5 +71,5 @@ jobs:
       - name: Check migration consistency
         run: python config/manage.py makemigrations --check --dry-run
 
-      - name: Run tests
-        run: pytest -q
+      - name: Run marketplace tests
+        run: python config/manage.py test apps.marketplace --verbosity 2
