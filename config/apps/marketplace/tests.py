@@ -10,7 +10,7 @@ from .models import FinancialReconciliation, JournalEntry, LedgerAccount, Settle
 from apps.shop.models import Category, Product
 from apps.orders.models import Cart, CartItem, Order, OrderItem
 from .payouts import submit_settlement_payout
-from .carriers import CarrierError, JsonCarrierClient, TipaxClient
+from .carriers import CarrierError, JsonCarrierClient, TipaxClient, validate_quote_input
 from .services import (
     account_balance,
     create_daily_settlement_batches,
@@ -94,6 +94,24 @@ class CarrierSafetyTests(TestCase):
         }, clear=True):
             with self.assertRaises(CarrierError):
                 client._amount({"amount": 130, "currency": "IRT"})
+
+
+    def test_final_shipping_quote_requires_valid_postal_codes_and_all_dimensions(self):
+        payload = {
+            "weight_grams": 500,
+            "origin_postal_code": "1234567890",
+            "destination_postal_code": "0987654321",
+            "length_cm": 20,
+            "width_cm": 15,
+            "height_cm": 10,
+            "declared_value": 100000,
+        }
+        validated = validate_quote_input(payload)
+        self.assertEqual(validated["weight_grams"], 500)
+        with self.assertRaises(ValidationError):
+            validate_quote_input({**payload, "destination_postal_code": "12345"})
+        with self.assertRaises(ValidationError):
+            validate_quote_input({key: value for key, value in payload.items() if key != "height_cm"})
 
 
     def test_tracking_cost_requires_explicit_currency_and_divisor(self):
