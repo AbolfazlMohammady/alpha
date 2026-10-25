@@ -38,7 +38,7 @@ jobs:
         run: python manage.py check
 
       - name: Marketplace tests
-        run: python manage.py test marketplace --verbosity 2
+        run: python manage.py test apps.marketplace --verbosity 2
 
       - name: Check migration state
         run: python manage.py makemigrations --check --dry-run --verbosity 3
