@@ -107,17 +107,14 @@ class JsonCarrierClient:
 
     def _amount(self, data, *, amount_path_env="QUOTE_AMOUNT_PATH", currency_path_env="QUOTE_CURRENCY_PATH"):
         prefix = self.provider_code.upper()
-        configured_path = os.environ.get(f"{prefix}_{amount_path_env}", "")
-        value = self._path_value(data, configured_path) if configured_path else None
-        if value is None and not configured_path:
-            # Common top-level fields are a fallback only; official response
-            # mapping should be configured for the contracted carrier API.
-            for key in ("amount", "price", "cost", "shipping_cost", "total"):
-                value = data.get(key)
-                if value is not None:
-                    break
+        configured_path = os.environ.get(f"{prefix}_{amount_path_env}", "").strip()
+        if not configured_path:
+            raise CarrierError(
+                f"{prefix}_{amount_path_env} باید صریحاً مطابق قرارداد API تنظیم شود."
+            )
+        value = self._path_value(data, configured_path)
         if value is None:
-            raise CarrierError("کلید مبلغ در پاسخ API پیدا نشد؛ مسیر مبلغ را مطابق مستندات رسمی تنظیم کنید.")
+            raise CarrierError("کلید مبلغ در مسیر تنظیم‌شده پاسخ API پیدا نشد؛ مسیر را بررسی کنید.")
         prefix = self.provider_code.upper()
         try:
             raw_amount = Decimal(str(value))
