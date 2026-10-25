@@ -10,7 +10,7 @@ from .models import FinancialReconciliation, JournalEntry, LedgerAccount, Settle
 from apps.shop.models import Category, Product
 from apps.orders.models import Cart, CartItem, Order, OrderItem
 from .payouts import PayoutNotConfigured, submit_settlement_payout
-from .carriers import CarrierError, JsonCarrierClient, TipaxClient, validate_quote_input, validate_quote_input
+from .carriers import CarrierError, JsonCarrierClient, TipaxClient, validate_quote_input
 from .services import (
     account_balance,
     create_daily_settlement_batches,
