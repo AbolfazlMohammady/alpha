@@ -579,6 +579,11 @@ class VendorShippingSettlementTests(TestCase):
             ],
         )
 
+    def test_vendor_settlement_hold_cannot_be_shorter_than_24_hours(self):
+        self.vendor.settlement_hold_hours = 23
+        with self.assertRaises(ValidationError):
+            self.vendor.full_clean()
+
     def test_vendor_paid_shipping_is_included_in_settlement_and_reclassified_once(self):
         batches = create_daily_settlement_batches(now=self.now)
         self.assertEqual(len(batches), 1)
