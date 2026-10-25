@@ -301,6 +301,11 @@ class WholesalePricingValidationTests(TestCase):
             wholesale_enabled=True,
         )
 
+    def test_wholesale_listing_requires_at_least_one_price_tier(self):
+        with self.assertRaises(ValidationError) as context:
+            self.listing.full_clean()
+        self.assertIn("wholesale_enabled", context.exception.message_dict)
+
     def test_higher_quantity_tier_cannot_be_more_expensive(self):
         WholesalePriceTier.objects.create(
             listing=self.listing,
