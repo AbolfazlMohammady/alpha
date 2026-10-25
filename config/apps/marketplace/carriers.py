@@ -105,7 +105,7 @@ class JsonCarrierClient:
                 return None
         return value
 
-    def _amount(self, data, *, amount_path_env="QUOTE_AMOUNT_PATH", currency_path_env="QUOTE_CURRENCY_PATH"):
+    def _amount(self, data, *, amount_path_env="QUOTE_AMOUNT_PATH", currency_path_env="QUOTE_CURRENCY_PATH", divisor_env="AMOUNT_DIVISOR"):
         prefix = self.provider_code.upper()
         configured_path = os.environ.get(f"{prefix}_{amount_path_env}", "").strip()
         if not configured_path:
@@ -118,10 +118,10 @@ class JsonCarrierClient:
         prefix = self.provider_code.upper()
         try:
             raw_amount = Decimal(str(value))
-            divisor_raw = os.environ.get(f"{prefix}_AMOUNT_DIVISOR", "").strip()
+            divisor_raw = os.environ.get(f"{prefix}_{divisor_env}", "").strip()
             if not divisor_raw:
                 raise CarrierError(
-                    f"{prefix}_AMOUNT_DIVISOR باید صریحاً پس از بررسی واحد پول API تنظیم شود."
+                    f"{prefix}_{divisor_env} باید صریحاً پس از بررسی واحد پول API تنظیم شود."
                 )
             divisor = Decimal(divisor_raw)
             currency_path = os.environ.get(f"{prefix}_{currency_path_env}", "").strip()
@@ -187,7 +187,7 @@ class JsonCarrierClient:
                 raise CarrierError("لینک برچسب مرسوله باید یک آدرس HTTPS معتبر باشد.")
         actual_cost = None
         if os.environ.get(f"{prefix}_SHIPMENT_COST_PATH"):
-            actual_cost = self._amount(data, amount_path_env="SHIPMENT_COST_PATH", currency_path_env="SHIPMENT_CURRENCY_PATH")
+            actual_cost = self._amount(data, amount_path_env="SHIPMENT_COST_PATH", currency_path_env="SHIPMENT_CURRENCY_PATH", divisor_env="SHIPMENT_AMOUNT_DIVISOR")
         if not tracking and not shipment_id:
             raise CarrierError("مرسوله در پاسخ API شناسه یا کد رهگیری ندارد؛ وضعیت را از پنل شرکت بررسی کنید.")
         return {
@@ -212,7 +212,7 @@ class JsonCarrierClient:
             data = {**data, "status": status}
         if cost is not None:
             try:
-                divisor_raw = os.environ.get(f"{prefix}_AMOUNT_DIVISOR", "").strip()
+                divisor_raw = os.environ.get(f"{prefix}_TRACKING_AMOUNT_DIVISOR", "").strip()
                 currency_path = os.environ.get(f"{prefix}_TRACKING_CURRENCY_PATH", "").strip()
                 if not divisor_raw or not currency_path:
                     raise CarrierError(
