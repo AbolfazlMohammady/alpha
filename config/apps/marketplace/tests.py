@@ -10,7 +10,7 @@ from .models import FinancialReconciliation, JournalEntry, LedgerAccount, Settle
 from apps.shop.models import Category, Product
 from apps.orders.models import Cart, CartItem, Order, OrderItem
 from .payouts import submit_settlement_payout
-from .carriers import CarrierError, JsonCarrierClient
+from .carriers import CarrierError, JsonCarrierClient, TipaxClient
 from .services import (
     account_balance,
     create_daily_settlement_batches,
@@ -52,6 +52,34 @@ class CarrierSafetyTests(TestCase):
         }):
             result = client.create_shipment({"order_number": "TEST"})
         self.assertEqual(result["label_url"], "https://labels.carrier.example/label/123")
+
+
+    def test_carrier_amount_requires_explicit_currency_and_normalizes_rials(self):
+        client = TipaxClient(
+            base_url="https://carrier.example",
+            token="test-token",
+            quote_path="/quote",
+        )
+        with patch.dict("os.environ", {
+            "TIPAX_QUOTE_AMOUNT_PATH": "data.amount",
+            "TIPAX_QUOTE_CURRENCY_PATH": "data.currency",
+            "TIPAX_AMOUNT_DIVISOR": "10",
+        }):
+            amount = client._amount({"data": {"amount": "1300", "currency": "IRR"}})
+        self.assertEqual(amount, 130)
+
+    def test_carrier_amount_without_currency_mapping_fails_closed(self):
+        client = TipaxClient(
+            base_url="https://carrier.example",
+            token="test-token",
+            quote_path="/quote",
+        )
+        with patch.dict("os.environ", {
+            "TIPAX_QUOTE_AMOUNT_PATH": "amount",
+            "TIPAX_AMOUNT_DIVISOR": "1",
+        }):
+            with self.assertRaises(CarrierError):
+                client._amount({"amount": 130})
 
 
 class LedgerPostingTests(TestCase):
