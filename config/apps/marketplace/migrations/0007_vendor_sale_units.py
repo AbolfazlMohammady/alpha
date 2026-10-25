@@ -1,5 +1,4 @@
 import django.core.validators
-import django.db.models.deletion
 from django.db import migrations, models
 
 
@@ -41,8 +40,8 @@ def backfill_legacy_shipping_data(apps, schema_editor):
         compare_at_price__lt=models.F("retail_price"),
     ).update(compare_at_price=None, status="paused")
 
-    # Requests created during a pre-release rollout may have incomplete package
-    # data. Keep them out of the approval queue until the seller resubmits.
+    # Legacy submissions with fabricated placeholder shipping data must not be
+    # approved. Keep them rejected until the seller submits real package data.
     missing_submission_shipping = (
         models.Q(weight_grams=0)
         | models.Q(package_length_cm=0)
@@ -99,57 +98,13 @@ class Migration(migrations.Migration):
             name="units_per_order",
             field=models.PositiveIntegerField(default=1, help_text="تعداد اقلام فیزیکی در هر واحد فروش.", validators=[django.core.validators.MinValueValidator(1)]),
         ),
-        migrations.AddField(
-            model_name="vendorproduct",
-            name="weight_grams",
-            field=models.PositiveIntegerField(default=0, help_text="وزن بسته‌بندی‌شده بر حسب گرم؛ برای استعلام حمل الزامی است."),
-        ),
-        migrations.AddField(
-            model_name="vendorproduct",
-            name="package_length_cm",
-            field=models.PositiveSmallIntegerField(default=0),
-        ),
-        migrations.AddField(
-            model_name="vendorproduct",
-            name="package_width_cm",
-            field=models.PositiveSmallIntegerField(default=0),
-        ),
-        migrations.AddField(
-            model_name="vendorproduct",
-            name="package_height_cm",
-            field=models.PositiveSmallIntegerField(default=0),
-        ),
         migrations.RunPython(
             code=backfill_legacy_shipping_data,
             reverse_code=migrations.RunPython.noop,
         ),
-        migrations.RemoveConstraint(
-            model_name="vendorproduct",
-            name="vendor_listing_compare_nonnegative",
-        ),
-        migrations.AddConstraint(
-            model_name="vendorproduct",
-            constraint=models.CheckConstraint(check=models.Q(("compare_at_price__isnull", True), ("compare_at_price__gte", models.F("retail_price")), _connector="OR"), name="vendor_listing_compare_gte_retail"),
-        ),
         migrations.AddConstraint(
             model_name="vendorproduct",
             constraint=models.CheckConstraint(check=models.Q(("units_per_order__gt", 0)), name="vendor_listing_units_per_order_gt_zero"),
-        ),
-        migrations.AddConstraint(
-            model_name="vendorproduct",
-            constraint=models.CheckConstraint(check=models.Q(("weight_grams__gt", 0)), name="vendor_listing_weight_gt_zero"),
-        ),
-        migrations.AddConstraint(
-            model_name="vendorproduct",
-            constraint=models.CheckConstraint(check=models.Q(("package_length_cm__gt", 0)), name="vendor_listing_length_gt_zero"),
-        ),
-        migrations.AddConstraint(
-            model_name="vendorproduct",
-            constraint=models.CheckConstraint(check=models.Q(("package_width_cm__gt", 0)), name="vendor_listing_width_gt_zero"),
-        ),
-        migrations.AddConstraint(
-            model_name="vendorproduct",
-            constraint=models.CheckConstraint(check=models.Q(("package_height_cm__gt", 0)), name="vendor_listing_height_gt_zero"),
         ),
         migrations.AddField(
             model_name="vendorproductsubmission",
@@ -167,26 +122,10 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name="vendorproductsubmission",
-            constraint=models.CheckConstraint(check=models.Q(("compare_at_price__isnull", True), ("compare_at_price__gte", models.F("retail_price")), _connector="OR"), name="vendor_submission_compare_gte_retail"),
+            constraint=models.CheckConstraint(check=models.Q(("compare_at_price__isnull", True), ("compare_at_price__gte", 0), _connector="OR"), name="vendor_submission_compare_nonnegative"),
         ),
         migrations.AddConstraint(
             model_name="vendorproductsubmission",
             constraint=models.CheckConstraint(check=models.Q(("units_per_order__gt", 0)), name="vendor_submission_units_gt_zero"),
-        ),
-        migrations.AddConstraint(
-            model_name="vendorproductsubmission",
-            constraint=models.CheckConstraint(check=models.Q(("weight_grams__gt", 0)), name="vendor_submission_weight_gt_zero"),
-        ),
-        migrations.AddConstraint(
-            model_name="vendorproductsubmission",
-            constraint=models.CheckConstraint(check=models.Q(("package_length_cm__gt", 0)), name="vendor_submission_length_gt_zero"),
-        ),
-        migrations.AddConstraint(
-            model_name="vendorproductsubmission",
-            constraint=models.CheckConstraint(check=models.Q(("package_width_cm__gt", 0)), name="vendor_submission_width_gt_zero"),
-        ),
-        migrations.AddConstraint(
-            model_name="vendorproductsubmission",
-            constraint=models.CheckConstraint(check=models.Q(("package_height_cm__gt", 0)), name="vendor_submission_height_gt_zero"),
         ),
     ]
