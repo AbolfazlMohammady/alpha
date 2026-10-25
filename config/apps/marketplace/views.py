@@ -725,7 +725,15 @@ def shipment_quote_api(request, order_id):
                 customer_charge=customer_charge,
                 quote_reference=quote.reference,
                 quote_expires_at=_parse_datetime(quote.expires_at) or (timezone.now() + timedelta(minutes=15)),
-                provider_payload={"quote": quote.raw or {}, "request": payload},
+                provider_payload={
+                    "quote": {
+                        "reference": quote.reference,
+                        "amount": quote.amount,
+                        "currency": quote.currency,
+                        "expires_at": quote.expires_at,
+                    },
+                    "request": payload,
+                },
             )
         return JsonResponse({
             "ok": True,
