@@ -143,6 +143,10 @@ class VendorProduct(models.Model):
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
         if self.supports_custom_printing and not self.vendor.supports_custom_printing:
             raise ValidationError({"supports_custom_printing": "فروشنده هنوز دسترسی چاپ سفارشی ندارد."})
+        if self.wholesale_enabled and not self.pk:
+            raise ValidationError({
+                "wholesale_enabled": "ابتدا آگهی را بدون فروش عمده ثبت کن؛ پس از ذخیره، پله‌های قیمت عمده را اضافه کن."
+            })
         if self.pk and self.wholesale_enabled and not self.wholesale_tiers.exists():
             raise ValidationError({
                 "wholesale_enabled": "برای فعال‌کردن فروش عمده، حداقل یک پله قیمت عمده ثبت کن."
