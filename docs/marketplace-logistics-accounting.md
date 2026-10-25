@@ -44,8 +44,9 @@ The generic payout adapter is disabled unless all of these are configured:
 - PAYOUT_API_BASE_URL (HTTPS required)
 - PAYOUT_API_TOKEN
 - PAYOUT_API_PATH
-- Optional PAYOUT_API_TIMEOUT_SECONDS, PAYOUT_API_AUTH_HEADER, PAYOUT_API_AUTH_SCHEME, PAYOUT_RESPONSE_REFERENCE_PATH, PAYOUT_RESPONSE_STATUS_PATH, PAYOUT_RESPONSE_CURRENCY_PATH
-- PAYOUT_RESPONSE_AMOUNT_PATH must point to the actual transfer amount in the provider response; the amount is normalized using PAYOUT_AMOUNT_MULTIPLIER before reconciliation
+- Optional PAYOUT_API_TIMEOUT_SECONDS, PAYOUT_API_AUTH_HEADER, PAYOUT_API_AUTH_SCHEME
+- PAYOUT_RESPONSE_REFERENCE_PATH, PAYOUT_RESPONSE_STATUS_PATH, PAYOUT_RESPONSE_AMOUNT_PATH, and PAYOUT_RESPONSE_CURRENCY_PATH are all required and must map to the chosen provider's actual response fields. The adapter does not guess generic field names.
+- The amount is normalized using PAYOUT_AMOUNT_MULTIPLIER before reconciliation; missing amount, currency, or reference keeps the payout in a non-final reconciliation state.
 - PAYOUT_AMOUNT_MULTIPLIER and PAYOUT_API_CURRENCY (set only after verifying whether the payout API expects toman or rials)
 
 The seller submits bank details from the dashboard; the full IBAN is never returned to the seller UI, and any bank-detail change revokes prior verification. The payload includes an idempotency key, amount, currency, verified IBAN and account name. This generic contract must be mapped and tested against the chosen Iranian bank/PSP payout API. Network timeouts leave a batch in a reconciliation state; do not retry blindly.
