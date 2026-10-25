@@ -32,7 +32,8 @@ permissions:
 jobs:
   django-checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    container: python:3.11-slim
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: config
@@ -40,9 +41,28 @@ jobs:
       DEBUG: "True"
       SECRET_KEY: "ci-only-not-for-production"
       ALLOWED_HOSTS: "localhost,127.0.0.1"
-      REDIS_URL: redis://127.0.0.1:6379/0
+      REDIS_URL: redis://redis:6379/0
+      REDIS_CACHE_URL: redis://redis:6379/1
+      POSTGRES_DB: babaei
+      POSTGRES_USER: babaei
+      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
       DJANGO_SETTINGS_MODULE: config.settings
     services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: babaei
+          POSTGRES_USER: babaei
+          POSTGRES_PASSWORD: supersecretpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U babaei -d babaei"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
       redis:
         image: redis:7-alpine
         ports:
@@ -53,15 +73,14 @@ jobs:
           --health-timeout 3s
           --health-retries 20
     steps:
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git build-essential
+          rm -rf /var/lib/apt/lists/*
+
       - name: Check out repository
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: config/requirements.txt
 
       - name: Install test dependencies
         id: install
