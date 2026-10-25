@@ -83,12 +83,24 @@ def refresh_active_shipments_task(self):
                     status=VendorOrder.Status.DISPUTED,
                     updated_at=now,
                 )
-            # Persist only the allowlisted tracking fields. Carrier payloads can
-            # contain addresses, phone numbers, or other data we do not need.
+            # Persist only allowlisted tracking fields; carrier responses can
+            # contain recipient PII. Keep a separate audit record for delivery.
+            tracking_payload = {
+                **(shipment.provider_payload or {}),
+                "last_tracking_response": safe_response,
+            }
+            if target == Shipment.Status.DELIVERED:
+                tracking_payload["delivery_confirmation"] = {
+                    "source": "carrier_tracking",
+                    "provider": shipment.provider,
+                    "reference": str(safe_response.get("reference") or shipment.tracking_number)[:180],
+                    "carrier_status": raw_status[:80],
+                    "confirmed_at": now.isoformat(),
+                }
             Shipment.objects.filter(pk=shipment.pk).update(
                 status=target,
                 delivered_at=shipment.delivered_at,
-                provider_payload={**shipment.provider_payload, "last_tracking_response": safe_response},
+                provider_payload=tracking_payload,
                 last_event_at=now,
                 last_error="",
                 updated_at=now,
