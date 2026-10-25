@@ -83,4 +83,4 @@ jobs:
 
       - name: Run marketplace accounting and logistics tests
         if: always() && steps.install.outcome == 'success'
-        run: python manage.py test apps.marketplace.tests --verbosity 2
+        run: python manage.py test --verbosity 2
