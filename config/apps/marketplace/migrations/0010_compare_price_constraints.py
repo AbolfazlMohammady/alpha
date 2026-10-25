@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
             model_name="vendorproduct",
             constraint=models.CheckConstraint(
                 check=models.Q(("compare_at_price__isnull", True), ("compare_at_price__gte", models.F("retail_price")), _connector="OR"),
-                name="vendor_listing_compare_nonnegative",
+                name="vendor_listing_compare_gte_retail",
             ),
         ),
         migrations.RemoveConstraint(
@@ -26,7 +26,7 @@ class Migration(migrations.Migration):
             model_name="vendorproductsubmission",
             constraint=models.CheckConstraint(
                 check=models.Q(("compare_at_price__isnull", True), ("compare_at_price__gte", models.F("retail_price")), _connector="OR"),
-                name="vendor_submission_compare_nonnegative",
+                name="vendor_submission_compare_gte_retail",
             ),
         ),
     ]
