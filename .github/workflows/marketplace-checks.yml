@@ -37,8 +37,8 @@ jobs:
       - name: Django system check
         run: python manage.py check
 
-      - name: Check migration state
-        run: python manage.py makemigrations --check --dry-run
-
       - name: Marketplace tests
         run: python manage.py test marketplace --verbosity 2
+
+      - name: Check migration state
+        run: python manage.py makemigrations --check --dry-run --verbosity 3
