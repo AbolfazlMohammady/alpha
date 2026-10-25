@@ -54,10 +54,16 @@ def submit_settlement_payout(batch_id: int):
         raise PayoutNotConfigured("PAYOUT_AMOUNT_MULTIPLIER باید عدد صحیح باشد.") from exc
     if multiplier <= 0:
         raise PayoutNotConfigured("PAYOUT_AMOUNT_MULTIPLIER باید مثبت باشد.")
-    actual_amount_path = os.environ.get("PAYOUT_RESPONSE_AMOUNT_PATH", "").strip()
-    if not actual_amount_path:
+    response_paths = {
+        "reference": os.environ.get("PAYOUT_RESPONSE_REFERENCE_PATH", "").strip(),
+        "status": os.environ.get("PAYOUT_RESPONSE_STATUS_PATH", "").strip(),
+        "amount": os.environ.get("PAYOUT_RESPONSE_AMOUNT_PATH", "").strip(),
+        "currency": os.environ.get("PAYOUT_RESPONSE_CURRENCY_PATH", "").strip(),
+    }
+    missing_paths = [name for name, path_value in response_paths.items() if not path_value]
+    if missing_paths:
         raise PayoutNotConfigured(
-            "برای جلوگیری از تأیید اشتباه واریز، مسیر مبلغ واقعی پاسخ بانک باید در PAYOUT_RESPONSE_AMOUNT_PATH تنظیم شود."
+            "نگاشت پاسخ بانک باید صریح تنظیم شود؛ مسیرهای مرجع، وضعیت نهایی، مبلغ واقعی و ارز الزامی‌اند."
         )
 
     with transaction.atomic():
@@ -200,14 +206,8 @@ def submit_settlement_payout(batch_id: int):
                 return None
         return value
 
-    reference = str(
-        path_value(os.environ.get("PAYOUT_RESPONSE_REFERENCE_PATH", ""))
-        or data.get("transfer_id") or data.get("reference") or data.get("id") or ""
-    )[:180]
-    provider_status = str(
-        path_value(os.environ.get("PAYOUT_RESPONSE_STATUS_PATH", ""))
-        or data.get("status") or ""
-    ).lower()
+    reference = str(path_value(response_paths["reference"]) or "").strip()[:180]
+    provider_status = str(path_value(response_paths["status"]) or "").strip().lower()
     if not reference:
         SettlementBatch.objects.filter(pk=batch_id, status=SettlementBatch.Status.PROCESSING).update(
             failure_reason="سرویس درخواست را پاسخ داد اما شناسه انتقال نداشت؛ تطبیق دستی لازم است."
@@ -224,10 +224,9 @@ def submit_settlement_payout(batch_id: int):
                 failure_reason="سرویس موفقیت را اعلام کرده اما شناسه مرجع ندارد؛ تطبیق با گردش حساب لازم است."
             )
             raise PayoutError("شناسه مرجع واریز در پاسخ موجود نیست؛ تسویه قفل شد تا تطبیق دستی.")
-        raw_actual_amount = path_value(actual_amount_path)
-        currency_path = os.environ.get("PAYOUT_RESPONSE_CURRENCY_PATH", "")
-        raw_response_currency = path_value(currency_path) if currency_path else None
-        if currency_path and str(raw_response_currency or "").strip().upper() != payout_currency:
+        raw_actual_amount = path_value(response_paths["amount"])
+        raw_response_currency = path_value(response_paths["currency"])
+        if str(raw_response_currency or "").strip().upper() != payout_currency:
             SettlementBatch.objects.filter(pk=batch_id, status=SettlementBatch.Status.PROCESSING).update(
                 failure_reason="ارز اعلام‌شده توسط سرویس واریز با ارز پیکربندی‌شده برابر نیست؛ تطبیق بانکی لازم است."
             )
