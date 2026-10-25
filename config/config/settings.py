@@ -89,10 +89,15 @@ if RUNNING_IN_DOCKER:
             }
         }
 else:
+    # SQLite cannot create a database when its parent directory is missing.
+    # Docker creates this path through the data volume; CI and fresh local
+    # checkouts need the directory to exist before Django opens the connection.
+    SQLITE_PATH = BASE_DIR / "data" / "database" / "db.sqlite3"
+    SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "data/database/db.sqlite3",
+            "NAME": SQLITE_PATH,
             "TEST": {"NAME": ":memory:"},
         }
     }
