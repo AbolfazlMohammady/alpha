@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from django.db import transaction
 from django.db.models import Sum
 
@@ -10,6 +12,9 @@ from apps.customizer.models import DesignDraft
 def _strict_quantity(value):
     if isinstance(value, bool) or isinstance(value, float):
         raise ValueError("تعداد باید عدد صحیح باشد.")
+    if isinstance(value, Decimal):
+        if not value.is_finite() or value != value.to_integral_value():
+            raise ValueError("تعداد باید عدد صحیح باشد.")
     try:
         return int(value)
     except (TypeError, ValueError, OverflowError) as exc:
