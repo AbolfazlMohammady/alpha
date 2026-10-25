@@ -133,8 +133,8 @@ class JsonCarrierClient:
             if divisor <= 0:
                 raise InvalidOperation
             if raw_currency in {"IRR", "RIAL", "RIALS", "ریال"}:
-                if divisor == 1:
-                    raise CarrierError("API مبلغ را به ریال اعلام کرده؛ ضریب تبدیل به واحد پروژه را تنظیم کنید.")
+                if divisor != 10:
+                    raise CarrierError("واحد داخلی تومان است؛ مبلغ ریالی باید دقیقاً بر ۱۰ تقسیم شود.")
             elif raw_currency in {"IRT", "TOMAN", "TOMANS", "تومان"}:
                 if divisor != 1:
                     raise CarrierError("API مبلغ را به تومان اعلام کرده؛ ضریب تبدیل باید ۱ باشد.")
@@ -223,8 +223,8 @@ class JsonCarrierClient:
                 if divisor <= 0:
                     raise CarrierError("ضریب تبدیل هزینه رهگیری باید مثبت باشد.")
                 if raw_currency in {"IRR", "RIAL", "RIALS", "ریال"}:
-                    if divisor == 1:
-                        raise CarrierError("API مبلغ را به ریال اعلام کرده؛ ضریب تبدیل به تومان را تنظیم کنید.")
+                    if divisor != 10:
+                        raise CarrierError("واحد داخلی تومان است؛ مبلغ ریالی باید دقیقاً بر ۱۰ تقسیم شود.")
                 elif raw_currency in {"IRT", "TOMAN", "TOMANS", "تومان"}:
                     if divisor != 1:
                         raise CarrierError("API مبلغ را به تومان اعلام کرده؛ ضریب تبدیل باید ۱ باشد.")
