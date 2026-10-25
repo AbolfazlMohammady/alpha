@@ -166,6 +166,9 @@ class ShipmentAdmin(ReadOnlyAuditAdmin):
                 if shipment.status not in allowed_statuses:
                     self.message_user(request, "این مرسوله در وضعیت قابل تأیید تحویل نیست.", messages.ERROR)
                     return None
+                if vendor_order.status in {VendorOrder.Status.CANCELLED, VendorOrder.Status.DISPUTED}:
+                    self.message_user(request, "سفارش لغوشده یا دارای اختلاف باید ابتدا از مسیر رسمی بررسی شود.", messages.ERROR)
+                    return None
                 shipment.status = Shipment.Status.DELIVERED
                 shipment.delivered_at = now
                 payload = shipment.provider_payload if isinstance(shipment.provider_payload, dict) else {}
