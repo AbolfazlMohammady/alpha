@@ -286,8 +286,8 @@ def validate_quote_input(payload: dict):
         raise ValidationError("وزن بسته باید بیشتر از صفر باشد.")
     for key in ("origin_postal_code", "destination_postal_code"):
         value = str(payload.get(key, "")).strip()
-        if len(value) < 5 or len(value) > 20:
-            raise ValidationError(f"{key}: کد پستی معتبر وارد کنید.")
+        if len(value) != 10 or not value.isascii() or not value.isdigit():
+            raise ValidationError(f"{key}: کد پستی ایران باید دقیقاً ۱۰ رقم انگلیسی باشد.")
     dimensions = {}
     for key, label in (("length_cm", "طول"), ("width_cm", "عرض"), ("height_cm", "ارتفاع")):
         if payload.get(key) in (None, ""):
