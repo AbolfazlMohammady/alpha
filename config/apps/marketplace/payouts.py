@@ -139,7 +139,7 @@ def submit_settlement_payout(batch_id: int):
         batch.failure_reason = ""
         batch.payout_attempts += 1
         payout_idempotency_key = f"{batch.idempotency_key}:attempt:{batch.payout_attempts}"
-        batch.save(update_fields=("status", "failure_reason", "payout_attempts", "updated_at"))
+        batch.save(update_fields=("status", "failure_reason", "payout_attempts"))
         payload = {
             "idempotency_key": payout_idempotency_key,
             "client_reference": str(batch.uuid),
