@@ -788,7 +788,18 @@ def create_shipping_quote(*, user, cart_item, address, provider):
         quantity=payload["quantity"],
         address_fingerprint=address_fingerprint(user=user, address=address),
         expires_at=expires_at,
-        provider_payload={"request": payload, "group_fingerprint": group_fingerprint, "response": quote.raw or {}},
+        # Store only the quote facts needed for audit; provider responses
+        # are untrusted and may contain recipient or account metadata.
+        provider_payload={
+            "request": payload,
+            "group_fingerprint": group_fingerprint,
+            "response": {
+                "reference": quote.reference,
+                "amount": quote.amount,
+                "currency": quote.currency,
+                "expires_at": quote.expires_at,
+            },
+        },
     )
 
 
