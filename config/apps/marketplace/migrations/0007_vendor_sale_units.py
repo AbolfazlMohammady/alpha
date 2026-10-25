@@ -3,6 +3,86 @@ import django.db.models.deletion
 from django.db import migrations, models
 
 
+def backfill_legacy_shipping_data(apps, schema_editor):
+    VendorProduct = apps.get_model("marketplace", "VendorProduct")
+    VendorProductSubmission = apps.get_model("marketplace", "VendorProductSubmission")
+
+    missing_listing_shipping = (
+        models.Q(weight_grams=0)
+        | models.Q(package_length_cm=0)
+        | models.Q(package_width_cm=0)
+        | models.Q(package_height_cm=0)
+    )
+    VendorProduct.objects.filter(missing_listing_shipping).update(
+        weight_grams=models.Case(
+            models.When(weight_grams=0, then=models.Value(1)),
+            default=models.F("weight_grams"),
+            output_field=models.PositiveIntegerField(),
+        ),
+        package_length_cm=models.Case(
+            models.When(package_length_cm=0, then=models.Value(1)),
+            default=models.F("package_length_cm"),
+            output_field=models.PositiveSmallIntegerField(),
+        ),
+        package_width_cm=models.Case(
+            models.When(package_width_cm=0, then=models.Value(1)),
+            default=models.F("package_width_cm"),
+            output_field=models.PositiveSmallIntegerField(),
+        ),
+        package_height_cm=models.Case(
+            models.When(package_height_cm=0, then=models.Value(1)),
+            default=models.F("package_height_cm"),
+            output_field=models.PositiveSmallIntegerField(),
+        ),
+        status="paused",
+    )
+    VendorProduct.objects.filter(
+        compare_at_price__isnull=False,
+        compare_at_price__lt=models.F("retail_price"),
+    ).update(compare_at_price=None, status="paused")
+
+    # Requests created during a pre-release rollout may have incomplete package
+    # data. Keep them out of the approval queue until the seller resubmits.
+    missing_submission_shipping = (
+        models.Q(weight_grams=0)
+        | models.Q(package_length_cm=0)
+        | models.Q(package_width_cm=0)
+        | models.Q(package_height_cm=0)
+    )
+    VendorProductSubmission.objects.filter(missing_submission_shipping).update(
+        weight_grams=models.Case(
+            models.When(weight_grams=0, then=models.Value(1)),
+            default=models.F("weight_grams"),
+            output_field=models.PositiveIntegerField(),
+        ),
+        package_length_cm=models.Case(
+            models.When(package_length_cm=0, then=models.Value(1)),
+            default=models.F("package_length_cm"),
+            output_field=models.PositiveSmallIntegerField(),
+        ),
+        package_width_cm=models.Case(
+            models.When(package_width_cm=0, then=models.Value(1)),
+            default=models.F("package_width_cm"),
+            output_field=models.PositiveSmallIntegerField(),
+        ),
+        package_height_cm=models.Case(
+            models.When(package_height_cm=0, then=models.Value(1)),
+            default=models.F("package_height_cm"),
+            output_field=models.PositiveSmallIntegerField(),
+        ),
+        status="rejected",
+        reviewer_note="درخواست قدیمی فاقد اطلاعات معتبر حمل بود؛ لطفاً با وزن و ابعاد واقعی دوباره ثبت شود.",
+    )
+    VendorProductSubmission.objects.filter(
+        compare_at_price__isnull=False,
+        compare_at_price__lt=models.F("retail_price"),
+    ).update(
+        compare_at_price=None,
+        status="rejected",
+        reviewer_note="قیمت قبل از تخفیف معتبر نبود؛ لطفاً درخواست را با قیمت اصلاح‌شده دوباره ثبت کنید.",
+    )
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("marketplace", "0006_vendor_product_submission"),
@@ -40,13 +120,7 @@ class Migration(migrations.Migration):
             field=models.PositiveSmallIntegerField(default=0),
         ),
         migrations.RunPython(
-            code=lambda apps, schema_editor: apps.get_model("marketplace", "VendorProduct").objects.filter(
-                models.Q(weight_grams=0) | models.Q(package_length_cm=0) |
-                models.Q(package_width_cm=0) | models.Q(package_height_cm=0)
-            ).update(
-                weight_grams=1, package_length_cm=1, package_width_cm=1, package_height_cm=1,
-                status="paused",
-            ),
+            code=backfill_legacy_shipping_data,
             reverse_code=migrations.RunPython.noop,
         ),
         migrations.RemoveConstraint(
