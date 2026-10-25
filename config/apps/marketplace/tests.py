@@ -152,7 +152,7 @@ class CarrierSafetyTests(TestCase):
             with patch.dict("os.environ", {
                 "TIPAX_TRACKING_COST_PATH": "amount",
                 "TIPAX_TRACKING_CURRENCY_PATH": "currency",
-                "TIPAX_AMOUNT_DIVISOR": "10",
+                "TIPAX_TRACKING_AMOUNT_DIVISOR": "10",
             }, clear=True):
                 with self.assertRaises(CarrierError):
                     client.track("TRACK-130")
