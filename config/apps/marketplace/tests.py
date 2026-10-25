@@ -64,7 +64,7 @@ class CarrierSafetyTests(TestCase):
             "TIPAX_QUOTE_AMOUNT_PATH": "data.amount",
             "TIPAX_QUOTE_CURRENCY_PATH": "data.currency",
             "TIPAX_AMOUNT_DIVISOR": "10",
-        }):
+        }, clear=True):
             amount = client._amount({"data": {"amount": "1300", "currency": "IRR"}})
         self.assertEqual(amount, 130)
 
@@ -77,7 +77,7 @@ class CarrierSafetyTests(TestCase):
         with patch.dict("os.environ", {
             "TIPAX_QUOTE_AMOUNT_PATH": "amount",
             "TIPAX_AMOUNT_DIVISOR": "1",
-        }):
+        }, clear=True):
             with self.assertRaises(CarrierError):
                 client._amount({"amount": 130})
 
