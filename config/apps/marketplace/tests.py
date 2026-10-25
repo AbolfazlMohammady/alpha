@@ -10,6 +10,7 @@ from .models import FinancialReconciliation, JournalEntry, LedgerAccount, Settle
 from apps.shop.models import Category, Product
 from apps.orders.models import Cart, CartItem, Order, OrderItem
 from .payouts import submit_settlement_payout
+from .carriers import CarrierError, JsonCarrierClient
 from .services import (
     account_balance,
     create_daily_settlement_batches,
@@ -23,6 +24,34 @@ from .services import (
     trial_balance,
     validate_settlement_batch_eligibility,
 )
+
+
+class CarrierSafetyTests(TestCase):
+    def test_carrier_label_must_use_https(self):
+        client = JsonCarrierClient(
+            base_url="https://carrier.example",
+            token="test-token",
+            shipment_path="/shipments",
+        )
+        with patch.object(client, "_request", return_value={
+            "tracking_number": "TRACK-SAFE-001",
+            "label_url": "javascript:alert(1)",
+        }):
+            with self.assertRaises(CarrierError):
+                client.create_shipment({"order_number": "TEST"})
+
+    def test_https_carrier_label_is_accepted(self):
+        client = JsonCarrierClient(
+            base_url="https://carrier.example",
+            token="test-token",
+            shipment_path="/shipments",
+        )
+        with patch.object(client, "_request", return_value={
+            "tracking_number": "TRACK-SAFE-002",
+            "label_url": "https://labels.carrier.example/label/123",
+        }):
+            result = client.create_shipment({"order_number": "TEST"})
+        self.assertEqual(result["label_url"], "https://labels.carrier.example/label/123")
 
 
 class LedgerPostingTests(TestCase):
