@@ -39,6 +39,9 @@ class Vendor(models.Model):
 
     class Meta:
         ordering = ("store_name",)
+        constraints = [
+            models.CheckConstraint(check=Q(commission_bps__lte=10000), name="vendor_commission_bps_lte_10000"),
+        ]
         indexes = [models.Index(fields=("status", "created_at"), name="market_vendor_status_idx")]
 
     def clean(self):
