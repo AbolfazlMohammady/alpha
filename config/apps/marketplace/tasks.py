@@ -75,7 +75,7 @@ def refresh_active_shipments_task(self):
                 continue
             if target == Shipment.Status.DELIVERED:
                 shipment.delivered_at = now
-                actual_cost = response.get("actual_cost") or response.get("shipping_cost") or response.get("final_cost")
+                actual_cost = next((response[key] for key in ("actual_cost", "shipping_cost", "final_cost") if response.get(key) is not None), None)
                 if actual_cost is not None:
                     reconcile_shipment_actual_cost(shipment=shipment, actual_cost=actual_cost)
             elif target == Shipment.Status.RETURNED:
