@@ -3,6 +3,7 @@ from datetime import timedelta
 from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -121,6 +122,8 @@ if RUNNING_IN_DOCKER and redis_cache_url.startswith(("redis://127.0.0.1:", "redi
     redis_cache_url = redis_cache_url.replace("redis://localhost:", "redis://redis:", 1)
 
 CELERY_BROKER_URL = redis_url
+CELERY_TIMEZONE = os.environ.get("CELERY_TIMEZONE", "Asia/Tehran")
+CELERY_ENABLE_UTC = True
 CELERY_TASK_IGNORE_RESULT = True
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -191,7 +194,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "create-daily-vendor-settlement-batches": {
         "task": "apps.marketplace.tasks.create_daily_settlement_batches_task",
-        "schedule": 86400.0,
+        "schedule": crontab(minute=0, hour=23),
     },
     "refresh-active-marketplace-shipments": {
         "task": "apps.marketplace.tasks.refresh_active_shipments_task",
