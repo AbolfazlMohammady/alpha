@@ -4,7 +4,9 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("orders", "0001_initial"),
+        # custom_design is introduced by the parallel order migration, so it
+        # must exist in the project state before constraints reference it.
+        ("orders", "0003_custom_design_cart_order"),
         ("marketplace", "0001_initial"),
     ]
 
