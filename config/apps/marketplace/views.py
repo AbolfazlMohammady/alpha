@@ -892,7 +892,15 @@ def shipment_book_api(request, order_id):
             shipment.external_shipment_id = result["external_shipment_id"]
             shipment.tracking_number = result["tracking_number"]
             shipment.label_url = result["label_url"]
-            shipment.provider_payload = {**shipment.provider_payload, "booking": result["raw"]}
+            shipment.provider_payload = {
+                **shipment.provider_payload,
+                "booking": {
+                    "external_shipment_id": result["external_shipment_id"],
+                    "tracking_number": result["tracking_number"],
+                    "label_url": result["label_url"],
+                    "actual_cost": result.get("actual_cost"),
+                },
+            }
             shipment.booked_at = timezone.now()
             shipment.status = Shipment.Status.BOOKED
             shipment.last_error = ""
