@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RemoveConstraint(
             model_name="vendorproduct",
-            name="vendor_listing_compare_gte_retail",
+            name="vendor_listing_compare_nonnegative",
         ),
         migrations.AddConstraint(
             model_name="vendorproduct",
@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveConstraint(
             model_name="vendorproductsubmission",
-            name="vendor_submission_compare_gte_retail",
+            name="vendor_submission_compare_nonnegative",
         ),
         migrations.AddConstraint(
             model_name="vendorproductsubmission",
