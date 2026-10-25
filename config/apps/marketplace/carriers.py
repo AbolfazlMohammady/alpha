@@ -288,13 +288,16 @@ def validate_quote_input(payload: dict):
         value = str(payload.get(key, "")).strip()
         if len(value) < 5 or len(value) > 20:
             raise ValidationError(f"{key}: کد پستی معتبر وارد کنید.")
+    dimensions = {}
+    for key, label in (("length_cm", "طول"), ("width_cm", "عرض"), ("height_cm", "ارتفاع")):
+        if payload.get(key) in (None, ""):
+            raise ValidationError(f"{label} بسته برای استعلام دقیق حمل الزامی است.")
+        dimensions[key] = _optional_dimension(payload[key], label)
     return {
         "weight_grams": weight,
         "origin_postal_code": str(payload["origin_postal_code"]).strip(),
         "destination_postal_code": str(payload["destination_postal_code"]).strip(),
-        "length_cm": _optional_dimension(payload.get("length_cm"), "طول"),
-        "width_cm": _optional_dimension(payload.get("width_cm"), "عرض"),
-        "height_cm": _optional_dimension(payload.get("height_cm"), "ارتفاع"),
+        **dimensions,
         "declared_value": _optional_nonnegative(payload.get("declared_value"), "ارزش اظهارشده"),
         "service_level": str(payload.get("service_level", "standard"))[:40],
     }
