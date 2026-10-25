@@ -89,7 +89,7 @@ jobs:
           grep -vE '^(rembg\[cpu\]|onnxruntime==)' requirements.txt > /tmp/requirements-ci.txt
           python -m pip install --upgrade pip
           python -m pip install -r /tmp/requirements-ci.txt
-          python -m pip install pytest pytest-django
+          python -m pip install pytest pytest-django freezegun
 
       - name: Django system check
         run: python manage.py check
