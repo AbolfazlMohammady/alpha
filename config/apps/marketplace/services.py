@@ -754,6 +754,13 @@ def create_shipping_quote(*, user, cart_item, address, provider):
     vendor = cart_item.vendor_listing.vendor
     if not vendor.pickup_postal_code:
         raise ValidationError("فروشنده هنوز کد پستی مبدأ ارسال را در پنل تکمیل نکرده است.")
+    for label, postal_code in (
+        ("مبدأ فروشنده", vendor.pickup_postal_code),
+        ("مقصد مشتری", address.postal_code),
+    ):
+        normalized_postal_code = str(postal_code or "").strip()
+        if len(normalized_postal_code) != 10 or not normalized_postal_code.isascii() or not normalized_postal_code.isdigit():
+            raise ValidationError(f"کد پستی {label} باید دقیقاً ۱۰ رقم انگلیسی باشد.")
     provider = str(provider).lower()
     if provider not in {"tipax", "post"}:
         raise ValidationError("شرکت حمل‌ونقل انتخاب‌شده پشتیبانی نمی‌شود.")
