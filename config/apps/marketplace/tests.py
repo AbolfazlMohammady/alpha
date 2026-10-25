@@ -864,10 +864,11 @@ class SettlementPayoutSafetyTests(TestCase):
             "PAYOUT_RESPONSE_AMOUNT_PATH": "amount",
             "PAYOUT_RESPONSE_REFERENCE_PATH": "transfer_id",
             "PAYOUT_RESPONSE_STATUS_PATH": "status",
+            "PAYOUT_RESPONSE_CURRENCY_PATH": "currency",
         }
         with patch.dict("os.environ", env), patch("apps.marketplace.payouts.urllib.request.urlopen") as urlopen:
             response = urlopen.return_value.__enter__.return_value
-            response.read.return_value = b'{"transfer_id":"BANK-PENDING-TEST","status":"pending","amount":10000}'
+            response.read.return_value = b'{"transfer_id":"BANK-PENDING-TEST","status":"pending","amount":10000,"currency":"IRT"}'
             result = submit_settlement_payout(self.batch.pk)
 
         self.assertEqual(result.status, SettlementBatch.Status.PROCESSING)
