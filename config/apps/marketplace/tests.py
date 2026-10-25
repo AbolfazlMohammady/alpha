@@ -9,7 +9,7 @@ from django.utils import timezone
 from .models import FinancialReconciliation, JournalEntry, LedgerAccount, SettlementBatch, SettlementLine, Shipment, Vendor, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from apps.shop.models import Category, Product
 from apps.orders.models import Cart, CartItem, Order, OrderItem
-from .payouts import submit_settlement_payout
+from .payouts import PayoutNotConfigured, submit_settlement_payout
 from .carriers import CarrierError, JsonCarrierClient, TipaxClient, validate_quote_input, validate_quote_input
 from .services import (
     account_balance,
@@ -81,6 +81,20 @@ class CarrierSafetyTests(TestCase):
             with self.assertRaises(CarrierError):
                 client._amount({"amount": 130})
 
+
+    def test_carrier_rejects_nonstandard_rial_divisor(self):
+        client = TipaxClient(
+            base_url="https://carrier.example",
+            token="test-token",
+            quote_path="/quote",
+        )
+        with patch.dict("os.environ", {
+            "TIPAX_QUOTE_AMOUNT_PATH": "amount",
+            "TIPAX_QUOTE_CURRENCY_PATH": "currency",
+            "TIPAX_AMOUNT_DIVISOR": "100",
+        }, clear=True):
+            with self.assertRaises(CarrierError):
+                client._amount({"amount": "13000", "currency": "IRR"})
 
     def test_carrier_amount_without_explicit_amount_path_fails_closed(self):
         client = TipaxClient(
@@ -777,6 +791,18 @@ class SettlementPayoutSafetyTests(TestCase):
         self.assertEqual(reconciliation.status, FinancialReconciliation.Status.MATCHED)
 
 
+
+    def test_payout_rejects_currency_and_multiplier_mismatch_before_transfer(self):
+        env = {
+            "PAYOUT_API_BASE_URL": "https://bank.example.test",
+            "PAYOUT_API_TOKEN": "test-token",
+            "PAYOUT_API_PATH": "/v1/transfers",
+            "PAYOUT_AMOUNT_MULTIPLIER": "10",
+            "PAYOUT_API_CURRENCY": "IRT",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            with self.assertRaises(PayoutNotConfigured):
+                submit_settlement_payout(self.batch.pk)
 
     def test_payout_preflight_uses_vendor_specific_payable_ledger(self):
         now = timezone.now()
