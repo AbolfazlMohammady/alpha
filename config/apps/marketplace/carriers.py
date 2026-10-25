@@ -127,11 +127,22 @@ class JsonCarrierClient:
                     f"{prefix}_AMOUNT_DIVISOR باید صریحاً پس از بررسی واحد پول API تنظیم شود."
                 )
             divisor = Decimal(divisor_raw)
-            raw_currency = str(self._path_value(data, os.environ.get(f"{prefix}_{currency_path_env}", "currency")) or "").strip().upper()
+            currency_path = os.environ.get(f"{prefix}_{currency_path_env}", "").strip()
+            if not currency_path:
+                raise CarrierError(
+                    f"{prefix}_{currency_path_env} باید صریحاً مطابق قرارداد API تنظیم شود."
+                )
+            raw_currency = str(self._path_value(data, currency_path) or "").strip().upper()
             if divisor <= 0:
                 raise InvalidOperation
-            if raw_currency in {"IRR", "RIAL", "RIALS", "ریال"} and divisor == 1:
-                raise CarrierError("API مبلغ را به ریال اعلام کرده؛ ضریب تبدیل به واحد پروژه را تنظیم کنید.")
+            if raw_currency in {"IRR", "RIAL", "RIALS", "ریال"}:
+                if divisor == 1:
+                    raise CarrierError("API مبلغ را به ریال اعلام کرده؛ ضریب تبدیل به واحد پروژه را تنظیم کنید.")
+            elif raw_currency in {"IRT", "TOMAN", "TOMANS", "تومان"}:
+                if divisor != 1:
+                    raise CarrierError("API مبلغ را به تومان اعلام کرده؛ ضریب تبدیل باید ۱ باشد.")
+            else:
+                raise CarrierError("واحد پول پاسخ شرکت حمل‌ونقل مشخص یا پشتیبانی‌شده نیست.")
             normalized = raw_amount / divisor
             if normalized != normalized.to_integral_value():
                 raise CarrierError("مبلغ حمل پس از تبدیل واحد، عدد صحیح قابل ثبت در حسابداری نیست.")
