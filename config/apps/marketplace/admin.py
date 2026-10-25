@@ -3,6 +3,8 @@ from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from django.utils.text import slugify
 from django.db import IntegrityError, transaction
+from django.contrib.admin import helpers
+from django.template.response import TemplateResponse
 
 from apps.shop.models import Category, Product, ProductImage
 
@@ -125,6 +127,81 @@ class ShipmentAdmin(ReadOnlyAuditAdmin):
     search_fields = ("tracking_number", "external_shipment_id", "vendor_order__order__number", "vendor_order__vendor__store_name")
     readonly_fields = tuple(field.name for field in Shipment._meta.fields)
     list_select_related = ("vendor_order", "vendor_order__vendor", "vendor_order__order")
+    actions = ("confirm_delivery_with_evidence",)
+
+    @admin.action(description="تأیید تحویل مرسوله با ثبت مدرک")
+    def confirm_delivery_with_evidence(self, request, queryset):
+        from django.contrib import messages
+        from django.utils import timezone
+        from .services import mark_vendor_order_delivered
+
+        if queryset.count() != 1:
+            self.message_user(request, "برای ثبت مدرک، هر بار فقط یک مرسوله را انتخاب کن.", messages.ERROR)
+            return None
+
+        if request.POST.get("apply"):
+            reference = " ".join(str(request.POST.get("delivery_evidence_reference") or "").split())
+            note = " ".join(str(request.POST.get("delivery_evidence_note") or "").split())
+            if not reference or len(reference) > 180:
+                self.message_user(request, "مرجع قابل پیگیری تحویل الزامی است و حداکثر ۱۸۰ نویسه دارد.", messages.ERROR)
+                return None
+            if len(note) > 1000:
+                self.message_user(request, "توضیح مدرک تحویل حداکثر ۱۰۰۰ نویسه باشد.", messages.ERROR)
+                return None
+
+            candidate = queryset.first()
+            now = timezone.now()
+            allowed_statuses = {
+                Shipment.Status.BOOKED,
+                Shipment.Status.PICKUP_REQUESTED,
+                Shipment.Status.HANDED_OVER,
+                Shipment.Status.IN_TRANSIT,
+                Shipment.Status.EXCEPTION,
+                Shipment.Status.DELIVERY_FAILED,
+            }
+            with transaction.atomic():
+                # Match refund/booking lock order: vendor order, then shipment.
+                vendor_order = VendorOrder.objects.select_for_update().get(pk=candidate.vendor_order_id)
+                shipment = Shipment.objects.select_for_update().get(pk=candidate.pk, vendor_order=vendor_order)
+                if shipment.status not in allowed_statuses:
+                    self.message_user(request, "این مرسوله در وضعیت قابل تأیید تحویل نیست.", messages.ERROR)
+                    return None
+                shipment.status = Shipment.Status.DELIVERED
+                shipment.delivered_at = now
+                payload = shipment.provider_payload if isinstance(shipment.provider_payload, dict) else {}
+                shipment.provider_payload = {
+                    **payload,
+                    "delivery_confirmation": {
+                        "source": "staff_manual",
+                        "reference": reference,
+                        "note": note,
+                        "confirmed_by_user_id": request.user.pk,
+                        "confirmed_at": now.isoformat(),
+                    },
+                }
+                shipment.last_event_at = now
+                shipment.last_error = ""
+                shipment.save(update_fields=(
+                    "status", "delivered_at", "provider_payload", "last_event_at",
+                    "last_error", "updated_at",
+                ))
+                all_parcels_delivered = not Shipment.objects.filter(
+                    vendor_order_id=vendor_order.pk,
+                ).exclude(status=Shipment.Status.DELIVERED).exists()
+                if all_parcels_delivered:
+                    mark_vendor_order_delivered(vendor_order, delivered_at=now)
+
+            self.message_user(request, "تحویل ثبت شد و مدرک در سابقه مرسوله ذخیره شد.", messages.SUCCESS)
+            return None
+
+        return TemplateResponse(request, "admin/marketplace/shipment/confirm_delivery.html", {
+            **self.admin_site.each_context(request),
+            "opts": self.model._meta,
+            "queryset": queryset,
+            "action_checkbox_name": helpers.ACTION_CHECKBOX_NAME,
+            "selected_ids": list(queryset.values_list("pk", flat=True)),
+            "title": "تأیید تحویل مرسوله",
+        })
 
 
 @admin.register(LedgerAccount)
