@@ -82,6 +82,20 @@ class CarrierSafetyTests(TestCase):
                 client._amount({"amount": 130})
 
 
+    def test_carrier_amount_without_explicit_amount_path_fails_closed(self):
+        client = TipaxClient(
+            base_url="https://carrier.example",
+            token="test-token",
+            quote_path="/quote",
+        )
+        with patch.dict("os.environ", {
+            "TIPAX_AMOUNT_DIVISOR": "1",
+            "TIPAX_QUOTE_CURRENCY_PATH": "currency",
+        }, clear=True):
+            with self.assertRaises(CarrierError):
+                client._amount({"amount": 130, "currency": "IRT"})
+
+
 class LedgerPostingTests(TestCase):
     def setUp(self):
         self.clearing = LedgerAccount.objects.create(
