@@ -294,7 +294,15 @@
 
     function renderVariants() {
         const current = variantSelect.value;
-        variantSelect.innerHTML = `<option value="">انتخاب رنگ و سایز</option>` + variants.map((variant) => `<option value="${variant.id}">${escapeHtml(variant.color)} / ${escapeHtml(variant.size)} — ${formatPrice(variant.price)} تومان${Number(variant.stock) <= 0 ? " — ناموجود" : ""}</option>`).join("");
+        const selectedVendorOption = vendorListingSelect && vendorListingSelect.value
+            ? vendorListingSelect.selectedOptions[0]
+            : null;
+        const sellerStock = selectedVendorOption ? Number(selectedVendorOption.dataset.stock || 0) : null;
+        variantSelect.innerHTML = `<option value="">انتخاب رنگ و سایز</option>` + variants.map((variant) => {
+            const availableStock = sellerStock === null ? Number(variant.stock) : sellerStock;
+            const displayPrice = selectedVendorOption ? Number(selectedVendorOption.dataset.price || variant.price) : Number(variant.price);
+            return `<option value="${variant.id}">${escapeHtml(variant.color)} / ${escapeHtml(variant.size)} — ${formatPrice(displayPrice)} تومان${availableStock <= 0 ? " — ناموجود" : ""}</option>`;
+        }).join("");
         if (variants.some((variant) => String(variant.id) === current)) variantSelect.value = current;
     }
 
@@ -558,7 +566,7 @@
     }
 
     variantSelect.addEventListener("change", renderPrices);
-    vendorListingSelect?.addEventListener("change", renderPrices);
+    vendorListingSelect?.addEventListener("change", () => { renderVariants(); renderPrices(); });
 
     if (saveButton) saveButton.addEventListener("click", async () => {
         saveButton.disabled = true;
