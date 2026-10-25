@@ -74,8 +74,13 @@ jobs:
         run: python manage.py check
 
       - name: Check migration state
-        run: python manage.py makemigrations --check --dry-run --verbosity 3
+        run: |
+          if ! python manage.py makemigrations --check --dry-run --verbosity 3; then
+            echo "Migration drift detected; showing the proposed migration state for diagnosis."
+            python manage.py makemigrations --dry-run --verbosity 3 || true
+            exit 1
+          fi
 
       - name: Run marketplace accounting and logistics tests
         if: always() && steps.install.outcome == 'success'
-        run: python manage.py test marketplace --verbosity 2
+        run: python manage.py test apps.marketplace.tests --verbosity 2
