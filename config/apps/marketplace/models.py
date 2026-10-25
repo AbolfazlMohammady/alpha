@@ -715,10 +715,6 @@ class VendorProductSubmission(models.Model):
             raise ValidationError("طول، عرض و ارتفاع هر واحد فروش باید بیشتر از صفر باشند.")
         if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
-        if self.weight_grams <= 0:
-            raise ValidationError({"weight_grams": "وزن هر واحد فروش برای محاسبه هزینه حمل باید بیشتر از صفر باشد."})
-        if not all((self.package_length_cm, self.package_width_cm, self.package_height_cm)):
-            raise ValidationError("طول، عرض و ارتفاع هر واحد فروش باید برای محاسبه هزینه حمل بیشتر از صفر باشند.")
         if self.category_id and not self.category.is_active:
             raise ValidationError({"category": "دسته‌بندی انتخاب‌شده فعال نیست."})
         if self.product_id and not self.product.is_active:
