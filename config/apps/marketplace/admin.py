@@ -122,6 +122,13 @@ class ShippingQuoteAdmin(ReadOnlyAuditAdmin):
 
 @admin.register(Shipment)
 class ShipmentAdmin(ReadOnlyAuditAdmin):
+    def has_change_permission(self, request, obj=None):
+        # Allow the changelist's audited delivery action, but keep the
+        # individual shipment form strictly read-only.
+        if request.path.rstrip("/").endswith("/change"):
+            return False
+        return request.user.is_active and request.user.is_staff
+
     list_display = ("vendor_order", "provider", "status", "tracking_number", "quoted_cost", "actual_cost", "created_at")
     list_filter = ("provider", "status", "payer", "created_at")
     search_fields = ("tracking_number", "external_shipment_id", "vendor_order__order__number", "vendor_order__vendor__store_name")
