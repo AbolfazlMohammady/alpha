@@ -2430,8 +2430,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 variant => String(variant.id) === String(document.getElementById("variant-select")?.value)
             ) || currentVariant;
 
-            if (!selectedVariant?.id || Number(selectedVariant.stock) <= 0) {
-                status("لطفاً یک رنگ و سایز موجود را انتخاب کنید.");
+            const selectedVendorOption = document.getElementById("designer-vendor-listing")?.selectedOptions[0];
+            const sellerStock = selectedVendorOption?.value
+                ? Number(selectedVendorOption.dataset.stock || 0)
+                : Number(selectedVariant?.stock || 0);
+            if (!selectedVariant?.id || sellerStock <= 0) {
+                status("لطفاً یک رنگ و سایز موجود و یک فروشنده دارای موجودی را انتخاب کنید.");
                 return;
             }
             currentVariant = selectedVariant;
