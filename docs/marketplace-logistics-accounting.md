@@ -54,7 +54,7 @@ The seller submits bank details from the dashboard; the full IBAN is never retur
 ## Celery
 
 The app registers:
-- Daily settlement-batch preparation (86400 seconds). It creates batches for admin review; it does not independently authorize a payout.
+- Daily settlement-batch preparation runs at 23:00 Asia/Tehran by default (`CELERY_TIMEZONE` can override the business timezone). It creates batches for admin review; it does not independently authorize a payout.
 - Carrier tracking refresh (1800 seconds).
 
 Both require the project's Celery worker and Beat to be running. Run these after deploying the schema:
