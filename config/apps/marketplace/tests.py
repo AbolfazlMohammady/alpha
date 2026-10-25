@@ -641,6 +641,44 @@ class VendorShippingSettlementTests(TestCase):
             validate_settlement_batch_eligibility(batches[0], now=self.now)
 
 
+    def test_staff_cannot_confirm_delivery_without_auditable_evidence(self):
+        staff = get_user_model().objects.create(
+            phone="+989121234569",
+            is_staff=True,
+            is_superuser=True,
+        )
+        shipment = Shipment.objects.create(
+            vendor_order=self.vendor_order,
+            provider=Shipment.Provider.MANUAL,
+            status=Shipment.Status.IN_TRANSIT,
+            payer=Shipment.Payer.VENDOR,
+            tracking_number="TRACK-EVIDENCE-001",
+            customer_charge=0,
+        )
+        self.client.force_login(staff)
+        url = f"/marketplace/api/admin/shipping/{shipment.uuid}/status/"
+        response = self.client.post(
+            url,
+            data='{"status":"delivered"}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        shipment.refresh_from_db()
+        self.assertEqual(shipment.status, Shipment.Status.IN_TRANSIT)
+
+        response = self.client.post(
+            url,
+            data='{"status":"delivered","delivery_evidence_reference":"تأیید تحویل در پنل شرکت حمل","delivery_evidence_note":"وضعیت مرسوله با رهگیری شرکت حمل تطبیق داده شد."}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        shipment.refresh_from_db()
+        confirmation = shipment.provider_payload["delivery_confirmation"]
+        self.assertEqual(confirmation["source"], "staff_manual")
+        self.assertEqual(confirmation["reference"], "تأیید تحویل در پنل شرکت حمل")
+        self.assertEqual(confirmation["confirmed_by_user_id"], staff.pk)
+
+
 class SettlementPayoutSafetyTests(TestCase):
     def setUp(self):
         now = timezone.now()
