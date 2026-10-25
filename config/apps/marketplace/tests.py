@@ -96,6 +96,36 @@ class CarrierSafetyTests(TestCase):
                 client._amount({"amount": 130, "currency": "IRT"})
 
 
+    def test_tracking_cost_requires_explicit_currency_and_divisor(self):
+        client = TipaxClient(
+            base_url="https://carrier.example",
+            token="test-token",
+            tracking_path="/track/{tracking_number}",
+        )
+        with patch.object(client, "_request", return_value={"amount": "1300", "currency": "IRR"}):
+            with patch.dict("os.environ", {
+                "TIPAX_TRACKING_COST_PATH": "amount",
+                "TIPAX_TRACKING_CURRENCY_PATH": "currency",
+            }, clear=True):
+                with self.assertRaises(CarrierError):
+                    client.track("TRACK-1300")
+
+    def test_tracking_cost_rejects_toman_amount_with_rial_divisor(self):
+        client = TipaxClient(
+            base_url="https://carrier.example",
+            token="test-token",
+            tracking_path="/track/{tracking_number}",
+        )
+        with patch.object(client, "_request", return_value={"amount": "130", "currency": "IRT"}):
+            with patch.dict("os.environ", {
+                "TIPAX_TRACKING_COST_PATH": "amount",
+                "TIPAX_TRACKING_CURRENCY_PATH": "currency",
+                "TIPAX_AMOUNT_DIVISOR": "10",
+            }, clear=True):
+                with self.assertRaises(CarrierError):
+                    client.track("TRACK-130")
+
+
 class LedgerPostingTests(TestCase):
     def setUp(self):
         self.clearing = LedgerAccount.objects.create(
