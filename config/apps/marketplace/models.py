@@ -24,7 +24,7 @@ class Vendor(models.Model):
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING, db_index=True)
     commission_bps = models.PositiveSmallIntegerField(default=1000, validators=[MaxValueValidator(10000)], help_text="کمیسیون بر حسب basis point؛ 1000 یعنی 10 درصد.")
     supports_custom_printing = models.BooleanField(default=False)
-    settlement_hold_hours = models.PositiveSmallIntegerField(default=24, help_text="حداقل فاصله تحویل تا واجد شرایط شدن برای تسویه.")
+    settlement_hold_hours = models.PositiveSmallIntegerField(default=24, validators=[MinValueValidator(24)], help_text="حداقل فاصله تحویل تا واجد شرایط شدن برای تسویه؛ کمتر از ۲۴ ساعت مجاز نیست.")
     bank_account_name = models.CharField(max_length=160, blank=True)
     bank_iban = models.CharField(max_length=34, blank=True, help_text="اطلاعات بانکی فقط پس از احراز هویت و با دسترسی محدود نگهداری شود.")
     pickup_postal_code = models.CharField(max_length=10, blank=True)
@@ -41,6 +41,7 @@ class Vendor(models.Model):
         ordering = ("store_name",)
         constraints = [
             models.CheckConstraint(check=Q(commission_bps__lte=10000), name="vendor_commission_bps_lte_10000"),
+            models.CheckConstraint(check=Q(settlement_hold_hours__gte=24), name="vendor_settlement_hold_gte_24h"),
         ]
         indexes = [models.Index(fields=("status", "created_at"), name="market_vendor_status_idx")]
 
