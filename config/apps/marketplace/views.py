@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -181,8 +181,15 @@ def vendor_application_page(request):
         application.reviewed_by = None
         application.reviewed_at = None
         try:
-            application.full_clean()
-            application.save()
+            with transaction.atomic():
+                application.full_clean()
+                application.save()
+        except IntegrityError:
+            return render(request, "marketplace/vendor_application.html", {
+                "application": existing,
+                "errors": ["این درخواست با اطلاعات مشابه هم‌زمان ثبت شده است؛ صفحه را تازه‌سازی و وضعیت درخواست را بررسی کن."],
+                "form_data": request.POST,
+            }, status=409)
         except ValidationError as exc:
             errors = []
             for field, field_errors in getattr(exc, "message_dict", {}).items():
