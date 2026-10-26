@@ -7,6 +7,7 @@ app_name = "marketplace"
 urlpatterns = [
     path("vendor/dashboard/", views.vendor_dashboard_page, name="vendor_dashboard_page"),
     path("vendor/apply/", views.vendor_application_page, name="vendor_application_page"),
+    path("portal/<slug:section>/", views.portal_section_page, name="portal_section_page"),
     path("api/vendor/profile/shipping/", views.vendor_shipping_profile_api, name="vendor_shipping_profile_api"),
     path("api/vendor/profile/financial/", views.vendor_financial_profile_api, name="vendor_financial_profile_api"),
     path("api/shipping/quote/", views.cart_shipping_quote_api, name="cart_shipping_quote_api"),
