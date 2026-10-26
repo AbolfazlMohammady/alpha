@@ -265,6 +265,29 @@ class VendorDashboardAccessTests(TestCase):
 
 
 class PortalPlaceholderAccessTests(TestCase):
+    def test_homepage_renders_seller_shortcuts_for_store_manager(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234581",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("home:index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "پنل فروشنده")
+        self.assertContains(response, "new-product")
+
+    def test_homepage_renders_admin_shortcuts_for_staff(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234582",
+            role=RoleUser.ADMIN,
+            is_staff=True,
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("home:index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "مدیریت و حسابداری")
+        self.assertContains(response, "trial-balance")
+
     def test_store_manager_can_open_seller_placeholder(self):
         user = get_user_model().objects.create_user(phone="+989121234576", role=RoleUser.STORE_MANAGER)
         self.client.force_login(user)
