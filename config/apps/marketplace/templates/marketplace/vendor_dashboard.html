@@ -34,6 +34,10 @@
 .vd-nav a{flex:0 0 auto;text-decoration:none;color:inherit;font-size:13px;font-weight:700;padding:9px 13px;border-radius:10px;background:var(--surface-secondary,#f3f4f6);white-space:nowrap}
 .vd-nav a:hover,.vd-nav a:focus-visible{outline:2px solid var(--primary,#1f2937);outline-offset:2px}
 .vd-section{scroll-margin-top:150px}
+.vd-nav a[aria-current="page"]{background:#173b3c;color:#fff}
+.vd-panel-title{margin:0 0 6px;font-size:22px}
+.vd-panel-subtitle{margin:0 0 18px;color:var(--text-secondary,#64748b);font-size:13px;line-height:1.9}
+.vd-section[hidden],#vd-overview[hidden]{display:none!important}
 @media(max-width:600px){.vendor-dashboard{padding:0 12px}.vd-card{padding:14px}}
 </style>
 
@@ -50,7 +54,8 @@
         <a href="#vd-overview">نمای کلی</a>
         <a href="#vd-orders-section">سفارش‌ها و ارسال</a>
         <a href="#vd-products-section">محصولات من</a>
-        <a href="#vd-new-product-section">ثبت محصول</a>
+        <a href="#vd-new-product-section">ثبت محصول جدید</a>
+        <a href="#vd-new-product-existing-section">افزودن از کاتالوگ</a>
         <a href="#vd-settlements-section">تسویه‌ها</a>
         <a href="#vd-financial-section">حساب بانکی</a>
         <a href="#vd-shipping-section">مبدأ ارسال</a>
@@ -176,6 +181,28 @@
     const root = document.querySelector(".vendor-dashboard");
     if (!root) return;
     const csrf = root.querySelector("input[name='csrfmiddlewaretoken']")?.value || "";
+    const sectionNav = root.querySelector(".vd-nav");
+    const overview = document.getElementById("vd-overview");
+    const panels = Array.from(root.querySelectorAll(".vd-section[id]"));
+    const showPanel = (id, updateHash = true) => {
+        const isOverview = id === "vd-overview" || !panels.some((panel) => panel.id === id);
+        if (overview) overview.hidden = !isOverview;
+        panels.forEach((panel) => { panel.hidden = isOverview || panel.id !== id; });
+        sectionNav?.querySelectorAll("a").forEach((link) => {
+            const active = link.getAttribute("href") === "#" + (isOverview ? "vd-overview" : id);
+            if (active) link.setAttribute("aria-current", "page");
+            else link.removeAttribute("aria-current");
+        });
+        if (updateHash && history.replaceState) history.replaceState(null, "", "#" + (isOverview ? "vd-overview" : id));
+        if (!isOverview) root.scrollIntoView({behavior:"smooth", block:"start"});
+    };
+    sectionNav?.addEventListener("click", (event) => {
+        const link = event.target.closest("a[href^='#']");
+        if (!link) return;
+        event.preventDefault();
+        showPanel(link.getAttribute("href").slice(1));
+    });
+    showPanel(location.hash.slice(1) || "vd-overview", false);
     const message = document.getElementById("vd-message");
     const money = (value) => new Intl.NumberFormat("fa-IR").format(Number(value || 0));
     const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
