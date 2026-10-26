@@ -47,7 +47,7 @@
           <input name="contact_phone" maxlength="20" required inputmode="tel" value="{{ form_data.contact_phone|default:request.user.phone }}">
         </label>
         <label class="va-field">ایمیل
-          <input name="contact_email" type="email" autocomplete="email" value="{{ form_data.contact_email|default:request.user.email|default:'' }}">
+          <input name="contact_email" type="email" autocomplete="email" required value="{{ form_data.contact_email|default:request.user.email|default:'' }}">
         </label>
         <label class="va-field">کد ملی
           <input name="national_id" inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10" required autocomplete="off" value="{{ form_data.national_id|default:'' }}">
