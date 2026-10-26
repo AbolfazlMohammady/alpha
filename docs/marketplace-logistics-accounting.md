@@ -110,3 +110,14 @@ The seller-facing dashboard is intentionally a functional first version; styling
 - External references and amount differences are retained as reconciliation records.
 
 Before production, add provider-specific integration tests, a real gateway payment/refund adapter, bank statement import/reconciliation, retention controls for shipping PII, and formal accounting/legal review of commission, shipping surplus/shortfall, return windows, and seller payout terms. Failed or ambiguous payouts must be reconciled manually before retry; a retry must never be automatic.
+
+
+## Seller onboarding and temporary portal navigation
+
+- The public home page links to `/marketplace/vendor/apply/`. A prospective seller can submit contact details, business details, seller type (retail/wholesale/both), Iranian national ID, and address details before a site account exists.
+- National ID checksum, Iranian phone format, email, and postal code are validated server-side. Applications do not change a user's role and do not grant access automatically.
+- Staff review applications in Django admin under **Vendor applications**. For an anonymous applicant, create the account using the submitted phone and email, link that user to the application, and then set the account role to `store_manager`. The admin validates that the linked account's phone and email match the application.
+- On first seller dashboard access, an approved application is copied into the vendor profile (store name and seller type). Legacy pending vendor profiles are activated only when the staff-assigned `store_manager` role is present. Suspended and rejected profiles are not automatically reactivated.
+- Retail-only vendors cannot create or edit wholesale price tiers through either the UI or API. The seller-type migration preserves vendors that already have wholesale-enabled listings or tiers.
+- The home page includes role-protected shortcuts for seller and admin sections. Links marked as temporary open a placeholder page only; they do not execute financial or order operations. Admin placeholders require staff/superuser permissions.
+- Release checks: `python manage.py check`, `python manage.py makemigrations --check --dry-run`, and `python manage.py test apps.marketplace.test_release_checks`. Run migrations before starting the updated application. The current external carrier adapters remain unconfigured until provider documentation, credentials, and sandbox access are supplied.
