@@ -694,7 +694,7 @@ def vendor_product_update_api(request, listing_id):
             listing = get_object_or_404(VendorProduct.objects.select_for_update(), pk=listing_id, vendor=vendor)
             allowed = {
                 "retail_price", "compare_at_price", "sale_unit", "units_per_order",
-                "stock_quantity", "wholesale_enabled", "supports_custom_printing",
+                "stock_quantity", "supports_custom_printing",
                 "weight_grams", "package_length_cm", "package_width_cm",
                 "package_height_cm", "handling_days",
             }
@@ -704,7 +704,7 @@ def vendor_product_update_api(request, listing_id):
             review_required = False
             review_fields = {
                 "retail_price", "compare_at_price", "sale_unit", "units_per_order",
-                "wholesale_enabled", "supports_custom_printing", "weight_grams",
+                "supports_custom_printing", "weight_grams",
                 "package_length_cm", "package_width_cm", "package_height_cm", "handling_days",
             }
             for field in allowed.intersection(payload):
