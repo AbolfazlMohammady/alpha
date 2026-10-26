@@ -16,7 +16,7 @@ class ShopModelTests(TestCase):
             is_active=True,
         )
         self.color = ProductColor.objects.create(name="مشکی", slug="black", hex_code="#000000")
-        self.size = ProductSize.objects.create(name="L", slug="l")
+        self.size, _ = ProductSize.objects.get_or_create(slug="l", defaults={"name": "L"})
 
     def test_variant_reports_stock(self):
         variant = ProductVariant.objects.create(
@@ -130,7 +130,7 @@ class ShopViewTests(TestCase):
         response = self.client.get(reverse("shop:product", kwargs={"slug": self.product.slug}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.product.name)
-        self.assertContains(response, "شخصی‌سازی این تی‌شرت")
+        self.assertContains(response, "لیبلت را روی لباس قرار بده")
         self.assertContains(response, '"@type":"Product"')
         self.assertContains(response, '"@type":"BreadcrumbList"')
 
