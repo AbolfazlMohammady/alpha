@@ -129,8 +129,8 @@ def vendor_application_page(request):
         payload = {
             "user": request.user,
             "contact_name": str(request.POST.get("contact_name") or "").strip(),
-            "contact_email": str(request.POST.get("contact_email") or request.user.email or "").strip(),
-            "contact_phone": str(request.POST.get("contact_phone") or request.user.phone or "").strip(),
+            "contact_email": str(request.POST.get("contact_email") or getattr(request.user, "email", "") or "").strip(),
+            "contact_phone": str(request.POST.get("contact_phone") or getattr(request.user, "phone", "") or "").strip(),
             "national_id": str(request.POST.get("national_id") or "").strip(),
             "store_name": str(request.POST.get("store_name") or "").strip(),
             "seller_type": str(request.POST.get("seller_type") or "").strip(),
