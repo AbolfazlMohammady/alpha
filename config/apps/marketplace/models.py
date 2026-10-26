@@ -749,7 +749,7 @@ class VendorApplication(models.Model):
         blank=True,
     )
     contact_name = models.CharField(max_length=200)
-    contact_email = models.EmailField(blank=True)
+    contact_email = models.EmailField()
     contact_phone = models.CharField(max_length=20)
     national_id = models.CharField(max_length=10, help_text="اطلاعات هویتی محرمانه؛ فقط مدیر مجاز به مشاهده باشد.")
     store_name = models.CharField(max_length=160)
