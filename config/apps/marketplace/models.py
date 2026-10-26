@@ -185,6 +185,8 @@ class WholesalePriceTier(models.Model):
     def clean(self):
         super().clean()
         if self.listing_id:
+            if self.listing.vendor.seller_type == Vendor.SellerType.RETAIL:
+                raise ValidationError({"listing": "فروش عمده برای این فروشگاه تأیید نشده است."})
             if self.unit_price > self.listing.retail_price:
                 raise ValidationError({"unit_price": "قیمت عمده نباید از قیمت خرده‌فروشی بیشتر باشد."})
             existing = type(self).objects.filter(listing_id=self.listing_id)
