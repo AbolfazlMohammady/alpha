@@ -17,6 +17,7 @@ urlpatterns = [
     path("api/vendor/catalog-products/", views.vendor_catalog_products_api, name="vendor_catalog_products_api"),
     path("api/vendor/products/", views.vendor_products_api, name="vendor_products_api"),
     path("api/vendor/products/<int:listing_id>/", views.vendor_product_update_api, name="vendor_product_update_api"),
+    path("api/vendor/products/<int:listing_id>/archive/", views.vendor_product_archive_api, name="vendor_product_archive_api"),
     path("api/vendor/products/<int:listing_id>/wholesale/", views.vendor_wholesale_tier_api, name="vendor_wholesale_tier_api"),
     path("api/vendor/wholesale-tiers/<int:tier_id>/", views.vendor_wholesale_tier_detail_api, name="vendor_wholesale_tier_detail_api"),
     path("api/vendor/wholesale/<int:tier_id>/delete/", views.vendor_wholesale_tier_delete_api, name="vendor_wholesale_tier_delete_api"),
