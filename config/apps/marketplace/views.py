@@ -746,6 +746,8 @@ def vendor_wholesale_tier_api(request, listing_id):
         payload = _json_body(request)
         if set(payload) - {"minimum_quantity", "unit_price"}:
             return _error("فقط حداقل تعداد و قیمت واحد قابل ثبت است.")
+        if vendor.seller_type == Vendor.SellerType.RETAIL:
+            return _error("فروش عمده برای این فروشگاه در درخواست فروشندگی تأیید نشده است.", 403)
         with transaction.atomic():
             listing = get_object_or_404(
                 VendorProduct.objects.select_for_update(),
