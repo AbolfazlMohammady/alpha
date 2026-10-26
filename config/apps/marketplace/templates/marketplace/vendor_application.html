@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}درخواست همکاری فروشندگی | BABAEI{% endblock %}
+{% block content %}
+<style>
+.va-wrap{direction:rtl;max-width:980px;margin:42px auto;padding:0 18px;color:var(--text-primary,#17212b)}
+.va-hero{padding:32px;border-radius:24px;background:linear-gradient(135deg,#11252b,#183f42);color:#fff;margin-bottom:20px}
+.va-hero h1{font-size:clamp(26px,4vw,38px);margin:0 0 12px}.va-hero p{line-height:1.9;max-width:760px;color:#d6e3e3}
+.va-card{background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:20px;padding:24px;margin:18px 0;box-shadow:0 10px 35px rgba(10,25,30,.06)}
+.va-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.va-field{display:flex;flex-direction:column;gap:7px;font-size:14px;font-weight:650}.va-field input,.va-field select,.va-field textarea{width:100%;min-width:0;border:1px solid var(--border,#d5dce1);border-radius:11px;padding:12px 13px;background:var(--surface,#fff);color:inherit;font:inherit}.va-field textarea{min-height:110px;resize:vertical}.va-wide{grid-column:1/-1}
+.va-hint{font-size:13px;line-height:1.9;color:var(--text-secondary,#64748b);font-weight:400}.va-button{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:#173b3c;color:white;padding:13px 22px;font-weight:800;cursor:pointer;text-decoration:none}.va-status{border-radius:12px;padding:14px 16px;line-height:1.9;background:#f0f5f4;color:#173b3c}.va-errors{background:#fff1f1;color:#9f1239;border-radius:12px;padding:14px 20px}.va-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:18px}
+@media(max-width:650px){.va-grid{grid-template-columns:1fr}.va-wide{grid-column:auto}.va-card,.va-hero{padding:20px}}
+</style>
+<div class="va-wrap">
+    <header class="va-hero">
+        <h1>درخواست همکاری به‌عنوان فروشنده</h1>
+        <p>اگر فروشگاه یا کسب‌وکار دارید، اطلاعات زیر را ثبت کنید تا تیم BABAEI درخواست شما را بررسی کند. ارسال درخواست به‌تنهایی دسترسی فروشندگی ایجاد نمی‌کند؛ پس از بررسی و ایجاد حساب توسط مدیر، نقش فروشنده فعال خواهد شد.</p>
+    </header>
+
+    {% if messages %}
+      {% for message in messages %}<div class="va-status" role="status">{{ message }}</div>{% endfor %}
+    {% endif %}
+
+    {% if application %}
+      <section class="va-card">
+        <h2>وضعیت درخواست قبلی</h2>
+        <div class="va-status">وضعیت: <strong>{{ application.get_status_display }}</strong>
+          {% if application.reviewed_at %}<br>زمان بررسی: {{ application.reviewed_at|date:"Y/m/d H:i" }}{% endif %}
+          {% if application.reviewer_note %}<br>پیام مدیر: {{ application.reviewer_note }}{% endif %}
+        </div>
+        {% if application.status == "pending" or application.status == "approved" %}
+          <p class="va-hint">تا زمانی که درخواست در حال بررسی است، امکان ارسال درخواست تکراری وجود ندارد. در صورت تأیید، برای ایجاد حساب فروشنده با مدیر سایت هماهنگ می‌شود.</p>
+        {% endif %}
+      </section>
+    {% endif %}
+
+    {% if not application or application.status == "rejected" %}
+    <form class="va-card" method="post" novalidate>
+      {% csrf_token %}
+      <h2>اطلاعات متقاضی</h2>
+      <p class="va-hint">اطلاعات هویتی برای بررسی مدیر است و در صفحه عمومی نمایش داده نمی‌شود.</p>
+      {% if errors %}<div class="va-errors"><strong>لطفاً موارد زیر را اصلاح کنید:</strong><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></div>{% endif %}
+      <div class="va-grid">
+        <label class="va-field">نام و نام خانوادگی
+          <input name="contact_name" maxlength="200" required autocomplete="name" value="{{ form_data.contact_name|default:'' }}">
+        </label>
+        <label class="va-field">شماره تماس
+          <input name="contact_phone" maxlength="20" required inputmode="tel" value="{{ form_data.contact_phone|default:request.user.phone }}">
+        </label>
+        <label class="va-field">ایمیل
+          <input name="contact_email" type="email" autocomplete="email" value="{{ form_data.contact_email|default:request.user.email|default:'' }}">
+        </label>
+        <label class="va-field">کد ملی
+          <input name="national_id" inputmode="numeric" pattern="[0-9]{10}" minlength="10" maxlength="10" required autocomplete="off" value="{{ form_data.national_id|default:'' }}">
+          <span class="va-hint">۱۰ رقم انگلیسی؛ فقط برای بررسی مدیر ذخیره می‌شود.</span>
+        </label>
+      </div>
+
+      <h2 style="margin-top:28px">اطلاعات کسب‌وکار</h2>
+      <div class="va-grid">
+        <label class="va-field">نام فروشگاه یا کسب‌وکار
+          <input name="store_name" maxlength="160" required value="{{ form_data.store_name|default:'' }}">
+        </label>
+        <label class="va-field">نوع فعالیت
+          <select name="seller_type" required>
+            <option value="">انتخاب کنید</option>
+            <option value="retail" {% if form_data.seller_type == "retail" %}selected{% endif %}>خرده‌فروشی</option>
+            <option value="wholesale" {% if form_data.seller_type == "wholesale" %}selected{% endif %}>عمده‌فروشی</option>
+            <option value="both" {% if form_data.seller_type == "both" %}selected{% endif %}>خرده‌فروشی و عمده‌فروشی</option>
+          </select>
+        </label>
+        <label class="va-field">استان
+          <input name="province" maxlength="120" value="{{ form_data.province|default:'' }}">
+        </label>
+        <label class="va-field">شهر
+          <input name="city" maxlength="120" value="{{ form_data.city|default:'' }}">
+        </label>
+        <label class="va-field">کد پستی محل کسب‌وکار
+          <input name="postal_code" inputmode="numeric" pattern="[0-9]{10}" maxlength="10" value="{{ form_data.postal_code|default:'' }}">
+        </label>
+        <label class="va-field">وب‌سایت یا صفحه اجتماعی
+          <input name="website_or_social" type="url" maxlength="500" placeholder="https://..." value="{{ form_data.website_or_social|default:'' }}">
+        </label>
+        <label class="va-field va-wide">نشانی محل فعالیت
+          <textarea name="address" maxlength="2000">{{ form_data.address|default:'' }}</textarea>
+        </label>
+        <label class="va-field va-wide">معرفی کسب‌وکار و محصولات
+          <textarea name="description" minlength="20" maxlength="5000" required placeholder="چه محصولاتی عرضه می‌کنید؟ ظرفیت تأمین و روش فعالیت شما چیست؟">{{ form_data.description|default:'' }}</textarea>
+        </label>
+      </div>
+      <div class="va-actions">
+        <button class="va-button" type="submit">ثبت درخواست برای بررسی</button>
+        <span class="va-hint">بعد از ثبت، مدیر درخواست را بررسی می‌کند. این فرم نقش حساب را تغییر نمی‌دهد.</span>
+      </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
