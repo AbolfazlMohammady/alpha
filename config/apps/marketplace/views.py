@@ -201,6 +201,46 @@ def vendor_application_page(request):
     })
 
 
+PORTAL_SECTIONS = {
+    "seller-dashboard": ("داشبورد فروشنده", "seller", "نمای کلی فروش، سفارش‌ها و تسویه‌ها."),
+    "new-product": ("ثبت محصول جدید", "seller", "فرم نهایی ثبت محصول در پنل فروشنده در حال تکمیل است."),
+    "my-products": ("محصولات من", "seller", "مدیریت آگهی‌ها، قیمت، موجودی و وضعیت تأیید محصولات."),
+    "orders-shipping": ("سفارش‌ها و ارسال", "seller", "مدیریت سفارش‌ها، ثبت ارسال و رهگیری مرسوله."),
+    "vendor-settlements": ("تسویه‌های من", "seller", "مشاهده تسویه‌ها، مبالغ قابل پرداخت و سوابق پرداخت."),
+    "bank-profile": ("اطلاعات بانکی", "seller", "ثبت و پیگیری تأیید حساب بانکی فروشنده."),
+    "shipping-profile": ("مبدأ ارسال", "seller", "تنظیم نشانی، کد پستی و اطلاعات تماس مبدأ ارسال."),
+    "accounting-overview": ("نمای کلی حسابداری", "admin", "خلاصه مالی، دفترکل و وضعیت ثبت‌های حسابداری."),
+    "trial-balance": ("تراز آزمایشی", "admin", "بررسی توازن بدهکار و بستانکار دفترکل."),
+    "reconciliation": ("مغایرت‌گیری", "admin", "ثبت و بررسی مغایرت‌های بانکی و مالی."),
+    "gateway-settlement": ("تسویه درگاه", "admin", "ثبت و تطبیق تسویه‌های درگاه پرداخت."),
+    "carrier-payment": ("پرداخت شرکت حمل", "admin", "ثبت هزینه واقعی حمل و پرداخت به شرکت‌های حمل."),
+    "settlement-queue": ("صف تسویه فروشندگان", "admin", "بررسی، تأیید و ثبت نتیجه پرداخت تسویه فروشندگان."),
+}
+
+
+@login_required
+def portal_section_page(request, section):
+    config = PORTAL_SECTIONS.get(section)
+    if not config:
+        return HttpResponseForbidden("این بخش تعریف نشده است.")
+    title, audience, description = config
+    if audience == "admin":
+        if not (request.user.is_staff or request.user.is_superuser):
+            return HttpResponseForbidden("دسترسی این بخش فقط برای مدیران مجاز است.")
+    else:
+        try:
+            _vendor_for_user(request.user)
+        except PermissionDenied as exc:
+            return HttpResponseForbidden(str(exc))
+    return render(request, "marketplace/portal_section.html", {
+        "section": section,
+        "section_title": title,
+        "section_description": description,
+        "is_admin_section": audience == "admin",
+        "is_placeholder": True,
+    })
+
+
 def _vendor_for_user(user):
     # Refresh the role from the database rather than relying on a stale in-memory
     # user instance. Some custom account-editing flows may persist the display
