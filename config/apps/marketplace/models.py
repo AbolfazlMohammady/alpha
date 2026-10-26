@@ -127,10 +127,6 @@ class VendorProduct(models.Model):
             models.CheckConstraint(check=Q(retail_price__gt=0), name="vendor_listing_price_gt_zero"),
             models.CheckConstraint(check=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=models.F("retail_price")), name="vendor_listing_compare_gte_retail"),
             models.CheckConstraint(check=Q(units_per_order__gt=0), name="vendor_listing_units_per_order_gt_zero"),
-            models.CheckConstraint(check=Q(weight_grams__gt=0), name="vendor_listing_weight_gt_zero"),
-            models.CheckConstraint(check=Q(package_length_cm__gt=0), name="vendor_listing_length_gt_zero"),
-            models.CheckConstraint(check=Q(package_width_cm__gt=0), name="vendor_listing_width_gt_zero"),
-            models.CheckConstraint(check=Q(package_height_cm__gt=0), name="vendor_listing_height_gt_zero"),
         ]
         indexes = [models.Index(fields=("vendor", "status"), name="market_listing_v_status_idx")]
 
@@ -141,10 +137,6 @@ class VendorProduct(models.Model):
             raise ValidationError({"sale_unit": "واحد فروش را وارد کن."})
         if self.units_per_order < 1:
             raise ValidationError({"units_per_order": "تعداد اقلام در هر واحد فروش باید حداقل ۱ باشد."})
-        if self.weight_grams <= 0:
-            raise ValidationError({"weight_grams": "وزن هر واحد فروش باید بیشتر از صفر باشد."})
-        if not all((self.package_length_cm, self.package_width_cm, self.package_height_cm)):
-            raise ValidationError("طول، عرض و ارتفاع هر واحد فروش باید بیشتر از صفر باشند.")
         if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
         if self.wholesale_enabled and self.vendor.seller_type == Vendor.SellerType.RETAIL:
@@ -691,10 +683,6 @@ class VendorProductSubmission(models.Model):
             models.CheckConstraint(check=Q(retail_price__gt=0), name="vendor_submission_price_gt_zero"),
             models.CheckConstraint(check=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=models.F("retail_price")), name="vendor_submission_compare_gte_retail"),
             models.CheckConstraint(check=Q(units_per_order__gt=0), name="vendor_submission_units_gt_zero"),
-            models.CheckConstraint(check=Q(weight_grams__gt=0), name="vendor_submission_weight_gt_zero"),
-            models.CheckConstraint(check=Q(package_length_cm__gt=0), name="vendor_submission_length_gt_zero"),
-            models.CheckConstraint(check=Q(package_width_cm__gt=0), name="vendor_submission_width_gt_zero"),
-            models.CheckConstraint(check=Q(package_height_cm__gt=0), name="vendor_submission_height_gt_zero"),
         ]
         indexes = [models.Index(fields=("vendor", "status", "created_at"), name="market_prod_sub_status_idx")]
 
@@ -719,10 +707,6 @@ class VendorProductSubmission(models.Model):
             raise ValidationError({"sale_unit": "واحد فروش را وارد کن."})
         if self.units_per_order < 1:
             raise ValidationError({"units_per_order": "تعداد اقلام در هر واحد فروش باید حداقل ۱ باشد."})
-        if self.weight_grams <= 0:
-            raise ValidationError({"weight_grams": "وزن هر واحد فروش باید بیشتر از صفر باشد."})
-        if not all((self.package_length_cm, self.package_width_cm, self.package_height_cm)):
-            raise ValidationError("طول، عرض و ارتفاع هر واحد فروش باید بیشتر از صفر باشند.")
         if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
         if self.category_id and not self.category.is_active:
