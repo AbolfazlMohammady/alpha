@@ -783,6 +783,13 @@ class VendorApplication(models.Model):
         self.postal_code = "".join((self.postal_code or "").split())
         if len(self.national_id) != 10 or not self.national_id.isascii() or not self.national_id.isdigit():
             raise ValidationError({"national_id": "کد ملی باید دقیقاً ۱۰ رقم انگلیسی باشد."})
+        if len(set(self.national_id)) == 1:
+            raise ValidationError({"national_id": "کد ملی واردشده معتبر نیست."})
+        weighted_sum = sum(int(self.national_id[index]) * (10 - index) for index in range(9))
+        remainder = weighted_sum % 11
+        expected_check_digit = remainder if remainder < 2 else 11 - remainder
+        if int(self.national_id[9]) != expected_check_digit:
+            raise ValidationError({"national_id": "رقم کنترل کد ملی معتبر نیست."})
         if self.postal_code and (
             len(self.postal_code) != 10 or not self.postal_code.isascii() or not self.postal_code.isdigit()
         ):
