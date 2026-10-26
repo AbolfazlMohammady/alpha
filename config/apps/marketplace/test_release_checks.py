@@ -146,7 +146,7 @@ class AccountingReleaseChecks(TestCase):
 
 
 class VendorDashboardAccessTests(TestCase):
-    def test_store_manager_without_vendor_row_gets_pending_vendor_profile(self):
+    def test_store_manager_without_vendor_row_gets_active_vendor_profile(self):
         user = get_user_model().objects.create_user(
             phone="+989121234567",
             role=RoleUser.STORE_MANAGER,
@@ -159,7 +159,8 @@ class VendorDashboardAccessTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "پنل فروشنده")
         vendor = Vendor.objects.get(user=user)
-        self.assertEqual(vendor.status, Vendor.Status.PENDING)
+        self.assertEqual(vendor.status, Vendor.Status.ACTIVE)
+        self.assertIsNotNone(vendor.approved_at)
         self.assertTrue(vendor.slug.startswith(f"store-{user.pk}-"))
 
 
