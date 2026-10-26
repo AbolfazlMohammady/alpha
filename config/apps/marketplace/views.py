@@ -19,7 +19,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
 from apps.orders.models import Cart, CartItem, Order
-from apps.users.models import Address
+from apps.users.models import Address, RoleUser
 from apps.shop.models import Category, Product
 from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from .services import _strict_int, approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_carrier_invoice_payment, record_external_reconciliation, record_full_order_refund, record_gateway_settlement, record_payout_result, trial_balance
@@ -116,7 +116,117 @@ def _vendor_for_user(user):
     try:
         return Vendor.objects.get(user=user)
     except Vendor.DoesNotExist as exc:
-        raise PermissionDenied("حساب فروشندگی برای این کاربر ثبت نشده است.") from exc
+        # A store-manager role alone did not create the marketplace Vendor row.
+        # Create a pending profile so the seller can complete their store setup;
+        # order acceptance still depends on Vendor.Status.ACTIVE.
+        if getattr(user, "role", None) != RoleUser.STORE_MANAGER:
+            raise PermissionDenied("این حساب هنوز به یک فروشگاه متصل نشده است.") from exc
+        display_name = user.get_full_name().strip() or f"فروشگاه {user.pk}"
+        vendor, _ = Vendor.objects.get_or_create(
+            user=user,
+            defaults={
+                "store_name": display_name[:160],
+                "slug": f"store-{user.pk}-{user.uuid.hex[:8]}",
+                "status": Vendor.Status.PENDING,
+            },
+        )
+        return vendor
+
+
+PORTAL_SECTIONS = {
+    "new-product": {
+        "title": "ثبت محصول جدید",
+        "description": "ثبت محصولی که هنوز در کاتالوگ مرکزی سایت وجود ندارد و ارسال آن برای بررسی مدیر.",
+        "audience": "vendor",
+        "next_step": "فرم ثبت محصول در پنل فروشنده قرار دارد.",
+    },
+    "my-products": {
+        "title": "محصولات فروشگاه من",
+        "description": "مشاهده آگهی‌های فروش، وضعیت تأیید، قیمت، موجودی و تنظیمات فروش عمده.",
+        "audience": "vendor",
+        "next_step": "مدیریت محصولات در پنل فروشنده قرار دارد.",
+    },
+    "vendor-orders": {
+        "title": "سفارش‌ها و ارسال",
+        "description": "بررسی سفارش‌های فروشگاه، آماده‌سازی، ثبت اطلاعات مرسوله و پیگیری ارسال.",
+        "audience": "vendor",
+        "next_step": "مدیریت سفارش‌ها در پنل فروشنده قرار دارد.",
+    },
+    "vendor-settlements": {
+        "title": "تسویه‌حساب فروشگاه",
+        "description": "مشاهده وضعیت تسویه‌ها و آماده‌سازی اطلاعات مالی فروشگاه.",
+        "audience": "vendor",
+        "next_step": "اطلاعات حساب و تاریخچه تسویه در پنل فروشنده قرار دارد.",
+    },
+    "shipping-profile": {
+        "title": "اطلاعات مبدأ ارسال",
+        "description": "ثبت نشانی، کد پستی، شهر و اطلاعات تماس محل آماده‌سازی بسته‌ها.",
+        "audience": "vendor",
+        "next_step": "فرم اطلاعات مبدأ ارسال در پنل فروشنده قرار دارد.",
+    },
+    "financial-profile": {
+        "title": "اطلاعات حساب بانکی",
+        "description": "ثبت نام صاحب حساب و شبای بانکی برای بررسی و تسویه سهم فروشگاه.",
+        "audience": "vendor",
+        "next_step": "فرم اطلاعات حساب تسویه در پنل فروشنده قرار دارد.",
+    },
+    "accounting-overview": {
+        "title": "حسابداری مرکزی",
+        "description": "صفحه موقت دسترسی به بخش حسابداری فروشگاه‌ها، اسناد مالی و گزارش‌های تسویه.",
+        "audience": "admin",
+        "next_step": "رابط کاربری حسابداری مرکزی هنوز در حال آماده‌سازی است.",
+    },
+    "trial-balance": {
+        "title": "تراز آزمایشی",
+        "description": "نمای موقت گزارش تراز حساب‌ها و کنترل برابری بدهکار و بستانکار.",
+        "audience": "admin",
+        "next_step": "رابط گزارش تراز آزمایشی هنوز در حال آماده‌سازی است.",
+    },
+    "reconciliation": {
+        "title": "مغایرت‌گیری مالی",
+        "description": "صفحه موقت برای بررسی و تطبیق گزارش‌های مالی با منابع بیرونی.",
+        "audience": "admin",
+        "next_step": "رابط مغایرت‌گیری هنوز در حال آماده‌سازی است.",
+    },
+    "gateway-settlement": {
+        "title": "تسویه درگاه پرداخت",
+        "description": "صفحه موقت برای ثبت و بررسی مبالغ تسویه‌شده توسط درگاه پرداخت.",
+        "audience": "admin",
+        "next_step": "رابط تسویه درگاه هنوز در حال آماده‌سازی است.",
+    },
+    "carrier-payment": {
+        "title": "پرداخت شرکت حمل",
+        "description": "صفحه موقت برای بررسی صورتحساب و پرداخت هزینه‌های شرکت حمل‌ونقل.",
+        "audience": "admin",
+        "next_step": "رابط پرداخت شرکت حمل هنوز در حال آماده‌سازی است.",
+    },
+    "settlement-queue": {
+        "title": "مدیریت تسویه فروشندگان",
+        "description": "صفحه موقت برای بررسی، تأیید و پیگیری پرداخت سهم فروشگاه‌های همکار.",
+        "audience": "admin",
+        "next_step": "رابط مدیریت تسویه فروشندگان هنوز در حال آماده‌سازی است.",
+    },
+}
+
+
+@login_required
+def portal_section_page(request, section):
+    details = PORTAL_SECTIONS.get(section)
+    if details is None:
+        return JsonResponse({"ok": False, "error": "بخش پیدا نشد."}, status=404)
+    if details["audience"] == "admin":
+        if not request.user.is_staff:
+            return HttpResponseForbidden("این بخش فقط برای مدیران سامانه قابل مشاهده است.")
+    else:
+        try:
+            _vendor_for_user(request.user)
+        except PermissionDenied as exc:
+            return HttpResponseForbidden(str(exc))
+    return render(
+        request,
+        "marketplace/portal_section.html",
+        {"section": details, "section_slug": section},
+    )
 
 
 def _vendor_order_for_user(user, order_id):
