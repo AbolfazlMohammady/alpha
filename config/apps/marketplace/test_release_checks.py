@@ -418,6 +418,15 @@ class VendorProductArchiveTests(TestCase):
         )
         self.client.force_login(self.user)
 
+    def test_retail_only_seller_cannot_create_wholesale_tier_via_api(self):
+        response = self.client.post(
+            reverse("marketplace:vendor_wholesale_tier_api", args=[self.listing.pk]),
+            data='{"minimum_quantity": 2, "unit_price": 800}',
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(WholesalePriceTier.objects.filter(listing=self.listing).exists())
+
     def test_retail_only_seller_cannot_create_wholesale_tier(self):
         tier = WholesalePriceTier(
             listing=self.listing,
