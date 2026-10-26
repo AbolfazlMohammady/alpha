@@ -806,6 +806,10 @@ class VendorApplication(models.Model):
             raise ValidationError({"postal_code": "کد پستی باید دقیقاً ۱۰ رقم انگلیسی باشد."})
         if not self.contact_name or not self.store_name or not self.description.strip():
             raise ValidationError("نام متقاضی، نام فروشگاه و توضیحات فعالیت الزامی است.")
+        if len(self.description) > 5000:
+            raise ValidationError({"description": "توضیحات کسب‌وکار نباید بیشتر از ۵۰۰۰ نویسه باشد."})
+        if len(self.address or "") > 2000:
+            raise ValidationError({"address": "نشانی نباید بیشتر از ۲۰۰۰ نویسه باشد."})
 
     def __str__(self):
         return f"{self.store_name} — {self.get_status_display()}"
