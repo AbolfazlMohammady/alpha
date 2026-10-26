@@ -541,3 +541,4 @@ class VendorProductArchiveTests(TestCase):
         self.assertEqual(self.listing.status, VendorProduct.Status.ACTIVE)
 
 # Release-validation branch: seller portal access checks.
+# Re-run release checks against the latest main base.
