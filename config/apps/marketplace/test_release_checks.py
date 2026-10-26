@@ -242,6 +242,26 @@ class VendorDashboardAccessTests(TestCase):
 
 
 
+class PortalPlaceholderAccessTests(TestCase):
+    def test_store_manager_can_open_seller_placeholder(self):
+        user = get_user_model().objects.create_user(phone="+989121234576", role=RoleUser.STORE_MANAGER)
+        self.client.force_login(user)
+        response = self.client.get(reverse("marketplace:portal_section_page", args=["new-product"]))
+        self.assertEqual(response.status_code, 200)
+
+    def test_customer_cannot_open_seller_placeholder(self):
+        user = get_user_model().objects.create_user(phone="+989121234577", role=RoleUser.CUSTOMER)
+        self.client.force_login(user)
+        response = self.client.get(reverse("marketplace:portal_section_page", args=["new-product"]))
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_staff_cannot_open_admin_placeholder(self):
+        user = get_user_model().objects.create_user(phone="+989121234578", role=RoleUser.STORE_MANAGER)
+        self.client.force_login(user)
+        response = self.client.get(reverse("marketplace:portal_section_page", args=["trial-balance"]))
+        self.assertEqual(response.status_code, 403)
+
+
 class VendorApplicationWorkflowTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
