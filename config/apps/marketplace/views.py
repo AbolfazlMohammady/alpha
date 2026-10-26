@@ -211,6 +211,11 @@ def _vendor_for_user(user):
         str(RoleUser.STORE_MANAGER).lower(),
         "مدیر فروشگاه",
     }
+    if not is_store_manager:
+        raise PermissionDenied(
+            f"برای این حساب دسترسی فروشندگی فعال نیست؛ نقش ذخیره‌شده "
+            f"({role_value or 'خالی'}) مدیر فروشگاه نیست."
+        )
     try:
         vendor = Vendor.objects.get(user=user)
         # The manually assigned store_manager role is the administrator's approval
@@ -221,12 +226,7 @@ def _vendor_for_user(user):
             vendor.approved_at = timezone.now()
             vendor.save(update_fields=("status", "approved_at", "updated_at"))
         return vendor
-    except Vendor.DoesNotExist as exc:
-        if not is_store_manager:
-            raise PermissionDenied(
-                f"برای این حساب پروفایل فروشگاه وجود ندارد و نقش ذخیره‌شده "
-                f"({role_value or 'خالی'}) مدیر فروشگاه نیست."
-            ) from exc
+    except Vendor.DoesNotExist:
         display_name = user.get_full_name().strip() or f"فروشگاه {user.pk}"
         vendor, _ = Vendor.objects.get_or_create(
             user=user,
