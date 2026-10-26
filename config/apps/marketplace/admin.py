@@ -51,6 +51,7 @@ class VendorApplicationAdmin(admin.ModelAdmin):
                 submitted_phone = str(User.objects.normalize_phone(obj.contact_phone))
             except ValueError as exc:
                 raise ValidationError("شماره تماس درخواست معتبر نیست؛ قبل از اتصال حساب آن را اصلاح کن.") from exc
+            obj.contact_phone = submitted_phone
             if str(obj.user.phone) != submitted_phone:
                 raise ValidationError("شماره تلفن حساب انتخاب‌شده با شماره تماس درخواست فروشندگی یکسان نیست.")
             if obj.contact_email and (not obj.user.email or obj.contact_email.casefold() != obj.user.email.casefold()):
