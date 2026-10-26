@@ -316,11 +316,49 @@ def vendor_dashboard_api(request):
     orders = vendor.orders.all()
     pending = orders.filter(status__in=[VendorOrder.Status.NEW, VendorOrder.Status.ACCEPTED, VendorOrder.Status.PREPARING, VendorOrder.Status.READY_TO_SHIP]).count()
     delivered = orders.filter(status=VendorOrder.Status.DELIVERED).count()
+    # Amount already in a settlement batch, including failed batches that need staff review.
     payable = sum(
         batch.payable_amount for batch in vendor.settlements.filter(
-            status__in=[SettlementBatch.Status.PENDING_APPROVAL, SettlementBatch.Status.APPROVED, SettlementBatch.Status.PROCESSING, SettlementBatch.Status.FAILED]
+            status__in=[
+                SettlementBatch.Status.PENDING_APPROVAL,
+                SettlementBatch.Status.APPROVED,
+                SettlementBatch.Status.PROCESSING,
+                SettlementBatch.Status.FAILED,
+            ]
         )
     )
+    # Also include matured delivered orders not yet included in an active/paid/failed batch.
+    # Mirror the settlement service's conservative shipping eligibility checks.
+    eligible_orders = VendorOrder.objects.filter(
+        vendor=vendor,
+        status=VendorOrder.Status.DELIVERED,
+        settlement_eligible_at__lte=timezone.now(),
+        vendor_payable__gt=0,
+    ).exclude(settlement_lines__batch__status__in=[
+        SettlementBatch.Status.PENDING_APPROVAL,
+        SettlementBatch.Status.APPROVED,
+        SettlementBatch.Status.PROCESSING,
+        SettlementBatch.Status.PAID,
+        SettlementBatch.Status.FAILED,
+    ]).prefetch_related("shipments").distinct()
+    for vendor_order in eligible_orders:
+        shipments = list(vendor_order.shipments.all())
+        if not shipments or any(shipment.status != Shipment.Status.DELIVERED for shipment in shipments):
+            continue
+        if any(
+            shipment.payer == Shipment.Payer.PLATFORM and shipment.actual_cost is None
+            for shipment in shipments
+        ):
+            continue
+        if any(shipment.payer == Shipment.Payer.RECIPIENT for shipment in shipments):
+            continue
+        if sum(int(shipment.customer_charge or 0) for shipment in shipments) > int(vendor_order.customer_shipping_amount):
+            continue
+        payable += int(vendor_order.vendor_payable) + sum(
+            int(shipment.customer_charge or 0)
+            for shipment in shipments
+            if shipment.payer == Shipment.Payer.VENDOR
+        )
     paid = sum(batch.payable_amount for batch in vendor.settlements.filter(status=SettlementBatch.Status.PAID))
     return JsonResponse({
         "ok": True,
