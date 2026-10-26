@@ -21,7 +21,7 @@ from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_
 from apps.orders.models import Cart, CartItem, Order
 from apps.users.models import Address, RoleUser
 from apps.shop.models import Category, Product
-from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
+from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorApplication, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from .services import _strict_int, approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_carrier_invoice_payment, record_external_reconciliation, record_full_order_refund, record_gateway_settlement, record_payout_result, trial_balance
 from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
 
@@ -110,6 +110,57 @@ def cart_shipping_quote_api(request):
         return _error(exc)
     except (TypeError, ValueError) as exc:
         return _error(exc)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def vendor_application_page(request):
+    """Let a signed-in customer request seller access without granting seller permissions."""
+    existing = VendorApplication.objects.filter(user=request.user).first()
+    if request.method == "POST":
+        if existing and existing.status in {VendorApplication.Status.PENDING, VendorApplication.Status.APPROVED}:
+            messages.info(request, "درخواست فروشندگی شما قبلاً ثبت شده است؛ وضعیت آن را در همین صفحه ببین.")
+            return redirect("marketplace:vendor_application_page")
+        payload = {
+            "user": request.user,
+            "contact_name": str(request.POST.get("contact_name") or "").strip(),
+            "contact_email": str(request.POST.get("contact_email") or request.user.email or "").strip(),
+            "contact_phone": str(request.POST.get("contact_phone") or request.user.phone or "").strip(),
+            "national_id": str(request.POST.get("national_id") or "").strip(),
+            "store_name": str(request.POST.get("store_name") or "").strip(),
+            "seller_type": str(request.POST.get("seller_type") or "").strip(),
+            "province": str(request.POST.get("province") or "").strip(),
+            "city": str(request.POST.get("city") or "").strip(),
+            "postal_code": str(request.POST.get("postal_code") or "").strip(),
+            "address": str(request.POST.get("address") or "").strip(),
+            "website_or_social": str(request.POST.get("website_or_social") or "").strip(),
+            "description": str(request.POST.get("description") or "").strip(),
+        }
+        application = existing or VendorApplication(user=request.user)
+        for key, value in payload.items():
+            if key != "user":
+                setattr(application, key, value)
+        application.status = VendorApplication.Status.PENDING
+        application.reviewer_note = ""
+        application.reviewed_by = None
+        application.reviewed_at = None
+        try:
+            application.full_clean()
+            application.save()
+        except ValidationError as exc:
+            errors = []
+            for field, field_errors in getattr(exc, "message_dict", {}).items():
+                errors.extend([f"{field}: {message}" for message in field_errors])
+            if not errors:
+                errors = list(exc.messages)
+            return render(request, "marketplace/vendor_application.html", {
+                "application": existing, "errors": errors, "form_data": request.POST,
+            }, status=400)
+        messages.success(request, "درخواست فروشندگی ثبت شد. تا بررسی مدیر، دسترسی پنل فروشنده فعال نمی‌شود.")
+        return redirect("marketplace:vendor_application_page")
+    return render(request, "marketplace/vendor_application.html", {
+        "application": existing, "form_data": {}, "errors": [],
+    })
 
 
 def _vendor_for_user(user):
