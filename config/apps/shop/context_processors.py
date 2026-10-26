@@ -21,7 +21,18 @@ def designer_navigation(request):
 
     if product == _NO_DESIGNER:
         product = None
-    elif product is None:
+    elif product is not None:
+        # A cached product can be deactivated or its category can be hidden
+        # before the cache TTL expires. Never keep linking to an unavailable item.
+        is_still_public = Product.objects.filter(
+            pk=product.pk,
+            is_active=True,
+            category__is_active=True,
+        ).exists()
+        if not is_still_public:
+            product = None
+            cache.delete(DESIGNER_NAV_CACHE_KEY)
+    if product is None and cache.get(DESIGNER_NAV_CACHE_KEY) is None:
         product = (
             Product.objects.filter(
                 is_active=True,
@@ -31,7 +42,6 @@ def designer_navigation(request):
             .order_by("-is_featured", "created_at", "id")
             .first()
         )
-
         cache.set(
             DESIGNER_NAV_CACHE_KEY,
             product if product is not None else _NO_DESIGNER,
