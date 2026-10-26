@@ -17,9 +17,15 @@ class Vendor(models.Model):
         SUSPENDED = "suspended", "تعلیق‌شده"
         REJECTED = "rejected", "ردشده"
 
+    class SellerType(models.TextChoices):
+        RETAIL = "retail", "خرده‌فروشی"
+        WHOLESALE = "wholesale", "عمده‌فروشی"
+        BOTH = "both", "خرده‌فروشی و عمده‌فروشی"
+
     uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="vendor_profile")
     store_name = models.CharField(max_length=160)
+    seller_type = models.CharField(max_length=12, choices=SellerType.choices, default=SellerType.RETAIL)
     slug = models.SlugField(max_length=180, unique=True, allow_unicode=True)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING, db_index=True)
     commission_bps = models.PositiveSmallIntegerField(default=1000, validators=[MaxValueValidator(10000)], help_text="کمیسیون بر حسب basis point؛ 1000 یعنی 10 درصد.")
@@ -141,6 +147,8 @@ class VendorProduct(models.Model):
             raise ValidationError("طول، عرض و ارتفاع هر واحد فروش باید بیشتر از صفر باشند.")
         if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
+        if self.wholesale_enabled and self.vendor.seller_type == Vendor.SellerType.RETAIL:
+            raise ValidationError({"wholesale_enabled": "فروشگاه شما برای فروش عمده تأیید نشده است."})
         if self.supports_custom_printing and not self.vendor.supports_custom_printing:
             raise ValidationError({"supports_custom_printing": "فروشنده هنوز دسترسی چاپ سفارشی ندارد."})
         if self.wholesale_enabled and not self.pk:
