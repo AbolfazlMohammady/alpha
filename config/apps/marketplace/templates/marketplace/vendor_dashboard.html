@@ -317,7 +317,7 @@
                     <label class="vd-field">قیمت هر واحد عمده<input name="unit_price" type="number" min="1" required></label>
                     <button class="vd-btn vd-btn--soft" type="submit">افزودن پله عمده</button>
                 </form>
-                <div class="vd-list" style="margin-top:10px">
+                <div class="vd-list vd-wholesale-tier-list" style="margin-top:10px">
                     ${item.wholesale_tiers.map((tier) => `
                         <form class="vd-tier-update vd-form" data-tier-id="${tier.id}">
                             <label class="vd-field">حداقل تعداد<input name="minimum_quantity" type="number" min="2" value="${tier.minimum_quantity}" required></label>
