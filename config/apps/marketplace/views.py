@@ -19,7 +19,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
 from apps.orders.models import Cart, CartItem, Order
-from apps.users.models import Address, RoleUser, User
+from apps.users.models import Address, City, Province, RoleUser, User
 from apps.shop.models import Category, Product
 from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorApplication, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from .services import _strict_int, approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_carrier_invoice_payment, record_external_reconciliation, record_full_order_refund, record_gateway_settlement, record_payout_result, trial_balance
@@ -324,7 +324,18 @@ def vendor_dashboard_page(request):
         vendor = _vendor_for_user(request.user)
     except PermissionDenied as exc:
         return HttpResponseForbidden(str(exc))
-    return render(request, "marketplace/vendor_dashboard.html", {"vendor": vendor})
+    selected_city = City.objects.select_related("province").filter(
+        name=vendor.pickup_city, province__name=vendor.pickup_province
+    ).first()
+    selected_province_id = selected_city.province_id if selected_city else ""
+    selected_city_id = selected_city.pk if selected_city else ""
+    return render(request, "marketplace/vendor_dashboard.html", {
+        "vendor": vendor,
+        "provinces": Province.objects.order_by("name"),
+        "cities": City.objects.select_related("province").order_by("name"),
+        "selected_province_id": selected_province_id,
+        "selected_city_id": selected_city_id,
+    })
 
 
 @login_required
@@ -333,16 +344,45 @@ def vendor_shipping_profile_api(request):
     try:
         vendor = _vendor_for_user(request.user)
         payload = _json_body(request)
-        allowed = {"pickup_postal_code", "pickup_address", "pickup_city", "pickup_province", "contact_phone"}
+        allowed = {"pickup_postal_code", "pickup_address", "pickup_city", "pickup_province", "pickup_city_id", "pickup_province_id", "contact_phone"}
         if set(payload) - allowed:
             return _error("فقط اطلاعات مبدأ ارسال قابل ویرایش است.")
         postal = str(payload.get("pickup_postal_code", vendor.pickup_postal_code)).strip()
         if postal and (len(postal) != 10 or not postal.isdigit()):
             return _error("کد پستی مبدأ باید ۱۰ رقم باشد.")
-        for field in allowed.intersection(payload):
-            setattr(vendor, field, str(payload[field] or "").strip())
-        vendor.save(update_fields=tuple(allowed.intersection(payload)) + ("updated_at",))
-        return JsonResponse({"ok": True, "pickup_postal_code": vendor.pickup_postal_code, "message": "اطلاعات مبدأ ارسال ذخیره شد."})
+        updates = set()
+        if "pickup_city_id" in payload or "pickup_province_id" in payload:
+            city_id = payload.get("pickup_city_id")
+            province_id = payload.get("pickup_province_id")
+            if not city_id or not province_id:
+                return _error("استان و شهر مبدأ را از فهرست انتخاب کن.")
+            city = City.objects.select_related("province").filter(
+                pk=city_id, province_id=province_id
+            ).first()
+            if city is None:
+                return _error("شهر انتخاب‌شده با استان انتخابی مطابقت ندارد.")
+            vendor.pickup_city = city.name
+            vendor.pickup_province = city.province.name
+            updates.update(("pickup_city", "pickup_province"))
+        else:
+            # Compatibility with existing clients; the new form always submits
+            # validated IDs from the canonical Province/City tables.
+            for field in ("pickup_city", "pickup_province"):
+                if field in payload:
+                    setattr(vendor, field, str(payload[field] or "").strip())
+                    updates.add(field)
+        for field in ("pickup_postal_code", "pickup_address", "contact_phone"):
+            if field in payload:
+                setattr(vendor, field, str(payload[field] or "").strip())
+                updates.add(field)
+        vendor.save(update_fields=tuple(updates) + ("updated_at",))
+        return JsonResponse({
+            "ok": True,
+            "pickup_postal_code": vendor.pickup_postal_code,
+            "pickup_city": vendor.pickup_city,
+            "pickup_province": vendor.pickup_province,
+            "message": "اطلاعات مبدأ ارسال ذخیره شد.",
+        })
     except PermissionDenied as exc:
         return _error(exc, 403)
     except (TypeError, ValueError) as exc:
