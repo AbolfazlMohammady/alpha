@@ -285,3 +285,25 @@ class DashboardEmptyStateTests(TestCase):
         response = self.client.get("/control/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["top_products"], [])
+
+
+class StoreManagerControlCenterAccessTests(TestCase):
+    def setUp(self):
+        self.store_manager = User.objects.create_user(
+            phone="09120000002",
+            password="test-password",
+            role="store_manager",
+            is_staff=True,
+        )
+
+    def test_store_manager_cannot_open_control_dashboard_even_if_staff_flag_is_set(self):
+        self.client.force_login(self.store_manager)
+        response = self.client.get("/control/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_store_manager_cannot_open_control_subsections_by_direct_url(self):
+        self.client.force_login(self.store_manager)
+        for url in ("/control/products/", "/control/categories/", "/control/orders/", "/control/backups/"):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 403)
