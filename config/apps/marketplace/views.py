@@ -676,6 +676,47 @@ def vendor_product_update_api(request, listing_id):
 
 @login_required
 @require_POST
+def vendor_product_archive_api(request, listing_id):
+    """Soft-remove a listing only when it has no order awaiting fulfilment."""
+    try:
+        vendor = _vendor_for_user(request.user)
+        with transaction.atomic():
+            listing = get_object_or_404(
+                VendorProduct.objects.select_for_update(),
+                pk=listing_id,
+                vendor=vendor,
+            )
+            active_orders = vendor.orders.exclude(
+                status__in=[VendorOrder.Status.CANCELLED, VendorOrder.Status.DELIVERED]
+            )
+            for vendor_order in active_orders.only("id", "items_snapshot"):
+                if any(
+                    str(item.get("vendor_product_id")) == str(listing.pk)
+                    for item in (vendor_order.items_snapshot or [])
+                    if isinstance(item, dict)
+                ):
+                    return _error(
+                        "این محصول در یک سفارش در حال انجام است؛ تا پایان یا لغو رسمی سفارش امکان حذف از فروش وجود ندارد.",
+                        409,
+                    )
+            # Preserve the catalog/listing record for historical order integrity.
+            listing.status = VendorProduct.Status.PAUSED
+            listing.stock_quantity = 0
+            listing.save(update_fields=("status", "stock_quantity", "updated_at"))
+        return JsonResponse({
+            "ok": True,
+            "listing_id": listing.pk,
+            "status": listing.status,
+            "message": "محصول از فروش خارج شد؛ سوابق سفارش و حسابداری حفظ شده‌اند.",
+        })
+    except PermissionDenied as exc:
+        return _error(exc, 403)
+    except ValidationError as exc:
+        return _error(exc)
+
+
+@login_required
+@require_POST
 def vendor_wholesale_tier_api(request, listing_id):
     try:
         vendor = _vendor_for_user(request.user)
