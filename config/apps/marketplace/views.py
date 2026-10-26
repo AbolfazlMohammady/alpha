@@ -219,6 +219,7 @@ PORTAL_SECTIONS = {
 
 
 @login_required
+@require_GET
 def portal_section_page(request, section):
     config = PORTAL_SECTIONS.get(section)
     if not config:
