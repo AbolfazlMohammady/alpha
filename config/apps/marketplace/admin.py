@@ -55,6 +55,17 @@ class VendorApplicationAdmin(admin.ModelAdmin):
                 raise ValidationError("شماره تلفن حساب انتخاب‌شده با شماره تماس درخواست فروشندگی یکسان نیست.")
             if obj.contact_email and (not obj.user.email or obj.contact_email.casefold() != obj.user.email.casefold()):
                 raise ValidationError("ایمیل حساب انتخاب‌شده با ایمیل درخواست فروشندگی یکسان نیست.")
+        previous_status = None
+        if change:
+            previous_status = VendorApplication.objects.filter(pk=obj.pk).values_list("status", flat=True).first()
+        if obj.status in {VendorApplication.Status.APPROVED, VendorApplication.Status.REJECTED}:
+            if previous_status != obj.status:
+                obj.reviewed_by = request.user
+                from django.utils import timezone
+                obj.reviewed_at = timezone.now()
+        elif obj.status == VendorApplication.Status.PENDING:
+            obj.reviewed_by = None
+            obj.reviewed_at = None
         super().save_model(request, obj, form, change)
 
     @admin.action(description="تأیید درخواست (ایجاد حساب و نقش فروشنده به‌صورت دستی)")
