@@ -33,7 +33,7 @@
     </div>
 
 
-{% if request.user.is_authenticated and request.user.role == "store_manager" or request.user.is_staff %}
+{% if request.user.is_authenticated and request.user.role == "store_manager" or request.user.role == "مدیر فروشگاه" or request.user.is_staff %}
 <section class="home-portal-shortcuts" aria-label="دسترسی سریع پنل‌ها" style="direction:rtl;max-width:1180px;margin:32px auto 64px;padding:0 20px">
     <style>
       .home-portal-shortcuts__head{margin-bottom:18px}.home-portal-shortcuts__head h2{font-size:clamp(22px,3vw,30px);margin:0 0 8px}.home-portal-shortcuts__head p{margin:0;line-height:1.9;opacity:.75}
@@ -48,7 +48,7 @@
       <h2>دسترسی سریع</h2>
       <p>میان‌بر بخش‌های فروشندگی و مدیریت؛ بعضی صفحه‌ها فعلاً نمای موقت دارند و عملیات آن‌ها هنوز فعال نیست.</p>
     </div>
-    {% if request.user.is_authenticated and request.user.role == "store_manager" %}
+    {% if request.user.is_authenticated and request.user.role == "store_manager" or request.user.role == "مدیر فروشگاه" %}
     <div class="home-portal-shortcuts__group">
       <div class="home-portal-shortcuts__head"><h2>پنل فروشنده</h2></div>
       <div class="home-portal-shortcuts__grid">
