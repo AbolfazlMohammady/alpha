@@ -1182,3 +1182,43 @@ class VendorPickupLocationSelectionTests(TestCase):
         self.assertContains(response, 'data-vd-picker="city"')
         self.assertContains(response, self.province.name)
         self.assertContains(response, self.city.name)
+
+
+class VendorProductParcelDetailsWorkflowTests(TestCase):
+    def setUp(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234570",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.vendor = Vendor.objects.create(
+            user=user,
+            store_name="فروشگاه کالای آزمایشی",
+            slug="vendor-product-parcel-workflow-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        category = Category.objects.create(name="دسته کالای آزمایشی", slug="parcel-workflow-category")
+        self.product = Product.objects.create(
+            category=category,
+            name="کالای بدون ابعاد ثبت‌شده",
+            slug="parcel-workflow-product",
+            base_price=10000,
+        )
+
+    def test_vendor_can_create_listing_before_entering_parcel_dimensions(self):
+        listing = VendorProduct(
+            vendor=self.vendor,
+            product=self.product,
+            retail_price=10000,
+            stock_quantity=5,
+        )
+        listing.full_clean()
+        listing.save()
+        self.assertEqual(listing.weight_grams, 0)
+        self.assertEqual(listing.package_length_cm, 0)
+        self.assertEqual(listing.package_width_cm, 0)
+        self.assertEqual(listing.package_height_cm, 0)
+
+    def test_vendor_product_form_does_not_require_parcel_dimensions(self):
+        response = self.client.get("/marketplace/vendor/dashboard/")
+        self.assertEqual(response.status_code, 302)  # Authentication is required.
