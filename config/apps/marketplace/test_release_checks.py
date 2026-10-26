@@ -3,15 +3,17 @@
 These tests use mocked carrier responses only. They never call a real carrier or bank API.
 Run with: python manage.py test apps.marketplace.test_release_checks
 """
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .carriers import CarrierNotConfigured, TipaxClient, validate_quote_input
-from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication, VendorOrder, VendorProduct
+from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication, VendorOrder, VendorProduct, Shipment
 from apps.users.models import RoleUser
 from apps.shop.models import Category, Product
 from apps.orders.models import Order
@@ -283,6 +285,58 @@ class VendorApplicationWorkflowTests(TestCase):
         self.assertEqual(application.status, VendorApplication.Status.PENDING)
         self.assertEqual(self.client.session.get("vendor_application_id"), application.pk)
 
+
+
+class VendorSettlementDashboardTests(TestCase):
+    def test_matured_unbatched_delivered_order_is_in_pending_settlement_total(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234574",
+            role=RoleUser.STORE_MANAGER,
+        )
+        vendor = Vendor.objects.create(
+            user=user,
+            store_name="فروشگاه تسویه",
+            slug="settlement-dashboard-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        order = Order.objects.create(
+            user=user,
+            shipping_title="خانه",
+            shipping_recipient="گیرنده آزمایشی",
+            shipping_phone="+989121234574",
+            shipping_province="تهران",
+            shipping_city="تهران",
+            shipping_postal_code="1234567891",
+            shipping_address="نشانی آزمایشی",
+            subtotal=1000,
+            total_amount=1000,
+        )
+        vendor_order = VendorOrder.objects.create(
+            order=order,
+            vendor=vendor,
+            status=VendorOrder.Status.DELIVERED,
+            items_snapshot=[{"vendor_product_id": 77, "product_name": "محصول"}],
+            subtotal=1000,
+            customer_shipping_amount=200,
+            commission_amount=100,
+            vendor_payable=900,
+            delivered_at=timezone.now() - timedelta(days=2),
+            settlement_eligible_at=timezone.now() - timedelta(days=1),
+        )
+        Shipment.objects.create(
+            vendor_order=vendor_order,
+            provider=Shipment.Provider.MANUAL,
+            status=Shipment.Status.DELIVERED,
+            payer=Shipment.Payer.VENDOR,
+            tracking_number="TRACK-TEST-1",
+            customer_charge=200,
+            actual_cost=200,
+            delivered_at=timezone.now() - timedelta(days=2),
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("marketplace:vendor_dashboard_api"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["settlement"]["pending_amount"], 1100)
 
 
 class VendorProductArchiveTests(TestCase):
