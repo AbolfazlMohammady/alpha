@@ -30,6 +30,10 @@
 .vd-message{min-height:22px;margin:8px 0;font-size:13px}
 .vd-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:12px;font-size:13px}
 .vd-order-items{padding-right:20px}
+.vd-nav{position:sticky;top:78px;z-index:5;display:flex;gap:8px;overflow-x:auto;padding:10px;margin:0 0 18px;background:rgba(255,255,255,.94);border:1px solid var(--border,#e5e7eb);border-radius:14px;backdrop-filter:blur(12px);scrollbar-width:thin}
+.vd-nav a{flex:0 0 auto;text-decoration:none;color:inherit;font-size:13px;font-weight:700;padding:9px 13px;border-radius:10px;background:var(--surface-secondary,#f3f4f6);white-space:nowrap}
+.vd-nav a:hover,.vd-nav a:focus-visible{outline:2px solid var(--primary,#1f2937);outline-offset:2px}
+.vd-section{scroll-margin-top:150px}
 @media(max-width:600px){.vendor-dashboard{padding:0 12px}.vd-card{padding:14px}}
 </style>
 
@@ -42,16 +46,26 @@
         <span class="vd-badge">وضعیت فروشگاه: {{ vendor.get_status_display }}</span>
     </header>
 
+    <nav class="vd-nav" aria-label="بخش‌های پنل فروشنده">
+        <a href="#vd-overview">نمای کلی</a>
+        <a href="#vd-orders-section">سفارش‌ها و ارسال</a>
+        <a href="#vd-products-section">محصولات من</a>
+        <a href="#vd-new-product-section">ثبت محصول</a>
+        <a href="#vd-settlements-section">تسویه‌ها</a>
+        <a href="#vd-financial-section">حساب بانکی</a>
+        <a href="#vd-shipping-section">مبدأ ارسال</a>
+    </nav>
+
     <div id="vd-message" class="vd-message" role="status" aria-live="polite"></div>
 
-    <section class="vd-grid" aria-label="خلاصه فروشگاه">
+    <section class="vd-grid" id="vd-overview" aria-label="خلاصه فروشگاه">
         <div class="vd-card"><span class="vd-muted">سفارش‌های در جریان</span><strong class="vd-number" id="vd-pending-orders">—</strong></div>
         <div class="vd-card"><span class="vd-muted">سفارش‌های تحویل‌شده</span><strong class="vd-number" id="vd-delivered-orders">—</strong></div>
         <div class="vd-card"><span class="vd-muted">در انتظار تسویه / پرداخت</span><strong class="vd-number" id="vd-pending-settlement">—</strong><span class="vd-muted">تومان</span></div>
         <div class="vd-card"><span class="vd-muted">تسویه‌های پرداخت‌شده</span><strong class="vd-number" id="vd-paid-settlement">—</strong><span class="vd-muted">تومان</span></div>
     </section>
 
-    <section class="vd-card vd-section">
+    <section class="vd-card vd-section" id="vd-shipping-section">
         <h2>اطلاعات مبدأ ارسال</h2>
         <p class="vd-muted">این اطلاعات برای استعلام هزینه حمل و ثبت مرسوله استفاده می‌شود. کد پستی باید متعلق به محل واقعی آماده‌سازی بسته‌ها باشد.</p>
         <form id="vd-shipping-profile" class="vd-form">
@@ -65,7 +79,7 @@
         </form>
     </section>
 
-    <section class="vd-card vd-section">
+    <section class="vd-card vd-section" id="vd-financial-section">
         <h2>اطلاعات حساب تسویه</h2>
         <p class="vd-muted">برای واریز سهم فروش، نام صاحب حساب و شبای متعلق به خودت را وارد کن. اطلاعات بانکی پس از بررسی مدیر تأیید می‌شود و شماره شبا در پنل کامل نمایش داده نمی‌شود.</p>
         <p id="vd-financial-status" class="vd-muted" role="status" aria-live="polite">وضعیت حساب در حال بررسی است…</p>
@@ -77,7 +91,7 @@
         </form>
     </section>
 
-    <section class="vd-card vd-section">
+    <section class="vd-card vd-section" id="vd-new-product-section">
         <h2>ثبت محصول جدید</h2>
         <p class="vd-muted">اگر محصولت در کاتالوگ نیست، این فرم را پر کن. پس از بررسی مدیر، محصول و آگهی فروش با قیمت و موجودی ثبت‌شده فعال می‌شوند. موجودی، قیمت، وزن و ابعاد برحسب واحد فروش ثبت می‌شوند؛ برای جعبه ۱۲تایی، واحد فروش را «جعبه ۱۲تایی» و تعداد اقلام را ۱۲ بگذار. تصویر اصلی حداکثر ۵ مگابایت باشد.</p>
         <form id="vd-product-submission" class="vd-form" enctype="multipart/form-data">
@@ -103,7 +117,7 @@
         <div id="vd-product-submissions" class="vd-list" style="margin-top:14px"></div>
     </section>
 
-    <section class="vd-card vd-section">
+    <section class="vd-card vd-section" id="vd-new-product-existing-section">
         <h2>ثبت محصول برای فروش</h2>
         <p class="vd-muted">برای کالایی که از قبل در کاتالوگ وجود دارد، آن را انتخاب کن. قیمت و پله‌های عمده برحسب واحد فروش محاسبه می‌شوند.</p>
         <p class="vd-muted">محصول باید از کاتالوگ مرکزی سایت انتخاب شود؛ قیمت جدید و تغییر قیمت پس از بررسی مدیر فعال می‌شود. وزن و ابعاد واردشده باید مربوط به بسته‌بندی نهایی باشند.</p>
@@ -131,12 +145,12 @@
         </form>
     </section>
 
-    <section class="vd-card vd-section">
+    <section class="vd-card vd-section" id="vd-products-section">
         <div class="vd-item-head"><h2>محصولات من</h2><button class="vd-btn vd-btn--soft" type="button" id="vd-refresh-products">به‌روزرسانی</button></div>
         <div id="vd-products" class="vd-list"><p class="vd-muted">در حال بارگذاری...</p></div>
     </section>
 
-    <section class="vd-card vd-section">
+    <section class="vd-card vd-section" id="vd-category-section">
         <h2>درخواست دسته‌بندی جدید</h2>
         <form id="vd-category-request" class="vd-form">
             {% csrf_token %}
@@ -146,12 +160,12 @@
         </form>
     </section>
 
-    <section class="vd-card vd-section">
+    <section class="vd-card vd-section" id="vd-settlements-section">
         <div class="vd-item-head"><h2>تاریخچه تسویه‌ها</h2><button class="vd-btn vd-btn--soft" type="button" id="vd-refresh-settlements">به‌روزرسانی</button></div>
         <div id="vd-settlements" class="vd-list"><p class="vd-muted">در حال بارگذاری...</p></div>
     </section>
 
-    <section class="vd-card vd-section">
+    <section class="vd-card vd-section" id="vd-orders-section">
         <div class="vd-item-head"><h2>سفارش‌ها و ارسال</h2><button class="vd-btn vd-btn--soft" type="button" id="vd-refresh-orders">به‌روزرسانی</button></div>
         <div id="vd-orders" class="vd-list"><p class="vd-muted">در حال بارگذاری...</p></div>
     </section>
