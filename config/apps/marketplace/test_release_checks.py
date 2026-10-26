@@ -539,3 +539,5 @@ class VendorProductArchiveTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.listing.refresh_from_db()
         self.assertEqual(self.listing.status, VendorProduct.Status.ACTIVE)
+
+# Release-validation branch: seller portal access checks.
