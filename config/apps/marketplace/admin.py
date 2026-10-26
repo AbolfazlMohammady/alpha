@@ -44,6 +44,19 @@ class VendorApplicationAdmin(admin.ModelAdmin):
         ("بررسی مدیر", {"fields": ("status", "reviewer_note", "reviewed_by", "reviewed_at", "created_at", "updated_at")}),
     )
 
+    def save_model(self, request, obj, form, change):
+        if obj.user_id:
+            from apps.users.models import User
+            try:
+                submitted_phone = str(User.objects.normalize_phone(obj.contact_phone))
+            except ValueError as exc:
+                raise ValidationError("شماره تماس درخواست معتبر نیست؛ قبل از اتصال حساب آن را اصلاح کن.") from exc
+            if str(obj.user.phone) != submitted_phone:
+                raise ValidationError("شماره تلفن حساب انتخاب‌شده با شماره تماس درخواست فروشندگی یکسان نیست.")
+            if obj.contact_email and obj.user.email and obj.contact_email.casefold() != obj.user.email.casefold():
+                raise ValidationError("ایمیل حساب انتخاب‌شده با ایمیل درخواست فروشندگی یکسان نیست.")
+        super().save_model(request, obj, form, change)
+
     @admin.action(description="تأیید درخواست (ایجاد حساب و نقش فروشنده به‌صورت دستی)")
     def mark_approved(self, request, queryset):
         from django.utils import timezone
