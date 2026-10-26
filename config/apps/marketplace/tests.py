@@ -516,7 +516,7 @@ class WholesalePricingValidationTests(TestCase):
         with self.assertRaises(ValidationError):
             self.listing.full_clean()
 
-    def test_new_product_submission_requires_shipping_dimensions(self):
+    def test_new_product_submission_does_not_require_shipping_dimensions(self):
         submission = VendorProductSubmission(
             vendor=self.listing.vendor,
             category=self.listing.product.category,
@@ -527,9 +527,11 @@ class WholesalePricingValidationTests(TestCase):
             package_width_cm=0,
             package_height_cm=0,
         )
-        with self.assertRaises(ValidationError) as context:
-            submission.clean()
-        self.assertIn("weight_grams", context.exception.message_dict)
+        submission.clean()
+        self.assertEqual(submission.weight_grams, 0)
+        self.assertEqual(submission.package_length_cm, 0)
+        self.assertEqual(submission.package_width_cm, 0)
+        self.assertEqual(submission.package_height_cm, 0)
 
 
 class VendorShippingSettlementTests(TestCase):
