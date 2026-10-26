@@ -9,7 +9,7 @@ from django.template.response import TemplateResponse
 from apps.shop.models import Category, Product, ProductImage
 
 from .models import (
-    CategoryRequest, FinancialReconciliation, JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
+    CategoryRequest, FinancialReconciliation, VendorApplication, JournalEntry, JournalLine, LedgerAccount, SettlementBatch, SettlementLine,
     Shipment, ShippingQuote, Vendor, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier,
 )
 
@@ -26,6 +26,42 @@ class ReadOnlyAuditAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(VendorApplication)
+class VendorApplicationAdmin(admin.ModelAdmin):
+    list_display = ("store_name", "contact_name", "contact_phone", "seller_type", "status", "created_at", "reviewed_at")
+    list_filter = ("status", "seller_type", "created_at")
+    search_fields = ("store_name", "contact_name", "contact_phone", "contact_email", "user__phone", "user__email")
+    list_select_related = ("user", "reviewed_by")
+    readonly_fields = ("user", "created_at", "updated_at", "reviewed_by", "reviewed_at")
+    actions = ("mark_approved", "mark_rejected")
+
+    fieldsets = (
+        ("متقاضی", {"fields": ("user", "contact_name", "contact_phone", "contact_email", "national_id")}),
+        ("کسب‌وکار", {"fields": ("store_name", "seller_type", "province", "city", "postal_code", "address", "website_or_social", "description")}),
+        ("بررسی مدیر", {"fields": ("status", "reviewer_note", "reviewed_by", "reviewed_at", "created_at", "updated_at")}),
+    )
+
+    @admin.action(description="تأیید درخواست (ایجاد حساب و نقش فروشنده به‌صورت دستی)")
+    def mark_approved(self, request, queryset):
+        from django.utils import timezone
+        updated = queryset.filter(status=VendorApplication.Status.PENDING).update(
+            status=VendorApplication.Status.APPROVED,
+            reviewed_by=request.user,
+            reviewed_at=timezone.now(),
+        )
+        self.message_user(request, f"{updated} درخواست تأیید شد. اکنون حساب کاربر را طبق روال مدیریتی ایجاد/تکمیل و نقش مدیر فروشگاه را دستی تنظیم کنید؛ این اقدام به‌تنهایی دسترسی پنل ایجاد نمی‌کند.")
+
+    @admin.action(description="رد درخواست‌های انتخاب‌شده")
+    def mark_rejected(self, request, queryset):
+        from django.utils import timezone
+        updated = queryset.filter(status=VendorApplication.Status.PENDING).update(
+            status=VendorApplication.Status.REJECTED,
+            reviewed_by=request.user,
+            reviewed_at=timezone.now(),
+        )
+        self.message_user(request, f"{updated} درخواست رد شد.")
 
 
 @admin.register(Vendor)
