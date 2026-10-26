@@ -188,7 +188,7 @@ def test_front_and_back_layers_are_independent(product, configured_designer):
         ],
     }
 
-    normalized, _ = validate_design_payload(product, payload)
+    normalized, _, _ = validate_design_payload(product, payload)
     assert len(normalized["layers"]) == 2
     assert {layer["side"] for layer in normalized["layers"]} == {"front", "back"}
 
