@@ -146,7 +146,7 @@ class ShopViewTests(TestCase):
         self.product.is_active = False
         self.product.save(update_fields=["is_active"])
         response = self.client.get(reverse("shop:index"))
-        self.assertNotContains(response, self.product.name)
+        self.assertNotContains(response, reverse("shop:product", kwargs={"slug": self.product.slug}))
 
     def test_inactive_category_is_not_public(self):
         self.category.is_active = False
