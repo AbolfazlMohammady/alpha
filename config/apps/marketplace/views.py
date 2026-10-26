@@ -819,6 +819,8 @@ def vendor_wholesale_tier_api(request, listing_id):
 def vendor_wholesale_tier_detail_api(request, tier_id):
     try:
         vendor = _vendor_for_user(request.user)
+        if vendor.seller_type == Vendor.SellerType.RETAIL:
+            return _error("فروش عمده برای این فروشگاه تأیید نشده است.", 403)
         with transaction.atomic():
             tier = get_object_or_404(
                 WholesalePriceTier.objects.select_for_update(),
@@ -857,6 +859,8 @@ def vendor_wholesale_tier_detail_api(request, tier_id):
 def vendor_wholesale_tier_delete_api(request, tier_id):
     try:
         vendor = _vendor_for_user(request.user)
+        if vendor.seller_type == Vendor.SellerType.RETAIL:
+            return _error("فروش عمده برای این فروشگاه تأیید نشده است.", 403)
         with transaction.atomic():
             tier = get_object_or_404(
                 WholesalePriceTier.objects.select_for_update(),
