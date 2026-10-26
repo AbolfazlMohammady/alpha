@@ -222,7 +222,11 @@ class VendorApplicationWorkflowTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(VendorApplication.objects.filter(user=self.user).count(), 1)
 
-    def test_anonymous_user_is_redirected_to_login(self):
+    def test_anonymous_prospect_can_apply_before_account_is_created(self):
         self.client.logout()
-        response = self.client.get(reverse("marketplace:vendor_application_page"))
+        response = self.client.post(reverse("marketplace:vendor_application_page"), self.payload())
         self.assertEqual(response.status_code, 302)
+        application = VendorApplication.objects.get(contact_phone="+989121234568")
+        self.assertIsNone(application.user)
+        self.assertEqual(application.status, VendorApplication.Status.PENDING)
+        self.assertEqual(self.client.session.get("vendor_application_id"), application.pk)
