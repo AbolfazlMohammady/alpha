@@ -22,7 +22,7 @@ class LogisticsReleaseChecks(TestCase):
     def valid_quote_payload(self):
         return {
             "weight_grams": 750,
-            "origin_postal_code": "1234567890",
+            "origin_postal_code": "1234567891",
             "destination_postal_code": "0987654321",
             "length_cm": 25,
             "width_cm": 18,
@@ -33,7 +33,7 @@ class LogisticsReleaseChecks(TestCase):
     def test_quote_input_accepts_complete_iranian_parcel(self):
         result = validate_quote_input(self.valid_quote_payload())
         self.assertEqual(result["weight_grams"], 750)
-        self.assertEqual(result["origin_postal_code"], "1234567890")
+        self.assertEqual(result["origin_postal_code"], "1234567891")
         self.assertEqual(result["declared_value"], 250000)
 
     def test_quote_input_rejects_non_ascii_or_wrong_length_postal_code(self):
@@ -216,12 +216,12 @@ class VendorApplicationWorkflowTests(TestCase):
             "contact_name": "آزمایش فروشنده",
             "contact_email": "seller@example.com",
             "contact_phone": "+989121234568",
-            "national_id": "1234567890",
+            "national_id": "1234567891",
             "store_name": "فروشگاه آزمایشی",
             "seller_type": "both",
             "province": "تهران",
             "city": "تهران",
-            "postal_code": "1234567890",
+            "postal_code": "1234567891",
             "address": "نشانی آزمایشی",
             "website_or_social": "https://example.com",
             "description": "عرضه محصولات در دسته پوشاک و اکسسوری با تأمین منظم",
@@ -250,7 +250,7 @@ class VendorApplicationWorkflowTests(TestCase):
             contact_name="آزمایش فروشنده",
             contact_email="seller@example.com",
             contact_phone="+989121234568",
-            national_id="1234567890",
+            national_id="1234567891",
             store_name="فروشگاه آزمایشی",
             seller_type=VendorApplication.SellerType.BOTH,
             description="عرضه محصولات در دسته پوشاک و اکسسوری با تأمین منظم",
@@ -323,7 +323,7 @@ class VendorProductArchiveTests(TestCase):
             shipping_phone="+989121234569",
             shipping_province="تهران",
             shipping_city="تهران",
-            shipping_postal_code="1234567890",
+            shipping_postal_code="1234567891",
             shipping_address="نشانی آزمایشی",
             subtotal=1000,
             total_amount=1000,
