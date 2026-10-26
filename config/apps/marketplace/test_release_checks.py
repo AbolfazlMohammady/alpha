@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .carriers import CarrierNotConfigured, TipaxClient, validate_quote_input
-from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication, VendorOrder, VendorProduct, Shipment
+from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication, VendorOrder, VendorProduct, WholesalePriceTier, Shipment
 from apps.users.models import RoleUser
 from apps.shop.models import Category, Product
 from apps.orders.models import Order
@@ -397,6 +397,15 @@ class VendorProductArchiveTests(TestCase):
             package_height_cm=10,
         )
         self.client.force_login(self.user)
+
+    def test_retail_only_seller_cannot_create_wholesale_tier(self):
+        tier = WholesalePriceTier(
+            listing=self.listing,
+            minimum_quantity=2,
+            unit_price=800,
+        )
+        with self.assertRaises(ValidationError):
+            tier.full_clean()
 
     def test_archive_keeps_listing_record_and_zeroes_stock(self):
         response = self.client.post(
