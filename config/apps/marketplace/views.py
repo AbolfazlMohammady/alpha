@@ -113,14 +113,26 @@ def cart_shipping_quote_api(request):
 
 
 def _vendor_for_user(user):
+    # Refresh the role from the database rather than relying on a stale in-memory
+    # user instance. Some custom account-editing flows may persist the display
+    # label instead of the TextChoices value, so accept both canonical forms.
+    user.refresh_from_db(fields=["role"])
+    role_value = str(getattr(user, "role", "") or "").strip().lower()
+    is_store_manager = role_value in {
+        str(RoleUser.STORE_MANAGER).lower(),
+        "مدیر فروشگاه",
+    }
     try:
         return Vendor.objects.get(user=user)
     except Vendor.DoesNotExist as exc:
         # A store-manager role alone did not create the marketplace Vendor row.
         # Create a pending profile so the seller can complete their store setup;
         # order acceptance still depends on Vendor.Status.ACTIVE.
-        if getattr(user, "role", None) != RoleUser.STORE_MANAGER:
-            raise PermissionDenied("این حساب هنوز به یک فروشگاه متصل نشده است.") from exc
+        if not is_store_manager:
+            raise PermissionDenied(
+                f"برای این حساب پروفایل فروشگاه وجود ندارد و نقش ذخیره‌شده "
+                f"({role_value or 'خالی'}) مدیر فروشگاه نیست."
+            ) from exc
         display_name = user.get_full_name().strip() or f"فروشگاه {user.pk}"
         vendor, _ = Vendor.objects.get_or_create(
             user=user,
