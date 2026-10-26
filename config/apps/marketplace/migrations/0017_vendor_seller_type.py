@@ -4,7 +4,9 @@ from django.db import migrations, models
 def preserve_existing_wholesale_vendors(apps, schema_editor):
     Vendor = apps.get_model("marketplace", "Vendor")
     VendorProduct = apps.get_model("marketplace", "VendorProduct")
-    vendor_ids = VendorProduct.objects.filter(wholesale_enabled=True).values_list("vendor_id", flat=True).distinct()
+    WholesalePriceTier = apps.get_model("marketplace", "WholesalePriceTier")
+    vendor_ids = set(VendorProduct.objects.filter(wholesale_enabled=True).values_list("vendor_id", flat=True))
+    vendor_ids.update(WholesalePriceTier.objects.values_list("listing__vendor_id", flat=True))
     Vendor.objects.filter(pk__in=vendor_ids).update(seller_type="both")
 
 
