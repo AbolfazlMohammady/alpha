@@ -257,6 +257,11 @@ def _vendor_for_user(user):
             f"برای این حساب دسترسی فروشندگی فعال نیست؛ نقش ذخیره‌شده "
             f"({role_value or 'خالی'}) مدیر فروشگاه نیست."
         )
+    if VendorApplication.objects.filter(
+        user=user,
+        status=VendorApplication.Status.REJECTED,
+    ).exists():
+        raise PermissionDenied("درخواست فروشندگی این حساب رد شده است؛ مدیر باید ابتدا وضعیت درخواست را اصلاح کند.")
     application = VendorApplication.objects.filter(
         user=user,
         status=VendorApplication.Status.APPROVED,
