@@ -204,11 +204,16 @@ def _vendor_for_user(user):
         "مدیر فروشگاه",
     }
     try:
-        return Vendor.objects.get(user=user)
+        vendor = Vendor.objects.get(user=user)
+        # The manually assigned store_manager role is the administrator's approval
+        # gate. A pending profile left by an earlier release is activated here;
+        # suspended/rejected profiles are never silently reactivated.
+        if is_store_manager and vendor.status == Vendor.Status.PENDING:
+            vendor.status = Vendor.Status.ACTIVE
+            vendor.approved_at = timezone.now()
+            vendor.save(update_fields=("status", "approved_at", "updated_at"))
+        return vendor
     except Vendor.DoesNotExist as exc:
-        # A store-manager role alone did not create the marketplace Vendor row.
-        # Create a pending profile so the seller can complete their store setup;
-        # order acceptance still depends on Vendor.Status.ACTIVE.
         if not is_store_manager:
             raise PermissionDenied(
                 f"برای این حساب پروفایل فروشگاه وجود ندارد و نقش ذخیره‌شده "
@@ -220,7 +225,8 @@ def _vendor_for_user(user):
             defaults={
                 "store_name": display_name[:160],
                 "slug": f"store-{user.pk}-{user.uuid.hex[:8]}",
-                "status": Vendor.Status.PENDING,
+                "status": Vendor.Status.ACTIVE,
+                "approved_at": timezone.now(),
             },
         )
         return vendor
