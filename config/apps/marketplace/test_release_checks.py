@@ -164,6 +164,40 @@ class VendorDashboardAccessTests(TestCase):
         self.assertIsNotNone(vendor.approved_at)
         self.assertTrue(vendor.slug.startswith(f"store-{user.pk}-"))
 
+    def test_existing_pending_vendor_activates_after_manual_role_assignment(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234571",
+            role=RoleUser.STORE_MANAGER,
+        )
+        Vendor.objects.create(
+            user=user,
+            store_name="فروشگاه در انتظار",
+            slug="pending-role-activation-test",
+            status=Vendor.Status.PENDING,
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("marketplace:vendor_dashboard_page"))
+        self.assertEqual(response.status_code, 200)
+        vendor = Vendor.objects.get(user=user)
+        self.assertEqual(vendor.status, Vendor.Status.ACTIVE)
+        self.assertIsNotNone(vendor.approved_at)
+
+    def test_suspended_vendor_is_not_silently_reactivated(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234572",
+            role=RoleUser.STORE_MANAGER,
+        )
+        Vendor.objects.create(
+            user=user,
+            store_name="فروشگاه تعلیق‌شده",
+            slug="suspended-role-activation-test",
+            status=Vendor.Status.SUSPENDED,
+        )
+        self.client.force_login(user)
+        self.client.get(reverse("marketplace:vendor_dashboard_page"))
+        self.assertEqual(Vendor.objects.get(user=user).status, Vendor.Status.SUSPENDED)
+
+
 
 
 class VendorApplicationWorkflowTests(TestCase):
