@@ -254,12 +254,14 @@ class VendorApplicationWorkflowTests(TestCase):
         self.assertFalse(Vendor.objects.filter(user=self.user).exists())
 
     def test_invalid_national_id_is_rejected(self):
-        payload = self.payload()
-        payload["national_id"] = "123"
-        response = self.client.post(reverse("marketplace:vendor_application_page"), payload)
-        self.assertEqual(response.status_code, 400)
-        self.assertContains(response, "کد ملی", status_code=400)
-        self.assertFalse(VendorApplication.objects.filter(user=self.user).exists())
+        for national_id in ("123", "1234567890", "1111111111"):
+            with self.subTest(national_id=national_id):
+                payload = self.payload()
+                payload["national_id"] = national_id
+                response = self.client.post(reverse("marketplace:vendor_application_page"), payload)
+                self.assertEqual(response.status_code, 400)
+                self.assertContains(response, "کد ملی", status_code=400)
+                self.assertFalse(VendorApplication.objects.filter(user=self.user).exists())
 
     def test_pending_application_cannot_be_submitted_twice(self):
         VendorApplication.objects.create(
