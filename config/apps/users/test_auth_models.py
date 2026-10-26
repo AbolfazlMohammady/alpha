@@ -17,8 +17,8 @@ class UserModelTests(TestCase):
 
     def test_default_address_is_unique_per_user(self):
         user = User.objects.create_user(phone="09121234567")
-        province = Province.objects.create(name="تهران")
-        city = City.objects.create(province=province, name="تهران")
+        province = Province.objects.get_or_create(name="تهران")[0]
+        city = City.objects.get_or_create(province=province, name="تهران")[0]
 
         Address.objects.create(
             user=user,
@@ -52,8 +52,8 @@ class AddressRecipientTests(TestCase):
             first_name="علی",
             last_name="محمدی",
         )
-        self.province = Province.objects.create(name="تهران")
-        self.city = City.objects.create(province=self.province, name="تهران")
+        self.province = Province.objects.get_or_create(name="تهران")[0]
+        self.city = City.objects.get_or_create(province=self.province, name="تهران")[0]
 
     def _address(self, **kwargs):
         data = {
