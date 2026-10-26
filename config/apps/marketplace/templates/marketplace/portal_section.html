@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ section_title }} | BABAEI{% endblock %}
+{% block content %}
+<style>
+.portal-placeholder{direction:rtl;max-width:920px;margin:48px auto;padding:0 18px;color:var(--text-primary,#18252b)}
+.portal-placeholder__hero{border-radius:24px;padding:clamp(24px,5vw,44px);background:linear-gradient(135deg,#11272b,#1b4b4c);color:#fff}
+.portal-placeholder__eyebrow{display:inline-block;font-size:12px;letter-spacing:.08em;opacity:.75;margin-bottom:12px}
+.portal-placeholder h1{font-size:clamp(26px,4vw,38px);margin:0 0 12px}
+.portal-placeholder p{line-height:2}
+.portal-placeholder__panel{margin-top:20px;border:1px solid var(--border,#e2e8f0);border-radius:20px;padding:24px;background:var(--surface,#fff)}
+.portal-placeholder__status{display:inline-flex;border-radius:999px;padding:7px 12px;background:#fff3d6;color:#805b0a;font-weight:700;font-size:12px}
+.portal-placeholder__actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.portal-placeholder__button{display:inline-flex;align-items:center;justify-content:center;border-radius:12px;padding:12px 18px;background:#173b3c;color:white;text-decoration:none;font-weight:750}
+.portal-placeholder__button--soft{background:#eef4f4;color:#173b3c}
+</style>
+<main class="portal-placeholder">
+  <header class="portal-placeholder__hero">
+    <span class="portal-placeholder__eyebrow">BABAEI / {% if is_admin_section %}ADMIN WORKSPACE{% else %}SELLER WORKSPACE{% endif %}</span>
+    <h1>{{ section_title }}</h1>
+    <p>{{ section_description }}</p>
+  </header>
+  <section class="portal-placeholder__panel">
+    <span class="portal-placeholder__status">صفحه موقت — عملیات هنوز فعال نیست</span>
+    <h2>این بخش برای دسترسی سریع آماده شده است</h2>
+    <p>این صفحه فعلاً مسیر و جایگاه بخش را مشخص می‌کند. تا زمانی که پیاده‌سازی نهایی این قسمت انجام نشده، هیچ عملیات مالی، سفارش یا تغییری در داده‌ها از این صفحه اجرا نمی‌شود.</p>
+    <p>در صورت نیاز، می‌توانیم در مرحله بعد امکانات همین بخش را تکمیل کنیم و این صفحه را به رابط نهایی تبدیل کنیم.</p>
+    <div class="portal-placeholder__actions">
+      {% if is_admin_section %}
+        <a class="portal-placeholder__button" href="/admin/">رفتن به پنل مدیریت</a>
+      {% else %}
+        <a class="portal-placeholder__button" href="{% url 'marketplace:vendor_dashboard_page' %}">بازگشت به پنل فروشنده</a>
+      {% endif %}
+      <a class="portal-placeholder__button portal-placeholder__button--soft" href="/">بازگشت به صفحه اصلی</a>
+    </div>
+  </section>
+</main>
+{% endblock %}
