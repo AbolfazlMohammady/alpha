@@ -183,6 +183,21 @@ class VendorDashboardAccessTests(TestCase):
         self.assertEqual(vendor.status, Vendor.Status.ACTIVE)
         self.assertIsNotNone(vendor.approved_at)
 
+    def test_customer_role_cannot_access_existing_vendor_profile(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234573",
+            role=RoleUser.CUSTOMER,
+        )
+        Vendor.objects.create(
+            user=user,
+            store_name="فروشگاه بدون نقش",
+            slug="customer-vendor-denied-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("marketplace:vendor_dashboard_page"))
+        self.assertEqual(response.status_code, 403)
+
     def test_suspended_vendor_is_not_silently_reactivated(self):
         user = get_user_model().objects.create_user(
             phone="+989121234572",
