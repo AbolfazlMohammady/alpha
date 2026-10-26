@@ -80,8 +80,8 @@ class VendorApplicationAdmin(admin.ModelAdmin):
 
 @admin.register(Vendor)
 class VendorAdmin(admin.ModelAdmin):
-    list_display = ("store_name", "user", "status_badge", "commission_bps", "supports_custom_printing", "created_at")
-    list_filter = ("status", "supports_custom_printing", "created_at")
+    list_display = ("store_name", "user", "seller_type", "status_badge", "commission_bps", "supports_custom_printing", "created_at")
+    list_filter = ("status", "seller_type", "supports_custom_printing", "created_at")
     search_fields = ("store_name", "slug", "user__phone", "user__email")
     autocomplete_fields = ("user",)
     readonly_fields = ("uuid", "created_at", "updated_at", "approved_at", "bank_details_verified_at")
