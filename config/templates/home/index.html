@@ -30,4 +30,87 @@
     </div>
 
 </section>
+
+{% if request.user.is_authenticated and request.user.role == "store_manager" or request.user.is_staff %}
+<section class="marketplace-shortcuts" aria-labelledby="marketplace-shortcuts-title">
+    <div class="marketplace-shortcuts__heading">
+        <span>MARKETPLACE / SELLER & ACCOUNTING</span>
+        <h2 id="marketplace-shortcuts-title">دسترسی سریع فروشگاه و حسابداری</h2>
+        <p>ورود موقت به بخش‌های فروشندگان، محصولات، ارسال سفارش و امور مالی</p>
+    </div>
+
+    {% if request.user.role == "store_manager" or request.user.is_staff %}
+    <div class="marketplace-shortcuts__group">
+        <h3>پنل فروشگاه همکار</h3>
+        <div class="marketplace-shortcuts__grid">
+            <a class="marketplace-shortcut marketplace-shortcut--primary" href="{% url 'marketplace:vendor_dashboard_page' %}">
+                <span class="marketplace-shortcut__icon">↗</span><strong>پنل فروشنده</strong><small>داشبورد اصلی فروشگاه</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'new-product' %}">
+                <span class="marketplace-shortcut__icon">＋</span><strong>ثبت محصول جدید</strong><small>ارسال محصول برای بررسی</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'my-products' %}">
+                <span class="marketplace-shortcut__icon">▦</span><strong>محصولات فروشگاه</strong><small>قیمت، موجودی و وضعیت</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'vendor-orders' %}">
+                <span class="marketplace-shortcut__icon">□</span><strong>سفارش‌ها و ارسال</strong><small>آماده‌سازی و پیگیری</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'vendor-settlements' %}">
+                <span class="marketplace-shortcut__icon">↔</span><strong>تسویه‌حساب فروشگاه</strong><small>تاریخچه و وضعیت تسویه</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'financial-profile' %}">
+                <span class="marketplace-shortcut__icon">▤</span><strong>اطلاعات حساب بانکی</strong><small>حساب دریافت سهم فروش</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'shipping-profile' %}">
+                <span class="marketplace-shortcut__icon">⌁</span><strong>مبدأ ارسال</strong><small>آدرس و کد پستی</small>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if request.user.is_staff %}
+    <div class="marketplace-shortcuts__group">
+        <h3>حسابداری و مدیریت مرکزی</h3>
+        <div class="marketplace-shortcuts__grid">
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'accounting-overview' %}">
+                <span class="marketplace-shortcut__icon">▤</span><strong>حسابداری مرکزی</strong><small>مرور بخش‌های مالی</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'trial-balance' %}">
+                <span class="marketplace-shortcut__icon">≡</span><strong>تراز آزمایشی</strong><small>کنترل بدهکار و بستانکار</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'reconciliation' %}">
+                <span class="marketplace-shortcut__icon">⟳</span><strong>مغایرت‌گیری مالی</strong><small>تطبیق گزارش‌ها</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'gateway-settlement' %}">
+                <span class="marketplace-shortcut__icon">▣</span><strong>تسویه درگاه</strong><small>واریزهای درگاه پرداخت</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'carrier-payment' %}">
+                <span class="marketplace-shortcut__icon">▰</span><strong>پرداخت شرکت حمل</strong><small>صورتحساب حمل‌ونقل</small>
+            </a>
+            <a class="marketplace-shortcut" href="{% url 'marketplace:portal_section_page' 'settlement-queue' %}">
+                <span class="marketplace-shortcut__icon">⇄</span><strong>تسویه فروشندگان</strong><small>بررسی و پیگیری پرداخت‌ها</small>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+<style>
+.marketplace-shortcuts{direction:rtl;max-width:1240px;margin:0 auto 72px;padding:34px 22px;color:var(--text-primary,#202124)}
+.marketplace-shortcuts__heading{margin-bottom:30px}
+.marketplace-shortcuts__heading>span{font-size:11px;letter-spacing:1.6px;font-weight:800;color:var(--text-secondary,#777)}
+.marketplace-shortcuts__heading h2{font-size:clamp(24px,3vw,34px);margin:9px 0}
+.marketplace-shortcuts__heading p{color:var(--text-secondary,#737373);margin:0}
+.marketplace-shortcuts__group{margin-top:28px}
+.marketplace-shortcuts__group h3{font-size:19px;margin:0 0 14px}
+.marketplace-shortcuts__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.marketplace-shortcut{display:flex;flex-direction:column;align-items:flex-start;gap:9px;min-height:142px;padding:19px;border:1px solid var(--border,#e5e7eb);border-radius:16px;background:var(--surface,#fff);color:inherit;text-decoration:none;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+.marketplace-shortcut:hover{transform:translateY(-3px);border-color:var(--text-secondary,#9ca3af);box-shadow:0 12px 30px #0000000b}
+.marketplace-shortcut--primary{background:var(--surface-secondary,#f7f7f7);border-color:var(--text-primary,#202124)}
+.marketplace-shortcut__icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--surface-secondary,#eeeeee);font-size:21px}
+.marketplace-shortcut strong{font-size:16px}
+.marketplace-shortcut small{font-size:13px;color:var(--text-secondary,#737373)}
+@media(max-width:600px){.marketplace-shortcuts{padding:26px 14px}.marketplace-shortcuts__grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.marketplace-shortcut{padding:14px;min-height:138px}.marketplace-shortcut strong{font-size:14px}}
+</style>
+{% endif %}
 {% endblock %}
