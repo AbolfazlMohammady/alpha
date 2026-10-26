@@ -1,15 +1,18 @@
 """Focused release smoke tests for marketplace, logistics, and accounting.
 
 These tests use mocked carrier responses only. They never call a real carrier or bank API.
-Run with: python manage.py test marketplace.test_release_checks
+Run with: python manage.py test apps.marketplace.test_release_checks
 """
 from unittest.mock import patch
 
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.test import TestCase
+from django.urls import reverse
 
 from .carriers import CarrierNotConfigured, TipaxClient, validate_quote_input
-from .models import JournalEntry, LedgerAccount
+from .models import JournalEntry, LedgerAccount, Vendor
+from apps.users.models import RoleUser
 from .services import post_journal, trial_balance
 
 
@@ -139,3 +142,22 @@ class AccountingReleaseChecks(TestCase):
         )
         report = trial_balance()
         self.assertTrue(report["balanced"])
+
+
+
+class VendorDashboardAccessTests(TestCase):
+    def test_store_manager_without_vendor_row_gets_pending_vendor_profile(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234567",
+            role=RoleUser.STORE_MANAGER,
+            first_name="فروشگاه آزمایشی",
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("marketplace:vendor_dashboard_page"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "پنل فروشنده")
+        vendor = Vendor.objects.get(user=user)
+        self.assertEqual(vendor.status, Vendor.Status.PENDING)
+        self.assertTrue(vendor.slug.startswith(f"store-{user.pk}-"))
