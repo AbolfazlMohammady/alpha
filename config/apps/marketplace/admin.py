@@ -65,7 +65,7 @@ class VendorApplicationAdmin(admin.ModelAdmin):
             reviewed_by=request.user,
             reviewed_at=timezone.now(),
         )
-        self.message_user(request, f"{updated} درخواست تأیید شد. اکنون حساب کاربر را طبق روال مدیریتی ایجاد/تکمیل و نقش مدیر فروشگاه را دستی تنظیم کنید؛ این اقدام به‌تنهایی دسترسی پنل ایجاد نمی‌کند.")
+        self.message_user(request, f"{updated} درخواست تأیید شد. اکنون حساب کاربر را با همان شماره تلفن و ایمیل ایجاد کنید، در همین درخواست فیلد «کاربر» را به آن حساب وصل کنید و نقش «مدیر فروشگاه» را دستی تنظیم کنید؛ دسترسی پنل فقط با نقش مدیر فروشگاه فعال می‌شود.")
 
     @admin.action(description="رد درخواست‌های انتخاب‌شده")
     def mark_rejected(self, request, queryset):
