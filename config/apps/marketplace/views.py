@@ -150,7 +150,7 @@ def vendor_application_page(request):
                 "form_data": request.POST,
             }, status=400)
         if not existing:
-            duplicate = VendorApplication.objects.filter(status=VendorApplication.Status.PENDING).filter(
+            duplicate = VendorApplication.objects.filter(status__in=[VendorApplication.Status.PENDING, VendorApplication.Status.APPROVED]).filter(
                 contact_phone=payload["contact_phone"]
             ).first()
             if duplicate:
@@ -161,7 +161,7 @@ def vendor_application_page(request):
                 }, status=400)
             if payload["contact_email"]:
                 duplicate = VendorApplication.objects.filter(
-                    status=VendorApplication.Status.PENDING,
+                    status__in=[VendorApplication.Status.PENDING, VendorApplication.Status.APPROVED],
                     contact_email__iexact=payload["contact_email"],
                 ).first()
                 if duplicate:
