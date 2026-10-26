@@ -254,8 +254,8 @@ def _vendor_order_for_user(user, order_id):
 def vendor_dashboard_page(request):
     try:
         vendor = _vendor_for_user(request.user)
-    except PermissionDenied:
-        return HttpResponseForbidden("این حساب به پنل فروشنده دسترسی ندارد.")
+    except PermissionDenied as exc:
+        return HttpResponseForbidden(str(exc))
     return render(request, "marketplace/vendor_dashboard.html", {"vendor": vendor})
 
 
