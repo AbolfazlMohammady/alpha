@@ -284,6 +284,10 @@
         box.innerHTML = data.results.map((item) => `
             <article class="vd-item">
                 <div class="vd-item-head"><h3>${escapeHtml(item.product_name)}</h3><span class="vd-badge">${escapeHtml(item.status_label || item.status)}</span></div>
+                <div class="vd-actions">
+                    ${item.status !== "paused" ? `<button class="vd-btn vd-btn--soft" type="button" data-archive-listing="${item.id}">خروج محصول از فروش</button>` : '<span class="vd-muted">این محصول از فروش خارج شده است.</span>'}
+                </div>
+                <p class="vd-muted">خروج از فروش، سابقه محصول و سفارش‌ها را نگه می‌دارد. اگر سفارش در حال انجام داشته باشد، سیستم عملیات را مسدود می‌کند.</p>
                 <div class="vd-details">
                     <span>شناسه محصول: ${item.product_id}</span>
                     <span>قیمت: ${money(item.retail_price)} تومان</span>
@@ -561,7 +565,14 @@
         const actionButton = event.target.closest("[data-order-action]");
         const bookButton = event.target.closest("[data-book-shipment]");
         const handoverButton = event.target.closest("[data-handover-shipment]");
+        const archiveButton = event.target.closest("[data-archive-listing]");
         try {
+            if (archiveButton) {
+                if (!confirm("محصول از فروش خارج شود؟ سوابق آن حفظ می‌شود و سفارش در حال انجام مانع این عملیات خواهد شد.")) return;
+                await request("/marketplace/api/vendor/products/" + archiveButton.dataset.archiveListing + "/archive/", {method:"POST", body:JSON.stringify({})});
+                notify("محصول از فروش خارج شد و سوابق آن حفظ شد.");
+                await loadProducts();
+            } else {
             const deleteTierButton = event.target.closest("[data-delete-tier]");
             if (deleteTierButton) {
                 const listingCard = deleteTierButton.closest("article.vd-item");
@@ -584,6 +595,7 @@
                 await request("/marketplace/api/vendor/orders/" + card.dataset.orderId + "/shipping/" + handoverButton.dataset.handoverShipment + "/handed-over/", {method:"POST", body:JSON.stringify({})});
                 notify("تحویل مرسوله ثبت شد.");
                 await loadOrders();
+            }
             }
         } catch (error) { notify(error.message, true); }
     });
