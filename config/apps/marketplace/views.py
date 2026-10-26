@@ -19,7 +19,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
 from apps.orders.models import Cart, CartItem, Order
-from apps.users.models import Address, RoleUser
+from apps.users.models import Address, RoleUser, User
 from apps.shop.models import Category, Product
 from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorApplication, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from .services import _strict_int, approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_carrier_invoice_payment, record_external_reconciliation, record_full_order_refund, record_gateway_settlement, record_payout_result, trial_balance
@@ -141,6 +141,14 @@ def vendor_application_page(request):
             "website_or_social": str(request.POST.get("website_or_social") or "").strip(),
             "description": str(request.POST.get("description") or "").strip(),
         }
+        try:
+            payload["contact_phone"] = str(User.objects.normalize_phone(payload["contact_phone"]))
+        except ValueError:
+            return render(request, "marketplace/vendor_application.html", {
+                "application": existing,
+                "errors": ["شماره تماس معتبر نیست؛ شماره تلفن همراه ایران را وارد کن."],
+                "form_data": request.POST,
+            }, status=400)
         if not existing:
             duplicate = VendorApplication.objects.filter(status=VendorApplication.Status.PENDING).filter(
                 contact_phone=payload["contact_phone"]
