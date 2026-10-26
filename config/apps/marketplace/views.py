@@ -112,11 +112,16 @@ def cart_shipping_quote_api(request):
         return _error(exc)
 
 
-@login_required
 @require_http_methods(["GET", "POST"])
 def vendor_application_page(request):
-    """Let a signed-in customer request seller access without granting seller permissions."""
-    existing = VendorApplication.objects.filter(user=request.user).first()
+    """Accept prospective seller applications before an account is created."""
+    existing = None
+    if request.user.is_authenticated:
+        existing = VendorApplication.objects.filter(user=request.user).first()
+    else:
+        application_id = request.session.get("vendor_application_id")
+        if application_id:
+            existing = VendorApplication.objects.filter(pk=application_id, user__isnull=True).first()
     if request.method == "POST":
         if existing and existing.status in {VendorApplication.Status.PENDING, VendorApplication.Status.APPROVED}:
             messages.info(request, "درخواست فروشندگی شما قبلاً ثبت شده است؛ وضعیت آن را در همین صفحه ببین.")
@@ -136,7 +141,30 @@ def vendor_application_page(request):
             "website_or_social": str(request.POST.get("website_or_social") or "").strip(),
             "description": str(request.POST.get("description") or "").strip(),
         }
-        application = existing or VendorApplication(user=request.user)
+        if not existing:
+            duplicate = VendorApplication.objects.filter(status=VendorApplication.Status.PENDING).filter(
+                contact_phone=payload["contact_phone"]
+            ).first()
+            if duplicate:
+                return render(request, "marketplace/vendor_application.html", {
+                    "application": None,
+                    "errors": ["برای این شماره تماس درخواست در انتظار بررسی وجود دارد."],
+                    "form_data": request.POST,
+                }, status=400)
+            if payload["contact_email"]:
+                duplicate = VendorApplication.objects.filter(
+                    status=VendorApplication.Status.PENDING,
+                    contact_email__iexact=payload["contact_email"],
+                ).first()
+                if duplicate:
+                    return render(request, "marketplace/vendor_application.html", {
+                        "application": None,
+                        "errors": ["برای این ایمیل درخواست در انتظار بررسی وجود دارد."],
+                        "form_data": request.POST,
+                    }, status=400)
+        application = existing or VendorApplication(
+            user=request.user if request.user.is_authenticated else None
+        )
         for key, value in payload.items():
             if key != "user":
                 setattr(application, key, value)
@@ -156,7 +184,9 @@ def vendor_application_page(request):
             return render(request, "marketplace/vendor_application.html", {
                 "application": existing, "errors": errors, "form_data": request.POST,
             }, status=400)
-        messages.success(request, "درخواست فروشندگی ثبت شد. تا بررسی مدیر، دسترسی پنل فروشنده فعال نمی‌شود.")
+        if not request.user.is_authenticated:
+            request.session["vendor_application_id"] = application.pk
+        messages.success(request, "درخواست فروشندگی ثبت شد. پس از بررسی مدیر، در صورت تأیید حساب کاربری توسط مدیر ایجاد می‌شود؛ این فرم دسترسی فروشندگی ایجاد نمی‌کند.")
         return redirect("marketplace:vendor_application_page")
     return render(request, "marketplace/vendor_application.html", {
         "application": existing, "form_data": {}, "errors": [],
