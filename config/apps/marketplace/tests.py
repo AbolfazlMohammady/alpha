@@ -430,6 +430,7 @@ class WholesalePricingValidationTests(TestCase):
             store_name="فروشگاه عمده آزمایشی",
             slug="wholesale-test-store",
             status=Vendor.Status.ACTIVE,
+            seller_type=Vendor.SellerType.BOTH,
         )
         category = Category.objects.create(name="آزمایشی", slug="test-wholesale-category")
         product = Product.objects.create(
