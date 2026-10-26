@@ -209,6 +209,28 @@ class VendorDashboardAccessTests(TestCase):
         self.assertEqual(vendor.store_name, "عمده‌فروشی نمونه")
         self.assertEqual(vendor.seller_type, Vendor.SellerType.WHOLESALE)
 
+    def test_rejected_application_blocks_seller_access_even_if_role_is_assigned(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234580",
+            email="rejected@example.com",
+            role=RoleUser.STORE_MANAGER,
+        )
+        VendorApplication.objects.create(
+            user=user,
+            contact_name="متقاضی ردشده",
+            contact_email="rejected@example.com",
+            contact_phone="+989121234580",
+            national_id="1234567891",
+            store_name="فروشگاه ردشده",
+            seller_type=VendorApplication.SellerType.RETAIL,
+            description="درخواست آزمایشی برای بررسی دسترسی",
+            status=VendorApplication.Status.REJECTED,
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("marketplace:vendor_dashboard_page"))
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Vendor.objects.filter(user=user).exists())
+
     def test_customer_role_cannot_access_existing_vendor_profile(self):
         user = get_user_model().objects.create_user(
             phone="+989121234573",
