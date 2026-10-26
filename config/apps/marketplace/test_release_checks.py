@@ -11,8 +11,9 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .carriers import CarrierNotConfigured, TipaxClient, validate_quote_input
-from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication
+from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication, VendorProduct
 from apps.users.models import RoleUser
+from apps.shop.models import Category, Product
 from .services import post_journal, trial_balance
 
 
@@ -231,3 +232,65 @@ class VendorApplicationWorkflowTests(TestCase):
         self.assertIsNone(application.user)
         self.assertEqual(application.status, VendorApplication.Status.PENDING)
         self.assertEqual(self.client.session.get("vendor_application_id"), application.pk)
+
+
+
+class VendorProductArchiveTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            phone="+989121234569",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.vendor = Vendor.objects.create(
+            user=self.user,
+            store_name="فروشگاه آرشیو",
+            slug="archive-store-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        category = Category.objects.create(name="آزمایش", slug="archive-test-category")
+        product = Product.objects.create(
+            category=category,
+            name="محصول آزمایشی",
+            slug="archive-test-product",
+            base_price=1000,
+            marketplace_only=True,
+        )
+        self.listing = VendorProduct.objects.create(
+            vendor=self.vendor,
+            product=product,
+            status=VendorProduct.Status.ACTIVE,
+            retail_price=1000,
+            stock_quantity=5,
+            weight_grams=500,
+            package_length_cm=10,
+            package_width_cm=10,
+            package_height_cm=10,
+        )
+        self.client.force_login(self.user)
+
+    def test_archive_keeps_listing_record_and_zeroes_stock(self):
+        response = self.client.post(
+            reverse("marketplace:vendor_product_archive_api", args=[self.listing.pk]),
+            data="{}",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.listing.refresh_from_db()
+        self.assertEqual(self.listing.status, VendorProduct.Status.PAUSED)
+        self.assertEqual(self.listing.stock_quantity, 0)
+        self.assertTrue(Product.objects.filter(pk=self.listing.product_id).exists())
+
+    def test_seller_cannot_archive_another_vendors_listing(self):
+        other_user = get_user_model().objects.create_user(
+            phone="+989121234570",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.client.force_login(other_user)
+        response = self.client.post(
+            reverse("marketplace:vendor_product_archive_api", args=[self.listing.pk]),
+            data="{}",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 404)
+        self.listing.refresh_from_db()
+        self.assertEqual(self.listing.status, VendorProduct.Status.ACTIVE)
