@@ -4,7 +4,7 @@ import json
 import pytest
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, override_settings
+from django.test import Client, RequestFactory, override_settings
 from django.urls import reverse
 
 from apps.shop.models import Category, Product, ProductColor, ProductSize, ProductVariant
@@ -78,22 +78,27 @@ def test_design_payload_calculates_area_specific_price(product, configured_desig
     pricing.customer_label_price = 100000
     pricing.save()
 
-    normalized, total = validate_design_payload(product, payload)
+    normalized, total, _ = validate_design_payload(product, payload)
     assert normalized["coordinate_space"] == "print_area_bbox"
     assert total == 620000
 
 
-def test_customer_uploaded_artwork_uses_panel_price(product, configured_designer):
+def test_customer_uploaded_artwork_uses_panel_price(product, configured_designer, django_user_model):
     _, area, _ = configured_designer
     pricing = CustomizerPricingSettings.get_solo()
     pricing.tshirt_base_price = 750000
     pricing.customer_label_price = 180000
     pricing.save()
 
+    user = django_user_model.objects.create_user(phone="+989121234583")
+    request = RequestFactory().post("/")
+    request.user = user
     uploaded = Artwork.objects.create(
         name="آپلود مشتری",
         slug="customer-upload",
         source=Artwork.Source.UPLOAD,
+        owner=user,
+        processing_status=Artwork.ProcessingStatus.READY,
         image=SimpleUploadedFile("customer.png", PNG_1X1, content_type="image/png"),
         base_price=100000,
     )
@@ -150,7 +155,7 @@ def test_two_non_overlapping_labels_on_same_side_are_accepted(product, configure
         ],
     }
 
-    normalized, _ = validate_design_payload(product, payload)
+    normalized, _, _ = validate_design_payload(product, payload)
     assert len(normalized["layers"]) == 2
 
 
@@ -205,7 +210,7 @@ def test_design_payload_rejects_outside_and_overlap(product, configured_designer
 def test_variant_must_be_in_stock_when_selected(product, configured_designer):
     _, area, artwork = configured_designer
     color = ProductColor.objects.create(name="مشکی", slug="black", hex_code="#000000")
-    size = ProductSize.objects.create(name="L", slug="l")
+    size, _ = ProductSize.objects.get_or_create(slug="l", defaults={"name": "L"})
     variant = ProductVariant.objects.create(product=product, color=color, size=size, sku="BLACK-L", price=550000, stock_quantity=0)
     payload = {"version": 1, "layers": [{"artwork_id": artwork.id, "area_id": area.id, "x": .5, "y": .5, "width": .3, "height": .3, "rotation": 0}]}
     with pytest.raises(ValidationError):
@@ -222,7 +227,9 @@ def test_variant_is_required_if_product_has_variants(product, configured_designe
         validate_design_payload(product, payload)
 
 
-def test_designer_page_and_save_endpoint(client, product, configured_designer):
+def test_designer_page_and_save_endpoint(client, product, configured_designer, django_user_model):
+    user = django_user_model.objects.create_user(phone="+989121234584", password="test-pass-123")
+    client.force_login(user)
     response = client.get(reverse("customizer:designer", kwargs={"product_ref": str(product.uuid)}))
     assert response.status_code == 200
 
@@ -291,7 +298,7 @@ def test_customer_upload_does_not_write_to_media(client, configured_designer, tm
         assert artwork.image.name == ""
         assert artwork.temp_image_path
         assert (temp_root / artwork.temp_image_path).is_file()
-        assert "artwork_temp_image" in response.json()["artwork"]["image"]
+        assert f"/customizer/design/{product.slug}/upload/{artwork.id}/image/" in response.json()["artwork"]["image"]
 
 
 def test_customer_upload_access_is_private(client, configured_designer, tmp_path):
