@@ -114,7 +114,7 @@ def test_customer_uploaded_artwork_uses_panel_price(product, configured_designer
             "rotation": 0,
         }],
     }
-    normalized, total = validate_design_payload(product, payload)
+    normalized, total, _ = validate_design_payload(product, payload, request=request)
     assert normalized["base_price"] == 750000
     assert normalized["layers"][0]["price"] == 180000
     assert total == 930000
@@ -220,7 +220,7 @@ def test_variant_must_be_in_stock_when_selected(product, configured_designer):
 def test_variant_is_required_if_product_has_variants(product, configured_designer):
     _, area, artwork = configured_designer
     color = ProductColor.objects.create(name="مشکی", slug="black", hex_code="#000000")
-    size = ProductSize.objects.create(name="L", slug="l")
+    size, _ = ProductSize.objects.get_or_create(slug="l", defaults={"name": "L"})
     ProductVariant.objects.create(product=product, color=color, size=size, sku="BLACK-L", price=550000, stock_quantity=5)
     payload = {"version": 1, "layers": [{"artwork_id": artwork.id, "area_id": area.id, "x": .5, "y": .5, "width": .3, "height": .3, "rotation": 0}]}
     with pytest.raises(ValidationError):
