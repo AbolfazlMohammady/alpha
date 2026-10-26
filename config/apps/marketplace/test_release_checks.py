@@ -11,7 +11,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .carriers import CarrierNotConfigured, TipaxClient, validate_quote_input
-from .models import JournalEntry, LedgerAccount, Vendor
+from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication
 from apps.users.models import RoleUser
 from .services import post_journal, trial_balance
 
@@ -161,3 +161,68 @@ class VendorDashboardAccessTests(TestCase):
         vendor = Vendor.objects.get(user=user)
         self.assertEqual(vendor.status, Vendor.Status.PENDING)
         self.assertTrue(vendor.slug.startswith(f"store-{user.pk}-"))
+
+
+
+class VendorApplicationWorkflowTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            phone="+989121234568",
+            password="test-password",
+            email="seller@example.com",
+            role=RoleUser.CUSTOMER,
+        )
+        self.client.force_login(self.user)
+
+    def payload(self):
+        return {
+            "contact_name": "آزمایش فروشنده",
+            "contact_email": "seller@example.com",
+            "contact_phone": "+989121234568",
+            "national_id": "1234567890",
+            "store_name": "فروشگاه آزمایشی",
+            "seller_type": "both",
+            "province": "تهران",
+            "city": "تهران",
+            "postal_code": "1234567890",
+            "address": "نشانی آزمایشی",
+            "website_or_social": "https://example.com",
+            "description": "عرضه محصولات در دسته پوشاک و اکسسوری با تأمین منظم",
+        }
+
+    def test_customer_can_submit_application_without_becoming_vendor(self):
+        response = self.client.post(reverse("marketplace:vendor_application_page"), self.payload())
+        self.assertEqual(response.status_code, 302)
+        application = VendorApplication.objects.get(user=self.user)
+        self.assertEqual(application.status, VendorApplication.Status.PENDING)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.role, RoleUser.CUSTOMER)
+        self.assertFalse(Vendor.objects.filter(user=self.user).exists())
+
+    def test_invalid_national_id_is_rejected(self):
+        payload = self.payload()
+        payload["national_id"] = "123"
+        response = self.client.post(reverse("marketplace:vendor_application_page"), payload)
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "کد ملی", status_code=400)
+        self.assertFalse(VendorApplication.objects.filter(user=self.user).exists())
+
+    def test_pending_application_cannot_be_submitted_twice(self):
+        VendorApplication.objects.create(
+            user=self.user,
+            contact_name="آزمایش فروشنده",
+            contact_email="seller@example.com",
+            contact_phone="+989121234568",
+            national_id="1234567890",
+            store_name="فروشگاه آزمایشی",
+            seller_type=VendorApplication.SellerType.BOTH,
+            description="عرضه محصولات در دسته پوشاک و اکسسوری با تأمین منظم",
+        )
+        response = self.client.post(reverse("marketplace:vendor_application_page"), self.payload())
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(VendorApplication.objects.filter(user=self.user).count(), 1)
+
+    def test_anonymous_user_is_redirected_to_login(self):
+        self.client.logout()
+        response = self.client.get(reverse("marketplace:vendor_application_page"))
+        self.assertEqual(response.status_code, 302)
