@@ -34,6 +34,8 @@
 .vd-nav a{flex:0 0 auto;text-decoration:none;color:inherit;font-size:13px;font-weight:700;padding:9px 13px;border-radius:10px;background:var(--surface-secondary,#f3f4f6);white-space:nowrap}
 .vd-nav a:hover,.vd-nav a:focus-visible{outline:2px solid var(--primary,#1f2937);outline-offset:2px}
 .vd-section{scroll-margin-top:150px}
+.vd-location-picker{position:relative;min-width:0}.vd-location-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:42px;padding:10px 12px;border:1px solid var(--border,#d1d5db);border-radius:9px;background:var(--surface,#fff);color:inherit;text-align:right;cursor:pointer}.vd-location-trigger:disabled{opacity:.55;cursor:not-allowed}.vd-location-menu{position:absolute;z-index:30;top:calc(100% + 5px);right:0;left:0;min-width:220px;max-height:290px;overflow:auto;padding:8px;background:#fff;color:#1f2937;border:1px solid #dbe2e8;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.16)}.vd-location-menu[hidden]{display:none}.vd-location-search{width:100%;min-height:38px;padding:8px 10px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;color:#1f2937}.vd-location-options{display:grid;gap:3px}.vd-location-option{padding:8px 10px;border:0;border-radius:7px;background:transparent;color:#334155;text-align:right;cursor:pointer}.vd-location-option:hover,.vd-location-option[aria-selected=true]{background:#e8f2f0;color:#173f3e}.vd-location-option[hidden]{display:none}.vd-location-empty{margin:8px;color:#64748b;font-size:12px}.vd-location-picker.is-open .vd-location-trigger{border-color:#173f3e}
+
 .vd-nav a[aria-current="page"]{background:#173b3c;color:#fff}
 .vd-panel-title{margin:0 0 6px;font-size:22px}
 .vd-panel-subtitle{margin:0 0 18px;color:var(--text-secondary,#64748b);font-size:13px;line-height:1.9}
@@ -78,8 +80,36 @@
         <form id="vd-shipping-profile" class="vd-form">
             {% csrf_token %}
             <label class="vd-field">کد پستی مبدأ<input name="pickup_postal_code" value="{{ vendor.pickup_postal_code }}" inputmode="numeric" maxlength="10" required></label>
-            <label class="vd-field">استان<input name="pickup_province" value="{{ vendor.pickup_province }}"></label>
-            <label class="vd-field">شهر<input name="pickup_city" value="{{ vendor.pickup_city }}"></label>
+            <label class="vd-field">استان
+                <div class="vd-location-picker" data-vd-picker="province">
+                    <input type="hidden" name="pickup_province_id" id="vd-province-value" value="{{ selected_province_id }}">
+                    <button type="button" class="vd-location-trigger" id="vd-province-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="vd-location-value">{% if vendor.pickup_province %}{{ vendor.pickup_province }}{% else %}انتخاب استان{% endif %}</span><span aria-hidden="true">⌄</span>
+                    </button>
+                    <div class="vd-location-menu" role="listbox" aria-label="انتخاب استان" hidden>
+                        <input class="vd-location-search" type="search" placeholder="جستجوی استان..." autocomplete="off" aria-label="جستجوی استان">
+                        <div class="vd-location-options">
+                            {% for province in provinces %}<button type="button" class="vd-location-option" data-value="{{ province.id }}" data-label="{{ province.name }}" aria-selected="{% if selected_province_id == province.id %}true{% else %}false{% endif %}">{{ province.name }}</button>{% endfor %}
+                            <p class="vd-location-empty" hidden>استانی پیدا نشد.</p>
+                        </div>
+                    </div>
+                </div>
+            </label>
+            <label class="vd-field">شهر
+                <div class="vd-location-picker" data-vd-picker="city">
+                    <input type="hidden" name="pickup_city_id" id="vd-city-value" value="{{ selected_city_id }}">
+                    <button type="button" class="vd-location-trigger" id="vd-city-trigger" aria-haspopup="listbox" aria-expanded="false" {% if not selected_province_id %}disabled{% endif %}>
+                        <span class="vd-location-value">{% if vendor.pickup_city %}{{ vendor.pickup_city }}{% else %}ابتدا استان را انتخاب کن{% endif %}</span><span aria-hidden="true">⌄</span>
+                    </button>
+                    <div class="vd-location-menu" role="listbox" aria-label="انتخاب شهر" hidden>
+                        <input class="vd-location-search" type="search" placeholder="جستجوی شهر..." autocomplete="off" aria-label="جستجوی شهر">
+                        <div class="vd-location-options">
+                            {% for city in cities %}<button type="button" class="vd-location-option" data-value="{{ city.id }}" data-province="{{ city.province_id }}" data-label="{{ city.name }}" aria-selected="{% if selected_city_id == city.id %}true{% else %}false{% endif %}">{{ city.name }}</button>{% endfor %}
+                            <p class="vd-location-empty" hidden>شهری برای این استان پیدا نشد.</p>
+                        </div>
+                    </div>
+                </div>
+            </label>
             <label class="vd-field">تلفن تماس<input name="contact_phone" value="{{ vendor.contact_phone }}"></label>
             <label class="vd-field" style="grid-column:1/-1">نشانی مبدأ<textarea name="pickup_address">{{ vendor.pickup_address }}</textarea></label>
             <button class="vd-btn" type="submit">ذخیره اطلاعات ارسال</button>
@@ -100,7 +130,7 @@
 
     <section class="vd-card vd-section" id="vd-new-product-section">
         <h2>ثبت محصول جدید</h2>
-        <p class="vd-muted">اگر محصولت در کاتالوگ نیست، این فرم را پر کن. پس از بررسی مدیر، محصول و آگهی فروش با قیمت و موجودی ثبت‌شده فعال می‌شوند. موجودی، قیمت، وزن و ابعاد برحسب واحد فروش ثبت می‌شوند؛ برای جعبه ۱۲تایی، واحد فروش را «جعبه ۱۲تایی» و تعداد اقلام را ۱۲ بگذار. تصویر اصلی حداکثر ۵ مگابایت باشد.</p>
+        <p class="vd-muted">این فرم فقط برای پیشنهاد کالایی است که هنوز در کاتالوگ مرکزی وجود ندارد. اگر کالا در کاتالوگ هست، از «افزودن از کاتالوگ» استفاده کن تا محصول تکراری نسازی. وزن و ابعاد زیر مربوط به بسته‌بندی آماده ارسال‌اند و برای محاسبه کرایه حمل استفاده می‌شوند، نه مشخصات کاتالوگ کالا.</p>
         <form id="vd-product-submission" class="vd-form" enctype="multipart/form-data">
             {% csrf_token %}
             <label class="vd-field">نام محصول<input name="name" maxlength="200" required></label>
@@ -402,6 +432,83 @@
             </article>
         `).join("");
     }
+    (() => {
+        const provincePicker = root.querySelector('[data-vd-picker="province"]');
+        const cityPicker = root.querySelector('[data-vd-picker="city"]');
+        if (!provincePicker || !cityPicker) return;
+        const provinceValue = document.getElementById("vd-province-value");
+        const cityValue = document.getElementById("vd-city-value");
+        const cityTrigger = document.getElementById("vd-city-trigger");
+        const normalize = (value) => String(value || "").trim().toLocaleLowerCase("fa-IR").replace(/[يى]/g, "ی").replace(/ك/g, "ک");
+        const close = (picker) => {
+            [provincePicker, cityPicker].forEach((item) => {
+                if (picker && item === picker) return;
+                item.classList.remove("is-open");
+                item.querySelector(".vd-location-menu").hidden = true;
+                item.querySelector(".vd-location-trigger").setAttribute("aria-expanded", "false");
+            });
+        };
+        const filter = (picker, query) => {
+            const q = normalize(query);
+            let count = 0;
+            picker.querySelectorAll(".vd-location-option").forEach((option) => {
+                const provinceMatches = picker !== cityPicker || option.dataset.province === provinceValue.value;
+                const visible = provinceMatches && (!q || normalize(option.dataset.label).includes(q));
+                option.hidden = !visible;
+                if (visible) count++;
+            });
+            picker.querySelector(".vd-location-empty").hidden = count > 0;
+        };
+        const open = (picker) => {
+            const trigger = picker.querySelector(".vd-location-trigger");
+            if (trigger.disabled) return;
+            close(picker);
+            picker.classList.add("is-open");
+            picker.querySelector(".vd-location-menu").hidden = false;
+            trigger.setAttribute("aria-expanded", "true");
+            const search = picker.querySelector(".vd-location-search");
+            search.value = "";
+            filter(picker, "");
+            search.focus();
+        };
+        const select = (picker, option) => {
+            picker.querySelector('input[type="hidden"]').value = option.dataset.value;
+            picker.querySelector(".vd-location-value").textContent = option.dataset.label;
+            picker.querySelectorAll(".vd-location-option").forEach((item) => item.setAttribute("aria-selected", item === option ? "true" : "false"));
+            picker.classList.remove("is-open");
+            picker.querySelector(".vd-location-menu").hidden = true;
+            picker.querySelector(".vd-location-trigger").setAttribute("aria-expanded", "false");
+        };
+        provincePicker.querySelector(".vd-location-trigger").addEventListener("click", () => open(provincePicker));
+        cityTrigger.addEventListener("click", () => open(cityPicker));
+        provincePicker.querySelectorAll(".vd-location-option").forEach((option) => option.addEventListener("click", () => {
+            const changed = provinceValue.value !== option.dataset.value;
+            select(provincePicker, option);
+            if (changed) {
+                cityValue.value = "";
+                cityPicker.querySelector(".vd-location-value").textContent = "انتخاب شهر";
+                cityPicker.querySelectorAll(".vd-location-option").forEach((item) => item.setAttribute("aria-selected", "false"));
+            }
+            cityTrigger.disabled = false;
+            filter(cityPicker, "");
+        }));
+        cityPicker.querySelectorAll(".vd-location-option").forEach((option) => option.addEventListener("click", () => select(cityPicker, option)));
+        root.querySelectorAll(".vd-location-search").forEach((search) => {
+            search.addEventListener("input", () => filter(search.closest(".vd-location-picker"), search.value));
+            search.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") close();
+                if (event.key === "Enter") {
+                    const first = search.closest(".vd-location-picker").querySelector(".vd-location-option:not([hidden])");
+                    if (first) { event.preventDefault(); first.click(); }
+                }
+            });
+        });
+        document.addEventListener("click", (event) => {
+            if (!event.target.closest(".vd-location-picker")) close();
+        });
+        document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
+        filter(cityPicker, "");
+    })();
     document.getElementById("vd-shipping-profile").addEventListener("submit", async (event) => {
         event.preventDefault();
         try {
