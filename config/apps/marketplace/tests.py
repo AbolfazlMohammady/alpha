@@ -1186,13 +1186,13 @@ class VendorPickupLocationSelectionTests(TestCase):
 
 class VendorProductParcelDetailsWorkflowTests(TestCase):
     def setUp(self):
-        user = get_user_model().objects.create_user(
+        self.user = get_user_model().objects.create_user(
             phone="+989121234570",
             password="test-password",
             role=RoleUser.STORE_MANAGER,
         )
         self.vendor = Vendor.objects.create(
-            user=user,
+            user=self.user,
             store_name="فروشگاه کالای آزمایشی",
             slug="vendor-product-parcel-workflow-test",
             status=Vendor.Status.ACTIVE,
@@ -1219,6 +1219,12 @@ class VendorProductParcelDetailsWorkflowTests(TestCase):
         self.assertEqual(listing.package_width_cm, 0)
         self.assertEqual(listing.package_height_cm, 0)
 
-    def test_vendor_product_form_does_not_require_parcel_dimensions(self):
+    def test_vendor_product_form_does_not_show_parcel_dimensions_as_catalog_fields(self):
+        self.client.force_login(self.user)
         response = self.client.get("/marketplace/vendor/dashboard/")
-        self.assertEqual(response.status_code, 302)  # Authentication is required.
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "وزن هر واحد فروش")
+        self.assertNotContains(response, "طول هر واحد فروش (سانتی‌متر)")
+        self.assertNotContains(response, "عرض هر واحد فروش (سانتی‌متر)")
+        self.assertNotContains(response, "ارتفاع هر واحد فروش (سانتی‌متر)")
+        self.assertContains(response, "وزن بسته (گرم)")
