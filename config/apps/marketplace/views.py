@@ -121,7 +121,7 @@ def vendor_application_page(request):
     else:
         application_id = request.session.get("vendor_application_id")
         if application_id:
-            existing = VendorApplication.objects.filter(pk=application_id, user__isnull=True).first()
+            existing = VendorApplication.objects.filter(pk=application_id).first()
     if request.method == "POST":
         if existing and existing.status in {VendorApplication.Status.PENDING, VendorApplication.Status.APPROVED}:
             messages.info(request, "درخواست فروشندگی شما قبلاً ثبت شده است؛ وضعیت آن را در همین صفحه ببین.")
