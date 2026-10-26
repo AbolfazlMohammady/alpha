@@ -34,7 +34,8 @@ class VendorApplicationAdmin(admin.ModelAdmin):
     list_filter = ("status", "seller_type", "created_at")
     search_fields = ("store_name", "contact_name", "contact_phone", "contact_email", "user__phone", "user__email")
     list_select_related = ("user", "reviewed_by")
-    readonly_fields = ("user", "created_at", "updated_at", "reviewed_by", "reviewed_at")
+    readonly_fields = ("created_at", "updated_at", "reviewed_by", "reviewed_at")
+    autocomplete_fields = ("user",)
     actions = ("mark_approved", "mark_rejected")
 
     fieldsets = (
