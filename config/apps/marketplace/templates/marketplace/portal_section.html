@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ section.title }} | BABAEI{% endblock %}
+{% block meta_description %}دسترسی موقت به بخش {{ section.title }} در پنل BABAEI.{% endblock %}
+{% block content %}
+<style>
+.portal-placeholder{direction:rtl;max-width:980px;margin:48px auto;padding:0 18px;color:var(--text-primary,#202124)}
+.portal-placeholder__top{font-size:12px;letter-spacing:1px;color:var(--text-secondary,#777);font-weight:800}
+.portal-placeholder__card{margin-top:18px;padding:clamp(22px,4vw,40px);border:1px solid var(--border,#e5e7eb);border-radius:22px;background:var(--surface,#fff);box-shadow:0 16px 45px #00000008}
+.portal-placeholder h1{font-size:clamp(26px,4vw,38px);margin:12px 0}
+.portal-placeholder p{line-height:1.9;color:var(--text-secondary,#6b7280)}
+.portal-placeholder__status{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:var(--surface-secondary,#f3f4f6);font-size:13px}
+.portal-placeholder__actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:24px}
+.portal-placeholder__button{display:inline-flex;align-items:center;justify-content:center;padding:11px 17px;border-radius:10px;text-decoration:none;background:var(--text-primary,#202124);color:white;font-weight:700}
+.portal-placeholder__button--secondary{background:var(--surface,#fff);color:inherit;border:1px solid var(--border,#d1d5db)}
+</style>
+<section class="portal-placeholder">
+    <div class="portal-placeholder__top">BABAEI / MARKETPLACE PORTAL</div>
+    <div class="portal-placeholder__card">
+        <span class="portal-placeholder__status">● صفحه موقت برای بررسی مسیر و رابط کاربری</span>
+        <h1>{{ section.title }}</h1>
+        <p>{{ section.description }}</p>
+        <p>{{ section.next_step }}</p>
+        <p>این صفحه فعلاً برای دسترسی مستقیم از صفحه اصلی ساخته شده است. هنوز عملیات اختصاصی این بخش در این صفحه پیاده‌سازی نشده؛ برای جلوگیری از نمایش اطلاعات ساختگی، هیچ گزارش یا تراکنش آزمایشی نمایش داده نمی‌شود.</p>
+        <div class="portal-placeholder__actions">
+            {% if section.audience == "vendor" %}
+            <a class="portal-placeholder__button" href="{% url 'marketplace:vendor_dashboard_page' %}">رفتن به پنل فروشنده</a>
+            {% else %}
+            <a class="portal-placeholder__button" href="/admin/">ورود به مدیریت</a>
+            {% endif %}
+            <a class="portal-placeholder__button portal-placeholder__button--secondary" href="{% url 'home:index' %}">بازگشت به صفحه اصلی</a>
+        </div>
+    </div>
+</section>
+{% endblock %}
