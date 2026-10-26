@@ -185,6 +185,30 @@ class VendorDashboardAccessTests(TestCase):
         self.assertEqual(vendor.status, Vendor.Status.ACTIVE)
         self.assertIsNotNone(vendor.approved_at)
 
+    def test_approved_application_configures_vendor_store_name_and_seller_type(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234575",
+            email="wholesale@example.com",
+            role=RoleUser.STORE_MANAGER,
+        )
+        VendorApplication.objects.create(
+            user=user,
+            contact_name="متقاضی عمده",
+            contact_email="wholesale@example.com",
+            contact_phone="+989121234575",
+            national_id="1234567891",
+            store_name="عمده‌فروشی نمونه",
+            seller_type=VendorApplication.SellerType.WHOLESALE,
+            description="تأمین عمده محصولات با موجودی منظم",
+            status=VendorApplication.Status.APPROVED,
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("marketplace:vendor_dashboard_page"))
+        self.assertEqual(response.status_code, 200)
+        vendor = Vendor.objects.get(user=user)
+        self.assertEqual(vendor.store_name, "عمده‌فروشی نمونه")
+        self.assertEqual(vendor.seller_type, Vendor.SellerType.WHOLESALE)
+
     def test_customer_role_cannot_access_existing_vendor_profile(self):
         user = get_user_model().objects.create_user(
             phone="+989121234573",
