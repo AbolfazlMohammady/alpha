@@ -727,3 +727,66 @@ class VendorProductSubmission(models.Model):
     def __str__(self):
         return f"{self.name} — {self.vendor.store_name} ({self.get_status_display()})"
 
+
+
+
+class VendorApplication(models.Model):
+    class SellerType(models.TextChoices):
+        RETAIL = "retail", "خرده‌فروشی"
+        WHOLESALE = "wholesale", "عمده‌فروشی"
+        BOTH = "both", "خرده‌فروشی و عمده‌فروشی"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "در انتظار بررسی"
+        APPROVED = "approved", "تأییدشده"
+        REJECTED = "rejected", "ردشده"
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="vendor_application",
+    )
+    contact_name = models.CharField(max_length=200)
+    contact_email = models.EmailField(blank=True)
+    contact_phone = models.CharField(max_length=20)
+    national_id = models.CharField(max_length=10, help_text="اطلاعات هویتی محرمانه؛ فقط مدیر مجاز به مشاهده باشد.")
+    store_name = models.CharField(max_length=160)
+    seller_type = models.CharField(max_length=12, choices=SellerType.choices)
+    province = models.CharField(max_length=120, blank=True)
+    city = models.CharField(max_length=120, blank=True)
+    postal_code = models.CharField(max_length=10, blank=True)
+    address = models.TextField(blank=True)
+    website_or_social = models.URLField(max_length=500, blank=True)
+    description = models.TextField()
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING, db_index=True)
+    reviewer_note = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        related_name="reviewed_vendor_applications", null=True, blank=True,
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("status", "-created_at")
+        indexes = [models.Index(fields=("status", "created_at"), name="market_vapp_status_idx")]
+
+    def clean(self):
+        super().clean()
+        self.contact_name = " ".join((self.contact_name or "").split())
+        self.store_name = " ".join((self.store_name or "").split())
+        self.national_id = "".join((self.national_id or "").split())
+        self.contact_phone = "".join((self.contact_phone or "").split())
+        self.postal_code = "".join((self.postal_code or "").split())
+        if len(self.national_id) != 10 or not self.national_id.isascii() or not self.national_id.isdigit():
+            raise ValidationError({"national_id": "کد ملی باید دقیقاً ۱۰ رقم انگلیسی باشد."})
+        if self.postal_code and (
+            len(self.postal_code) != 10 or not self.postal_code.isascii() or not self.postal_code.isdigit()
+        ):
+            raise ValidationError({"postal_code": "کد پستی باید دقیقاً ۱۰ رقم انگلیسی باشد."})
+        if not self.contact_name or not self.store_name or not self.description.strip():
+            raise ValidationError("نام متقاضی، نام فروشگاه و توضیحات فعالیت الزامی است.")
+
+    def __str__(self):
+        return f"{self.store_name} — {self.get_status_display()}"
