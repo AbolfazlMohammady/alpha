@@ -227,6 +227,9 @@ def _vendor_for_user(user):
         if application and vendor.seller_type != application.seller_type:
             vendor.seller_type = application.seller_type
             changed_fields.append("seller_type")
+        if application and vendor.store_name != application.store_name:
+            vendor.store_name = application.store_name
+            changed_fields.append("store_name")
         # The manually assigned store_manager role is the administrator's approval
         # gate. A pending profile left by an earlier release is activated here;
         # suspended/rejected profiles are never silently reactivated.
