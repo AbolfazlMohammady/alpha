@@ -745,6 +745,8 @@ class VendorApplication(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="vendor_application",
+        null=True,
+        blank=True,
     )
     contact_name = models.CharField(max_length=200)
     contact_email = models.EmailField(blank=True)
