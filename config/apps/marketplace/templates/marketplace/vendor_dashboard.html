@@ -38,16 +38,17 @@
 .vd-panel-title{margin:0 0 6px;font-size:22px}
 .vd-panel-subtitle{margin:0 0 18px;color:var(--text-secondary,#64748b);font-size:13px;line-height:1.9}
 .vd-section[hidden],#vd-overview[hidden]{display:none!important}
+.vendor-dashboard[data-seller-type="retail"] .vd-tier-form,.vendor-dashboard[data-seller-type="retail"] .vd-tier-update,.vendor-dashboard[data-seller-type="retail"] .vd-wholesale-tier-list{display:none!important}
 @media(max-width:600px){.vendor-dashboard{padding:0 12px}.vd-card{padding:14px}}
 </style>
 
-<div class="vendor-dashboard">
+<div class="vendor-dashboard" data-seller-type="{{ vendor.seller_type }}">
     <header class="vd-header">
         <div>
             <h1>پنل فروشنده</h1>
             <p class="vd-muted">{{ vendor.store_name }} · مدیریت محصولات، سفارش‌ها و تسویه‌ها</p>
         </div>
-        <span class="vd-badge">وضعیت فروشگاه: {{ vendor.get_status_display }}</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="vd-badge">وضعیت فروشگاه: {{ vendor.get_status_display }}</span><span class="vd-badge">نوع فعالیت: {{ vendor.get_seller_type_display }}</span></div>
     </header>
 
     <nav class="vd-nav" aria-label="بخش‌های پنل فروشنده">
