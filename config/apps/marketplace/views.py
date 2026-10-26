@@ -216,23 +216,35 @@ def _vendor_for_user(user):
             f"برای این حساب دسترسی فروشندگی فعال نیست؛ نقش ذخیره‌شده "
             f"({role_value or 'خالی'}) مدیر فروشگاه نیست."
         )
+    application = VendorApplication.objects.filter(
+        user=user,
+        status=VendorApplication.Status.APPROVED,
+    ).first()
     try:
         vendor = Vendor.objects.get(user=user)
+        changed_fields = []
+        # An approved application carries the seller's reviewed retail/wholesale scope.
+        if application and vendor.seller_type != application.seller_type:
+            vendor.seller_type = application.seller_type
+            changed_fields.append("seller_type")
         # The manually assigned store_manager role is the administrator's approval
         # gate. A pending profile left by an earlier release is activated here;
         # suspended/rejected profiles are never silently reactivated.
-        if is_store_manager and vendor.status == Vendor.Status.PENDING:
+        if vendor.status == Vendor.Status.PENDING:
             vendor.status = Vendor.Status.ACTIVE
             vendor.approved_at = timezone.now()
-            vendor.save(update_fields=("status", "approved_at", "updated_at"))
+            changed_fields.extend(("status", "approved_at"))
+        if changed_fields:
+            vendor.save(update_fields=tuple(set(changed_fields) | {"updated_at"}))
         return vendor
     except Vendor.DoesNotExist:
-        display_name = user.get_full_name().strip() or f"فروشگاه {user.pk}"
+        display_name = (application.store_name if application else user.get_full_name()).strip() or f"فروشگاه {user.pk}"
         vendor, _ = Vendor.objects.get_or_create(
             user=user,
             defaults={
                 "store_name": display_name[:160],
                 "slug": f"store-{user.pk}-{user.uuid.hex[:8]}",
+                "seller_type": application.seller_type if application else Vendor.SellerType.RETAIL,
                 "status": Vendor.Status.ACTIVE,
                 "approved_at": timezone.now(),
             },
