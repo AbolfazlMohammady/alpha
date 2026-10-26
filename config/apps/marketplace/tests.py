@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from .models import FinancialReconciliation, JournalEntry, LedgerAccount, SettlementBatch, SettlementLine, Shipment, Vendor, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from apps.shop.models import Category, Product
+from apps.users.models import City, Province, RoleUser
 from apps.orders.models import Cart, CartItem, Order, OrderItem
 from .payouts import PayoutNotConfigured, submit_settlement_payout
 from .carriers import CarrierError, JsonCarrierClient, TipaxClient, validate_quote_input
@@ -1123,3 +1124,61 @@ class ExternalReconciliationTests(TestCase):
             actual_amount=130000,
         )
         self.assertEqual(mismatch.status, FinancialReconciliation.Status.MISMATCH)
+
+
+class VendorPickupLocationSelectionTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            phone="+989121234569",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.vendor = Vendor.objects.create(
+            user=self.user,
+            store_name="فروشگاه موقعیت آزمایشی",
+            slug="vendor-pickup-location-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        self.province = Province.objects.create(name="استان آزمایشی")
+        self.city = City.objects.create(province=self.province, name="شهر آزمایشی")
+        self.client.force_login(self.user)
+
+    def test_shipping_profile_saves_city_and_province_from_canonical_records(self):
+        response = self.client.post(
+            "/marketplace/api/vendor/profile/shipping/",
+            data={
+                "pickup_postal_code": "1234567890",
+                "pickup_address": "نشانی آزمایشی",
+                "contact_phone": "09120000000",
+                "pickup_province_id": self.province.pk,
+                "pickup_city_id": self.city.pk,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.vendor.refresh_from_db()
+        self.assertEqual(self.vendor.pickup_province, self.province.name)
+        self.assertEqual(self.vendor.pickup_city, self.city.name)
+
+    def test_shipping_profile_rejects_city_that_does_not_belong_to_selected_province(self):
+        other_province = Province.objects.create(name="استان دیگر آزمایشی")
+        response = self.client.post(
+            "/marketplace/api/vendor/profile/shipping/",
+            data={
+                "pickup_province_id": other_province.pk,
+                "pickup_city_id": self.city.pk,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.vendor.refresh_from_db()
+        self.assertEqual(self.vendor.pickup_city, "")
+        self.assertEqual(self.vendor.pickup_province, "")
+
+    def test_vendor_dashboard_uses_existing_province_and_city_lists(self):
+        response = self.client.get("/marketplace/vendor/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-vd-picker="province"')
+        self.assertContains(response, 'data-vd-picker="city"')
+        self.assertContains(response, self.province.name)
+        self.assertContains(response, self.city.name)
