@@ -11,9 +11,10 @@ from django.test import TestCase
 from django.urls import reverse
 
 from .carriers import CarrierNotConfigured, TipaxClient, validate_quote_input
-from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication, VendorProduct
+from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication, VendorOrder, VendorProduct
 from apps.users.models import RoleUser
 from apps.shop.models import Category, Product
+from apps.orders.models import Order
 from .services import post_journal, trial_balance
 
 
@@ -313,6 +314,38 @@ class VendorProductArchiveTests(TestCase):
         self.assertEqual(self.listing.status, VendorProduct.Status.PAUSED)
         self.assertEqual(self.listing.stock_quantity, 0)
         self.assertTrue(Product.objects.filter(pk=self.listing.product_id).exists())
+
+    def test_archive_is_blocked_while_listing_has_open_vendor_order(self):
+        order = Order.objects.create(
+            user=self.user,
+            shipping_title="خانه",
+            shipping_recipient="گیرنده آزمایشی",
+            shipping_phone="+989121234569",
+            shipping_province="تهران",
+            shipping_city="تهران",
+            shipping_postal_code="1234567890",
+            shipping_address="نشانی آزمایشی",
+            subtotal=1000,
+            total_amount=1000,
+        )
+        VendorOrder.objects.create(
+            order=order,
+            vendor=self.vendor,
+            status=VendorOrder.Status.PREPARING,
+            items_snapshot=[{"vendor_product_id": self.listing.pk, "product_name": "محصول آزمایشی"}],
+            subtotal=1000,
+            commission_amount=100,
+            vendor_payable=900,
+        )
+        response = self.client.post(
+            reverse("marketplace:vendor_product_archive_api", args=[self.listing.pk]),
+            data="{}",
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 409)
+        self.listing.refresh_from_db()
+        self.assertEqual(self.listing.status, VendorProduct.Status.ACTIVE)
+        self.assertEqual(self.listing.stock_quantity, 5)
 
     def test_seller_cannot_archive_another_vendors_listing(self):
         other_user = get_user_model().objects.create_user(
