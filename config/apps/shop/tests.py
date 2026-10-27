@@ -178,6 +178,8 @@ class ShopViewTests(TestCase):
         response = self.client.get(reverse("shop:product", kwargs={"slug": product.slug}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '"availability":"https://schema.org/OutOfStock"')
+        self.assertContains(response, 'id="product-price" class="pd-price__value">انتخاب فروشنده</strong>')
+        self.assertContains(response, "برای مشاهده قیمت و موجودی، فروشنده را انتخاب کن.")
         self.assertNotContains(response, '"availability":"https://schema.org/InStock","url"')
 
     def test_inactive_product_is_hidden_from_shop(self):
