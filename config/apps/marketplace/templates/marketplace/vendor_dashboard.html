@@ -425,7 +425,7 @@
                 <div class="vd-list vd-wholesale-tier-list" style="margin-top:10px">
                     ${item.wholesale_tiers.map((tier) => `
                         <form class="vd-tier-update vd-form" data-tier-id="${tier.id}">
-                            <label class="vd-field">حداقل تعداد<input name="minimum_quantity" type="number" min="2" value="${tier.minimum_quantity}" required></label>
+                            <label class="vd-field">حداقل واحد فروش<select name="minimum_quantity" required>${[[1,"۱ واحد فروش"],[2,"۲ واحد فروش"],[3,"۳ واحد فروش"],[6,"۶ واحد فروش"],[12,"۱۲ واحد فروش"],[24,"۲۴ واحد فروش"],[36,"۳۶ واحد فروش"],[48,"۴۸ واحد فروش"],[72,"۷۲ واحد فروش"],[144,"۱۴۴ واحد فروش"]].map(([count,label]) => `<option value="${count}" ${Number(tier.minimum_quantity) === count ? "selected" : ""}>${label}</option>`).join("")}${[1,2,3,6,12,24,36,48,72,144].includes(Number(tier.minimum_quantity)) ? "" : `<option value="${tier.minimum_quantity}" selected>${tier.minimum_quantity} واحد فروش (مقدار قبلی)</option>`}</select></label>
                             <label class="vd-field">قیمت واحد عمده<input name="unit_price" type="number" min="1" value="${tier.unit_price}" required></label>
                             <button class="vd-btn vd-btn--soft" type="submit">به‌روزرسانی پله</button>
                             <button class="vd-btn vd-btn--soft" type="button" data-delete-tier="${tier.id}">حذف پله</button>
@@ -434,6 +434,7 @@
                 </div>
             </article>
         `).join("");
+        box.querySelectorAll(".vd-stock-form").forEach(configureSaleUnitSelectors);
     }
     const actionButtons = (order) => {
         const buttons = [];
@@ -750,6 +751,9 @@
             event.preventDefault();
             try {
                 const payload = Object.fromEntries(new FormData(event.target).entries());
+                const selectedUnit = event.target.querySelector('select[name="sale_unit"]')?.value;
+                const fixedCounts = {"عدد":1, "جفت":2, "جین":12};
+                if (selectedUnit && fixedCounts[selectedUnit]) payload.units_per_order = fixedCounts[selectedUnit];
                 const regularPrice = Number(payload.regular_price || 0);
                 const discountPercent = Number(payload.discount_percent || 0);
                 if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
