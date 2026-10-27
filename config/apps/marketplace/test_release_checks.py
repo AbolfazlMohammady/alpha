@@ -596,3 +596,56 @@ class AccountingJournalApiTests(TestCase):
         self.client.force_login(user)
         response = self.client.get("/marketplace/api/admin/accounting/journal-entries/")
         self.assertEqual(response.status_code, 302)
+
+
+class SettlementHistoryApiTests(TestCase):
+    def test_staff_can_see_failed_and_paid_settlements_not_only_pending_approval(self):
+        vendor_user = get_user_model().objects.create_user(
+            phone="+989120000703",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        vendor = Vendor.objects.create(
+            user=vendor_user,
+            store_name="فروشگاه سابقه تسویه",
+            slug="settlement-history-api-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        now = timezone.now()
+        SettlementBatch.objects.create(
+            idempotency_key="settlement-history-failed-001",
+            vendor=vendor,
+            status=SettlementBatch.Status.FAILED,
+            period_start=now - timedelta(days=2),
+            period_end=now - timedelta(days=1),
+            gross_amount=100000,
+            commission_amount=10000,
+            payable_amount=90000,
+            failure_reason="خطای آزمایشی پرداخت",
+        )
+        SettlementBatch.objects.create(
+            idempotency_key="settlement-history-paid-001",
+            vendor=vendor,
+            status=SettlementBatch.Status.PAID,
+            period_start=now - timedelta(days=4),
+            period_end=now - timedelta(days=3),
+            gross_amount=200000,
+            commission_amount=20000,
+            payable_amount=180000,
+            paid_at=now,
+            payout_reference="bank-test-123",
+        )
+        staff = get_user_model().objects.create_user(
+            phone="+989120000704",
+            password="test-password",
+            is_staff=True,
+        )
+        self.client.force_login(staff)
+        response = self.client.get("/marketplace/api/admin/settlements/")
+        self.assertEqual(response.status_code, 200)
+        rows = response.json()["results"]
+        self.assertEqual({row["status"] for row in rows}, {"failed", "paid"})
+        failed = next(row for row in rows if row["status"] == "failed")
+        self.assertEqual(failed["failure_reason"], "خطای آزمایشی پرداخت")
+        paid = next(row for row in rows if row["status"] == "paid")
+        self.assertEqual(paid["payout_reference"], "bank-test-123")
