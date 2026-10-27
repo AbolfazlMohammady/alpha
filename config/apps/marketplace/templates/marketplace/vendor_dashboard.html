@@ -392,7 +392,9 @@
                 <p class="vd-muted">خروج از فروش، سابقه محصول و سفارش‌ها را نگه می‌دارد. اگر سفارش در حال انجام داشته باشد، سیستم عملیات را مسدود می‌کند.</p>
                 <div class="vd-details">
                     <span>شناسه محصول: ${item.product_id}</span>
-                    <span>قیمت: ${money(item.retail_price)} تومان</span>
+                    <span>قیمت نهایی تکی: ${money(item.retail_price)} تومان</span>
+                    <span>نوع فروش: ${item.sale_type === "wholesale" ? "فقط عمده" : item.sale_type === "both" ? "تکی و عمده" : "فقط تکی"}</span>
+                    ${item.compare_at_price ? `<span>تخفیف فعلی: ${Math.round((item.compare_at_price-item.retail_price)*100/item.compare_at_price)}٪</span>` : ""}
                     <span>موجودی: ${money(item.stock_quantity)}</span>
                     <span>واحد فروش: ${escapeHtml(item.sale_unit)} · هر واحد شامل ${money(item.units_per_order)} قلم</span>
                     ${item.weight_grams ? `<span>وزن ثبت‌شده بسته: ${money(item.weight_grams)} گرم</span>` : `<span class="vd-muted">وزن و ابعاد بسته هنگام ثبت ارسال وارد می‌شود.</span>`}
@@ -402,8 +404,8 @@
                 <form class="vd-stock-form vd-form" data-listing-id="${item.id}" style="margin-top:12px">
                     <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="${escapeHtml(item.sale_unit)}" required></label>
                     <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="${item.units_per_order}" required></label>
-                    <label class="vd-field">قیمت هر واحد فروش (تومان)<input name="retail_price" type="number" min="1" value="${item.retail_price}" required></label>
-                    <label class="vd-field">قیمت قبل تخفیف (خالی = بدون تخفیف)<input name="compare_at_price" type="number" min="0" value="${item.compare_at_price ?? ""}"></label>
+                    <label class="vd-field">قیمت اصلی هر واحد (تومان)<input name="regular_price" type="number" min="1" value="${item.compare_at_price || item.retail_price}" required></label>
+                    <label class="vd-field">درصد تخفیف<input name="discount_percent" type="number" min="0" max="99" value="${item.compare_at_price ? Math.round((item.compare_at_price-item.retail_price)*100/item.compare_at_price) : 0}" required></label>
                     <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="${item.stock_quantity}" required></label>
                     <label class="vd-field">آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="${item.handling_days}" required></label>
                     <label class="vd-field">چاپ سفارشی<select name="supports_custom_printing"><option value="false" ${item.supports_custom_printing ? "" : "selected"}>خیر</option><option value="true" ${item.supports_custom_printing ? "selected" : ""}>بله</option></select></label>
@@ -717,8 +719,14 @@
             event.preventDefault();
             try {
                 const payload = Object.fromEntries(new FormData(event.target).entries());
+                const regularPrice = Number(payload.regular_price || 0);
+                const discountPercent = Number(payload.discount_percent || 0);
+                if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
+                payload.retail_price = Math.round(regularPrice * (100 - discountPercent) / 100);
+                payload.compare_at_price = discountPercent > 0 ? regularPrice : null;
+                delete payload.regular_price;
+                delete payload.discount_percent;
                 ["retail_price","units_per_order","stock_quantity","handling_days"].forEach((key) => payload[key] = Number(payload[key]));
-                payload.compare_at_price = payload.compare_at_price === "" ? null : Number(payload.compare_at_price);
                 payload.supports_custom_printing = payload.supports_custom_printing === "true";
                 payload.wholesale_enabled = payload.wholesale_enabled === "true";
                 await request("/marketplace/api/vendor/products/" + event.target.dataset.listingId + "/", {method:"POST", body:JSON.stringify(payload)});
