@@ -103,6 +103,9 @@ pages (the drawer carries those links) and it loaded on top of the cart.
                         دیدن محصولات
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"></path></svg>
                     </a>
+                    <a class="sh-btn sh-btn--ghost" href="{% url 'marketplace:storefront' %}">
+                        خرید از فروشندگان
+                    </a>
                     {% if designer_product %}
                         <a class="sh-btn sh-btn--ghost" href="{% url 'customizer:designer' designer_product.uuid %}">
                             طراحی اختصاصی
