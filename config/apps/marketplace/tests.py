@@ -1284,6 +1284,32 @@ class VendorSaleModeApiTests(TestCase):
         self.assertEqual(tier.minimum_quantity, 5)
         self.assertEqual(tier.unit_price, 800)
 
+    def test_wholesale_listing_can_sell_one_dozen_pack(self):
+        response = self.client.post(
+            "/marketplace/api/vendor/products/",
+            data={
+                "product_id": self.product.pk,
+                "sale_type": "wholesale",
+                "retail_price": 12000,
+                "sale_unit": "جین",
+                "units_per_order": 12,
+                "stock_quantity": 10,
+                "wholesale_enabled": False,
+                "wholesale_minimum_quantity": 1,
+                "wholesale_unit_price": 10000,
+                "supports_custom_printing": False,
+                "handling_days": 2,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        listing = VendorProduct.objects.get(vendor=self.vendor, product=self.product)
+        self.assertEqual(listing.sale_unit, "جین")
+        self.assertEqual(listing.units_per_order, 12)
+        tier = listing.wholesale_tiers.get()
+        self.assertEqual(tier.minimum_quantity, 1)
+        self.assertEqual(tier.unit_price, 10000)
+
     def test_retail_only_vendor_cannot_create_wholesale_listing(self):
         self.vendor.seller_type = Vendor.SellerType.RETAIL
         self.vendor.save(update_fields=("seller_type", "updated_at"))
