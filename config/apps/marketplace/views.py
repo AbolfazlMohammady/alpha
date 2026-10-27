@@ -482,10 +482,56 @@ def vendor_dashboard_api(request):
             if shipment.payer == Shipment.Payer.VENDOR
         )
     paid = sum(batch.payable_amount for batch in vendor.settlements.filter(status=SettlementBatch.Status.PAID))
+
+    # Real seller sales reporting, derived from immutable paid-order snapshots.
+    sales_since = timezone.now() - timedelta(days=30)
+    recent_orders = list(
+        orders.filter(created_at__gte=sales_since)
+        .exclude(status=VendorOrder.Status.CANCELLED)
+        .only("subtotal", "items_snapshot", "status")
+    )
+    sales_30d = sum(int(row.subtotal or 0) for row in recent_orders)
+    sold_units_30d = 0
+    products = {}
+    for row in recent_orders:
+        snapshot = row.items_snapshot if isinstance(row.items_snapshot, list) else []
+        snapshot_gross = sum(
+            int(item.get("line_total") or 0)
+            for item in snapshot if isinstance(item, dict)
+        )
+        # Distribute order-level discounts proportionally so product revenue
+        # reconciles to the actual vendor-order subtotal.
+        remaining_revenue = int(row.subtotal or 0)
+        remaining_gross = snapshot_gross
+        for index, item in enumerate(snapshot):
+            if not isinstance(item, dict):
+                continue
+            quantity = max(0, int(item.get("quantity") or 0))
+            gross = max(0, int(item.get("line_total") or 0))
+            sold_units_30d += quantity
+            if remaining_gross <= 0:
+                allocated = 0
+            elif index == len(snapshot) - 1:
+                allocated = remaining_revenue
+            else:
+                allocated = min(remaining_revenue, gross * int(row.subtotal or 0) // snapshot_gross)
+            remaining_revenue -= allocated
+            remaining_gross -= gross
+            key = str(item.get("vendor_product_id") or item.get("product_id") or item.get("product_name") or "unknown")
+            entry = products.setdefault(key, {
+                "name": str(item.get("product_name") or "محصول بدون نام"),
+                "quantity": 0,
+                "revenue": 0,
+            })
+            entry["quantity"] += quantity
+            entry["revenue"] += allocated
+    top_products = sorted(products.values(), key=lambda item: (item["quantity"], item["revenue"]), reverse=True)[:5]
+
     return JsonResponse({
         "ok": True,
         "vendor": {"id": vendor.id, "store_name": vendor.store_name, "status": vendor.status},
         "orders": {"pending_fulfilment": pending, "delivered": delivered, "total": orders.count()},
+        "sales": {"last_30_days": sales_30d, "sold_units_last_30_days": sold_units_30d, "top_products": top_products},
         "settlement": {"pending_amount": payable, "paid_amount": paid, "currency": "IRT"},
     })
 
