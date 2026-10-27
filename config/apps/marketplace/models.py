@@ -147,6 +147,10 @@ class VendorProduct(models.Model):
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
         if self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH} and self.vendor.seller_type == Vendor.SellerType.RETAIL:
             raise ValidationError({"sale_type": "این فروشگاه فقط مجوز خرده‌فروشی دارد."})
+        if self.sale_type == self.SaleType.RETAIL and self.wholesale_enabled:
+            raise ValidationError({"sale_type": "برای فروش تکی، فروش عمده باید غیرفعال باشد."})
+        if self.pk and self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH} and not self.wholesale_tiers.exists():
+            raise ValidationError({"sale_type": "برای فعال‌کردن فروش عمده، حداقل یک پله قیمت عمده لازم است."})
         if self.wholesale_enabled and self.vendor.seller_type == Vendor.SellerType.RETAIL:
             raise ValidationError({"wholesale_enabled": "فروشگاه شما برای فروش عمده تأیید نشده است."})
         if self.supports_custom_printing and not self.vendor.supports_custom_printing:
