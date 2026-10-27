@@ -315,7 +315,11 @@ def portal_section_page(request, section):
         return HttpResponseForbidden("این بخش تعریف نشده است.")
     title, audience, description = config
     if audience == "admin":
-        if not (request.user.is_staff or request.user.is_superuser):
+        if not (
+            request.user.is_staff
+            or request.user.is_superuser
+            or request.user.role == RoleUser.ADMIN
+        ):
             return HttpResponseForbidden("دسترسی این بخش فقط برای مدیران مجاز است.")
         admin_anchors = {
             "trial-balance": "ma-trial-balance",
