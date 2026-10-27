@@ -166,6 +166,12 @@ class VendorDashboardAccessTests(TestCase):
         self.assertContains(response, 'href="/marketplace/vendor/dashboard/#vd-orders-section"')
         self.assertNotContains(response, 'href="/control/products/"')
         self.assertNotContains(response, 'href="/control/"')
+        rendered = response.content.decode()
+        submission_start = rendered.index('id="vd-product-submission"')
+        submission_end = rendered.index('id="vd-product-submissions"', submission_start)
+        submission_form = rendered[submission_start:submission_end]
+        self.assertNotIn('select name="sale_type"', submission_form)
+        self.assertIn('type="radio" name="sale_type"', submission_form)
         vendor = Vendor.objects.get(user=user)
         self.assertEqual(vendor.status, Vendor.Status.ACTIVE)
         self.assertIsNotNone(vendor.approved_at)
