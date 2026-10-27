@@ -12,7 +12,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.db.models import Prefetch, Q, Sum
+from django.db.models import F, Min, Prefetch, Q, Sum
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -242,6 +242,11 @@ def marketplace_storefront_page(request):
         stock_quantity__gt=0,
         product__is_active=True,
         product__category__is_active=True,
+    ).annotate(
+        minimum_wholesale_quantity=Min("wholesale_tiers__minimum_quantity"),
+    ).filter(
+        Q(sale_type__in=[VendorProduct.SaleType.RETAIL, VendorProduct.SaleType.BOTH])
+        | Q(stock_quantity__gte=F("minimum_wholesale_quantity"))
     ).select_related("vendor", "product", "product__category").prefetch_related(
         Prefetch(
             "product__images",
