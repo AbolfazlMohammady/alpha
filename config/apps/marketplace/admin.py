@@ -472,6 +472,7 @@ class VendorProductSubmissionAdmin(admin.ModelAdmin):
                         vendor=locked.vendor,
                         product=product,
                         status=VendorProduct.Status.ACTIVE,
+                        sale_type=locked.sale_type,
                         retail_price=locked.retail_price,
                         compare_at_price=locked.compare_at_price,
                         sale_unit=locked.sale_unit,
@@ -486,6 +487,16 @@ class VendorProductSubmissionAdmin(admin.ModelAdmin):
                     )
                     listing.full_clean()
                     listing.save()
+                    if locked.sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH}:
+                        tier = WholesalePriceTier(
+                            listing=listing,
+                            minimum_quantity=locked.wholesale_minimum_quantity,
+                            unit_price=locked.wholesale_unit_price,
+                        )
+                        tier.full_clean()
+                        tier.save()
+                        listing.wholesale_enabled = True
+                        listing.save(update_fields=("wholesale_enabled", "updated_at"))
                     locked.status = VendorProductSubmission.Status.APPROVED
                     locked.product = product
                     locked.listing = listing
