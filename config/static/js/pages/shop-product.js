@@ -7,7 +7,9 @@
     const sizeButtons = [...document.querySelectorAll(".size-option")];
     const priceEl = document.getElementById("product-price");
     const priceCurrencyEl = document.getElementById("product-price-currency");
-    const marketplaceOnly = document.querySelector(".pd")?.dataset.marketplaceOnly === "true";
+    const productRoot = document.querySelector(".pd");
+    const marketplaceOnly = productRoot?.dataset.marketplaceOnly === "true";
+    const marketplaceUnavailable = productRoot?.dataset.marketplaceUnavailable === "true";
     const saleUnitEl = document.getElementById("product-sale-unit");
     const quantityLabel = document.getElementById("cart-quantity-label");
     const oldPriceRow = document.getElementById("product-old-price-row");
@@ -59,12 +61,14 @@
             if (quantityLabel) quantityLabel.textContent = "تعداد";
             if (quantityInput) quantityInput.min = "1";
             if (marketplaceOnly) {
-                if (priceEl) priceEl.textContent = "انتخاب فروشنده";
+                if (priceEl) priceEl.textContent = marketplaceUnavailable ? "فعلاً ناموجود" : "انتخاب فروشنده";
                 if (priceCurrencyEl) priceCurrencyEl.hidden = true;
                 oldPriceRow?.classList.add("is-hidden");
                 if (oldPriceEl) oldPriceEl.textContent = "";
                 if (discountEl) discountEl.textContent = "";
-                if (statusEl && variants.length === 0) statusEl.textContent = "برای مشاهده قیمت و موجودی، فروشنده را انتخاب کن.";
+                if (statusEl && variants.length === 0) statusEl.textContent = marketplaceUnavailable
+                    ? "فعلاً فروشنده‌ای با موجودی فعال برای این محصول نداریم."
+                    : "برای مشاهده قیمت و موجودی، فروشنده را انتخاب کن.";
             }
             return;
         }
