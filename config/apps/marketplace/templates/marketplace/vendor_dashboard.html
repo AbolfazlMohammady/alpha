@@ -470,9 +470,9 @@
                 option.disabled = !matches;
                 if (matches) available++;
             });
+            city.options[0].textContent = available ? "انتخاب شهر" : "ابتدا استان را انتخاب کن";
             if (!preserve || !Array.from(city.options).some(option => option.value === previous && !option.disabled)) {
                 city.value = "";
-                city.options[0].textContent = available ? "انتخاب شهر" : "ابتدا استان را انتخاب کن";
             }
             city.disabled = !province.value || available === 0;
         };
