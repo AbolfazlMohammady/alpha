@@ -663,7 +663,8 @@
             form.reset();
             document.getElementById("vd-product-id").value = "";
             document.getElementById("vd-catalog-search").value = "";
-            configureProductPricing(form);
+            form.querySelector('input[name="regular_price"]')?.dispatchEvent(new Event("input"));
+            form.querySelector('input[name="sale_type"]:checked')?.dispatchEvent(new Event("change"));
             notify("شرایط فروش کالا برای بررسی مدیر ثبت شد.");
             await loadProducts();
         } catch (error) { notify(error.message, true); }
@@ -700,7 +701,8 @@
                 const data = await request("/marketplace/api/vendor/product-submissions/", {method:"POST", body:formData});
                 notify(data.message || "محصول برای بررسی ارسال شد.");
                 form.reset();
-                configureProductPricing(form);
+                form.querySelector('input[name="regular_price"]')?.dispatchEvent(new Event("input"));
+                form.querySelector('input[name="sale_type"]:checked')?.dispatchEvent(new Event("change"));
                 await loadProductSubmissions();
             } catch (error) { notify(error.message, true); }
         }
