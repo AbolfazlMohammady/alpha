@@ -320,6 +320,36 @@ class PortalPlaceholderAccessTests(TestCase):
         response = self.client.get(reverse("marketplace:portal_section_page", args=["trial-balance"]))
         self.assertEqual(response.status_code, 403)
 
+    def test_admin_role_can_open_accounting_without_is_staff_flag(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234589",
+            role=RoleUser.ADMIN,
+            is_staff=False,
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("marketplace:portal_section_page", args=["accounting-overview"]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "تنظیمات حمل")
+        self.assertContains(response, "تراز آزمایشی")
+
+    def test_store_manager_shop_header_points_to_vendor_dashboard_not_control(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234590",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.client.force_login(user)
+        response = self.client.get(reverse("shop:index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/marketplace/vendor/dashboard/"')
+        self.assertContains(response, "پنل فروشنده")
+        self.assertNotContains(response, 'href="/control/"')
+
+    def test_main_shop_promotes_seller_marketplace(self):
+        response = self.client.get(reverse("shop:index"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/marketplace/store/"')
+        self.assertContains(response, "خرید از فروشندگان")
+
 
 class VendorApplicationWorkflowTests(TestCase):
     def setUp(self):
@@ -603,7 +633,28 @@ class AccountingJournalApiTests(TestCase):
         )
         self.client.force_login(user)
         response = self.client.get("/marketplace/api/admin/accounting/journal-entries/")
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 403)
+
+    def test_admin_role_without_staff_flag_can_inspect_accounting_api(self):
+        post_journal(
+            idempotency_key="release-journal-admin-role-001",
+            kind="admin_role_smoke",
+            description="بررسی دسترسی نقش مدیر",
+            lines=[
+                {"account": self.cash, "debit": 12000, "credit": 0},
+                {"account": self.revenue, "debit": 0, "credit": 12000},
+            ],
+        )
+        admin = get_user_model().objects.create_user(
+            phone="+989120000704",
+            password="test-password",
+            role=RoleUser.ADMIN,
+            is_staff=False,
+        )
+        self.client.force_login(admin)
+        response = self.client.get("/marketplace/api/admin/accounting/journal-entries/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["ok"])
 
 
 class SettlementHistoryApiTests(TestCase):

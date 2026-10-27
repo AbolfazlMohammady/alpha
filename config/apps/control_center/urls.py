@@ -14,7 +14,7 @@ def control_center_access(view):
     @wraps(view)
     def guarded_view(request, *args, **kwargs):
         user = request.user
-        if user.is_authenticated and getattr(user, "role", None) == RoleUser.STORE_MANAGER:
+        if user.is_authenticated and getattr(user, "role", None) in {RoleUser.STORE_MANAGER, "مدیر فروشگاه"}:
             return HttpResponseForbidden("دسترسی مدیر فروشگاه به مرکز کنترل مجاز نیست.")
         return view(request, *args, **kwargs)
 

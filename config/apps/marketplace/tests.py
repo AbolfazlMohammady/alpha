@@ -1209,6 +1209,19 @@ class VendorProductParcelDetailsWorkflowTests(TestCase):
             base_price=10000,
         )
 
+    def test_seller_catalog_picker_excludes_another_marketplace_only_product(self):
+        Product.objects.create(
+            category=self.product.category,
+            name="محصول اختصاصی فروشنده دیگر",
+            slug="other-seller-only-product",
+            base_price=20000,
+            marketplace_only=True,
+        )
+        self.client.force_login(self.user)
+        response = self.client.get("/marketplace/api/vendor/catalog-products/?q=محصول اختصاصی")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["results"], [])
+
     def test_vendor_can_create_listing_before_entering_parcel_dimensions(self):
         listing = VendorProduct(
             vendor=self.vendor,

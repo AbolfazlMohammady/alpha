@@ -4,7 +4,7 @@ from apps.customizer.models import DesignerView, PrintArea, PrintAreaView
 from apps.shop.models import Product
 
 
-DESIGNER_NAV_CACHE_KEY = "babaei:nav:designer-product:v3"
+DESIGNER_NAV_CACHE_KEY = "babaei:nav:designer-product:v4"
 DESIGNER_NAV_CACHE_TTL = 300
 _NO_DESIGNER = "__no_designer__"
 
@@ -28,6 +28,7 @@ def designer_navigation(request):
             pk=product.pk,
             is_active=True,
             category__is_active=True,
+            marketplace_only=False,
         ).exists()
         if not is_still_public:
             product = None
@@ -37,6 +38,7 @@ def designer_navigation(request):
             Product.objects.filter(
                 is_active=True,
                 category__is_active=True,
+                marketplace_only=False,
             )
             .only("id", "uuid", "name")
             .order_by("-is_featured", "created_at", "id")

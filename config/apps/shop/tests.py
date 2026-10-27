@@ -142,6 +142,44 @@ class ShopViewTests(TestCase):
         self.assertEqual(response.status_code, 301)
         self.assertEqual(response["Location"], reverse("shop:category", kwargs={"slug": self.category.slug}))
 
+    def test_marketplace_only_products_are_not_mixed_into_platform_catalog(self):
+        marketplace_product = Product.objects.create(
+            category=self.category,
+            name="محصول اختصاصی فروشنده",
+            slug="seller-only-product",
+            base_price=125000,
+            is_active=True,
+            marketplace_only=True,
+        )
+        home = self.client.get(reverse("shop:index"))
+        category = self.client.get(reverse("shop:category", kwargs={"slug": self.category.slug}))
+        search = self.client.get(reverse("shop:search"), {"q": marketplace_product.name})
+        self.assertEqual(home.status_code, 200)
+        self.assertEqual(category.status_code, 200)
+        self.assertEqual(search.status_code, 200)
+        self.assertNotContains(home, marketplace_product.name)
+        self.assertNotContains(category, marketplace_product.name)
+        self.assertNotContains(search, reverse("shop:product", kwargs={"slug": marketplace_product.slug}))
+
+    def test_shop_prominently_links_to_seller_marketplace(self):
+        response = self.client.get(reverse("shop:index"))
+        self.assertContains(response, 'href="/marketplace/store/"')
+        self.assertContains(response, "خرید از فروشندگان")
+
+    def test_marketplace_only_product_does_not_publish_fake_platform_stock_or_price(self):
+        product = Product.objects.create(
+            category=self.category,
+            name="محصول فقط بازار فروشندگان",
+            slug="marketplace-only-detail",
+            base_price=990000,
+            is_active=True,
+            marketplace_only=True,
+        )
+        response = self.client.get(reverse("shop:product", kwargs={"slug": product.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '"availability":"https://schema.org/OutOfStock"')
+        self.assertNotContains(response, '"availability":"https://schema.org/InStock","url"')
+
     def test_inactive_product_is_hidden_from_shop(self):
         self.product.is_active = False
         self.product.save(update_fields=["is_active"])

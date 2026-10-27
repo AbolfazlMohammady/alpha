@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from apps.orders.models import Order
-from apps.users.models import User
+from apps.users.models import RoleUser, User
 
 
 class ReadOnlyOrderPaymentWithWorkflowTests(TestCase):
@@ -307,3 +307,25 @@ class StoreManagerControlCenterAccessTests(TestCase):
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 403)
+
+
+class SellerControlCenterIsolationTests(TestCase):
+    def test_store_manager_cannot_open_control_center(self):
+        seller = User.objects.create_user(
+            phone="09120000002",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.client.force_login(seller)
+        response = self.client.get("/control/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_legacy_persian_store_manager_role_cannot_open_control_center(self):
+        seller = User.objects.create_user(
+            phone="09120000003",
+            password="test-password",
+            role="مدیر فروشگاه",
+        )
+        self.client.force_login(seller)
+        response = self.client.get("/control/")
+        self.assertEqual(response.status_code, 403)
