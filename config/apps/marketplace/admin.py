@@ -402,8 +402,8 @@ class FinancialReconciliationAdmin(ReadOnlyAuditAdmin):
 
 @admin.register(VendorProductSubmission)
 class VendorProductSubmissionAdmin(admin.ModelAdmin):
-    list_display = ("name", "vendor", "category", "retail_price", "sale_unit", "units_per_order", "stock_quantity", "weight_grams", "status", "created_at")
-    list_filter = ("status", "category", "created_at")
+    list_display = ("name", "vendor", "category", "sale_type", "retail_price", "compare_at_price", "wholesale_minimum_quantity", "wholesale_unit_price", "sale_unit", "units_per_order", "stock_quantity", "status", "created_at")
+    list_filter = ("status", "sale_type", "category", "created_at")
     search_fields = ("name", "vendor__store_name", "category__name")
     autocomplete_fields = ("vendor", "category", "product")
     readonly_fields = ("status", "listing", "reviewed_by", "reviewed_at", "created_at", "updated_at")
