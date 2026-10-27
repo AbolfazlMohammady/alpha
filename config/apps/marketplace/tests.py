@@ -1399,6 +1399,49 @@ class MarketplaceOperationalPagesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "بازار فروشندگان")
 
+    def test_public_marketplace_displays_seller_price_and_wholesale_terms(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234573",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        vendor = Vendor.objects.create(
+            user=user,
+            store_name="فروشگاه بازار آزمایشی",
+            slug="marketplace-storefront-test-vendor",
+            status=Vendor.Status.ACTIVE,
+            seller_type=Vendor.SellerType.BOTH,
+        )
+        category = Category.objects.create(name="دسته بازار آزمایشی", slug="marketplace-storefront-test-category")
+        product = Product.objects.create(
+            category=category,
+            name="شلوار جین عمده",
+            slug="marketplace-storefront-test-product",
+            base_price=20000,
+            is_active=True,
+        )
+        listing = VendorProduct.objects.create(
+            vendor=vendor,
+            product=product,
+            status=VendorProduct.Status.ACTIVE,
+            sale_type=VendorProduct.SaleType.WHOLESALE,
+            retail_price=12000,
+            sale_unit="جین",
+            units_per_order=12,
+            stock_quantity=10,
+        )
+        tier = WholesalePriceTier(listing=listing, minimum_quantity=1, unit_price=10000)
+        tier.full_clean()
+        tier.save()
+        listing.wholesale_enabled = True
+        listing.save(update_fields=("wholesale_enabled", "updated_at"))
+        response = self.client.get("/marketplace/store/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "فروشگاه بازار آزمایشی")
+        self.assertContains(response, "شلوار جین عمده")
+        self.assertContains(response, "۱۰٬۰۰۰")
+        self.assertContains(response, "قیمت عمده")
+
     def test_admin_accounting_portal_is_not_a_placeholder(self):
         user = get_user_model().objects.create_user(
             phone="+989121234572",
