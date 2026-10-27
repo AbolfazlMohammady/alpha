@@ -649,3 +649,54 @@ class SettlementHistoryApiTests(TestCase):
         self.assertEqual(failed["failure_reason"], "خطای آزمایشی پرداخت")
         paid = next(row for row in rows if row["status"] == "paid")
         self.assertEqual(paid["payout_reference"], "bank-test-123")
+
+
+class VendorSalesAnalyticsTests(TestCase):
+    def test_sales_report_distinguishes_sellable_packs_from_physical_items(self):
+        user = get_user_model().objects.create_user(
+            phone="+989120000705",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        vendor = Vendor.objects.create(
+            user=user,
+            store_name="فروشگاه تحلیل فروش",
+            slug="vendor-sales-analytics-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        order = Order.objects.create(
+            user=user,
+            shipping_title="خانه",
+            shipping_recipient="گیرنده آزمایشی",
+            shipping_phone="+989120000705",
+            shipping_province="تهران",
+            shipping_city="تهران",
+            shipping_postal_code="1234567891",
+            shipping_address="نشانی آزمایشی",
+            subtotal=200000,
+            total_amount=200000,
+        )
+        VendorOrder.objects.create(
+            order=order,
+            vendor=vendor,
+            status=VendorOrder.Status.DELIVERED,
+            items_snapshot=[{
+                "vendor_product_id": 42,
+                "product_name": "شلوار جین",
+                "quantity": 2,
+                "sale_unit": "جین",
+                "units_per_order": 12,
+                "line_total": 200000,
+            }],
+            subtotal=200000,
+            commission_amount=20000,
+            vendor_payable=180000,
+        )
+        self.client.force_login(user)
+        response = self.client.get("/marketplace/api/vendor/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        sales = response.json()["sales"]
+        self.assertEqual(sales["sold_units_last_30_days"], 2)
+        self.assertEqual(sales["physical_units_last_30_days"], 24)
+        self.assertEqual(sales["top_products"][0]["sale_unit"], "جین")
+        self.assertEqual(sales["top_products"][0]["physical_units"], 24)
