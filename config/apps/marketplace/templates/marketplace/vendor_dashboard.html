@@ -354,12 +354,12 @@
                 <p class="vd-muted">خروج از فروش، سابقه محصول و سفارش‌ها را نگه می‌دارد. اگر سفارش در حال انجام داشته باشد، سیستم عملیات را مسدود می‌کند.</p>
                 <div class="vd-details">
                     <span>شناسه محصول: ${item.product_id}</span>
-                    <span>قیمت نهایی تکی: ${money(item.retail_price)} تومان</span>
+                    ${item.sale_type === "wholesale" ? `<span>قیمت واحد عمده: ${money(item.wholesale_tiers[0]?.unit_price ?? item.retail_price)} تومان</span>` : `<span>قیمت نهایی تکی: ${money(item.retail_price)} تومان</span>`}
                     <span>نوع فروش: ${item.sale_type === "wholesale" ? "فقط عمده" : item.sale_type === "both" ? "تکی و عمده" : "فقط تکی"}</span>
-                    ${item.compare_at_price ? `<span>تخفیف فعلی: ${Math.round((item.compare_at_price-item.retail_price)*100/item.compare_at_price)}٪</span>` : ""}
-                    <span>موجودی: ${money(item.stock_quantity)}</span>
-                    <span>واحد فروش: ${escapeHtml(item.sale_unit)} · هر واحد شامل ${money(item.units_per_order)} قلم</span>
-                    <span>عمده: ${item.wholesale_enabled ? "فعال" : "غیرفعال"}</span>
+                    ${item.sale_type !== "wholesale" && item.compare_at_price ? `<span>تخفیف فعلی: ${Math.round((item.compare_at_price-item.retail_price)*100/item.compare_at_price)}٪</span>` : ""}
+                    <span>موجودی: ${money(item.stock_quantity)} ${escapeHtml(item.sale_unit)}</span>
+                    <span>هر ${escapeHtml(item.sale_unit)} شامل ${money(item.units_per_order)} قلم فیزیکی است.</span>
+                    ${item.wholesale_enabled && item.wholesale_tiers.length ? `<span>عمده از ${money(item.wholesale_tiers[0].minimum_quantity)} ${escapeHtml(item.sale_unit)} · ${money(item.wholesale_tiers[0].unit_price)} تومان برای هر واحد فروش</span>` : ""}
                 </div>
                 <form class="vd-stock-form vd-form" data-listing-id="${item.id}" data-current-retail-price="${item.retail_price}" style="margin-top:12px">
                     <label class="vd-field">روش فروش<select name="sale_type" required>
