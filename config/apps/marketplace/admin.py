@@ -148,8 +148,8 @@ class WholesaleTierInline(admin.TabularInline):
 
 @admin.register(VendorProduct)
 class VendorProductAdmin(admin.ModelAdmin):
-    list_display = ("product", "vendor", "status", "retail_price", "sale_unit", "units_per_order", "stock_quantity", "wholesale_enabled", "supports_custom_printing")
-    list_filter = ("status", "wholesale_enabled", "supports_custom_printing", "vendor")
+    list_display = ("product", "vendor", "status", "sale_type", "retail_price", "sale_unit", "units_per_order", "stock_quantity", "wholesale_enabled", "supports_custom_printing")
+    list_filter = ("status", "sale_type", "wholesale_enabled", "supports_custom_printing", "vendor")
     search_fields = ("product__name", "vendor__store_name", "product__slug")
     autocomplete_fields = ("vendor", "product")
     inlines = (WholesaleTierInline,)
