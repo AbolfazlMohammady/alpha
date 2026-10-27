@@ -734,8 +734,6 @@ def vendor_products_api(request):
         if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and (wholesale_minimum < 2 or wholesale_price < 1):
             return _error("برای فروش عمده، حداقل تعداد (۲ یا بیشتر) و قیمت واحد عمده را وارد کن.")
         retail_price = _strict_int(payload.get("retail_price", 0), "قیمت فروش")
-        if sale_type == VendorProduct.SaleType.WHOLESALE:
-            retail_price = max(retail_price, wholesale_price)
         if wholesale_price and wholesale_price > retail_price:
             return _error("قیمت واحد عمده نباید از قیمت تکی بیشتر باشد.")
         listing = VendorProduct(
