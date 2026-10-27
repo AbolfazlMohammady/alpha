@@ -128,6 +128,11 @@
       {% if request.user.is_superuser or request.user.role in 'admin,support_manager' %}<a href="{% url 'control:user_create' %}">+ کاربر جدید</a>{% endif %}
       {% if request.user.is_superuser or request.user.role in 'admin,store_manager' %}<a href="{% url 'control:product_create' %}">+ محصول جدید</a><a href="{% url 'control:category_create' %}">+ دسته‌بندی جدید</a>{% endif %}
       {% if request.user.is_superuser or request.user.role in 'admin,order_manager' %}<a href="{% url 'control:orders' %}">سفارش‌ها</a>{% endif %}
+      {% if request.user.is_staff or request.user.is_superuser %}
+      <a href="{% url 'marketplace:portal_section_page' 'accounting-overview' %}">حسابداری مارکت‌پلیس</a>
+      <a href="{% url 'marketplace:portal_section_page' 'settlement-queue' %}">صف و سوابق تسویه</a>
+      <a href="{% url 'marketplace:storefront' %}">مشاهده بازار فروشندگان</a>
+      {% endif %}
     </div>
   </section>
   <section class="cc-card">
