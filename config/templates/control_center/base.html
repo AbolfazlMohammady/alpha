@@ -77,7 +77,7 @@
       </div>
       {% endif %}
 
-      {% if request.user.is_superuser or request.user.is_staff %}
+      {% if request.user.is_superuser or request.user.is_staff or request.user.role == 'admin' %}
       <div class="cc-section">مارکت‌پلیس و حسابداری</div>
       <div class="cc-nav-group">
         <a class="cc-nav-item" href="{% url 'marketplace:portal_section_page' 'accounting-overview' %}">
