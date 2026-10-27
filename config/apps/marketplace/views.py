@@ -656,7 +656,7 @@ def vendor_dashboard_api(request):
     commission_total = sum(int(row.commission_amount or 0) for row in recent_orders)
     vendor_earnings_total = sum(int(row.vendor_payable or 0) for row in recent_orders)
     sold_units = 0
-    physical_units = 0
+    physical_units_total = 0
     products = {}
     for row in recent_orders:
         snapshot = row.items_snapshot if isinstance(row.items_snapshot, list) else []
@@ -717,7 +717,7 @@ def vendor_dashboard_api(request):
             "commission": commission_total,
             "vendor_earnings": vendor_earnings_total,
             "sold_units": sold_units,
-            "physical_units": physical_units,
+            "physical_units": physical_units_total,
             "top_products": top_products,
             "low_products": low_products,
         },
