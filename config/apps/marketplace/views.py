@@ -336,11 +336,50 @@ def portal_section_page(request, section):
                 "shipment_path": bool(os.environ.get(f"{prefix}_SHIPMENT_PATH", "").strip()),
                 "tracking_path": bool(os.environ.get(f"{prefix}_TRACKING_PATH", "").strip()),
             }
+        payout_config = {
+            "base_url": bool(os.environ.get("PAYOUT_API_BASE_URL", "").strip()),
+            "token": bool(os.environ.get("PAYOUT_API_TOKEN", "").strip()),
+            "path": bool(os.environ.get("PAYOUT_API_PATH", "").strip()),
+            "amount_multiplier": bool(os.environ.get("PAYOUT_AMOUNT_MULTIPLIER", "").strip()),
+            "currency": bool(os.environ.get("PAYOUT_API_CURRENCY", "").strip()),
+            "reference_path": bool(os.environ.get("PAYOUT_RESPONSE_REFERENCE_PATH", "").strip()),
+            "status_path": bool(os.environ.get("PAYOUT_RESPONSE_STATUS_PATH", "").strip()),
+            "amount_path": bool(os.environ.get("PAYOUT_RESPONSE_AMOUNT_PATH", "").strip()),
+            "currency_path": bool(os.environ.get("PAYOUT_RESPONSE_CURRENCY_PATH", "").strip()),
+        }
+        cutoff = timezone.now() - timedelta(days=30)
+        vendor_summary = {}
+        recent_vendor_orders = VendorOrder.objects.filter(
+            created_at__gte=cutoff,
+        ).exclude(status=VendorOrder.Status.CANCELLED).select_related("vendor").only(
+            "vendor_id", "vendor__store_name", "subtotal", "status", "vendor_payable",
+        )
+        for row in recent_vendor_orders:
+            summary = vendor_summary.setdefault(row.vendor_id, {
+                "store_name": row.vendor.store_name,
+                "sales": 0,
+                "orders": 0,
+                "delivered": 0,
+                "in_progress": 0,
+            })
+            summary["sales"] += int(row.subtotal or 0)
+            summary["orders"] += 1
+            if row.status == VendorOrder.Status.DELIVERED:
+                summary["delivered"] += 1
+            elif row.status not in {VendorOrder.Status.CANCELLED, VendorOrder.Status.DISPUTED}:
+                summary["in_progress"] += 1
+        vendor_sales_summary = sorted(
+            vendor_summary.values(),
+            key=lambda item: (item["sales"], item["orders"]),
+            reverse=True,
+        )[:20]
         return render(request, "marketplace/admin_accounting.html", {
             "section": section,
             "section_title": title,
             "section_description": description,
             "carrier_providers": providers,
+            "payout_config": payout_config,
+            "vendor_sales_summary": vendor_sales_summary,
         })
     try:
         _vendor_for_user(request.user)
