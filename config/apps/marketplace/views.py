@@ -720,6 +720,7 @@ def vendor_dashboard_api(request):
             "physical_units": physical_units_total,
             "top_products": top_products,
             "low_products": low_products,
+            "product_sales": ranked_products,
         },
         "settlement": {"pending_amount": payable, "paid_amount": paid, "currency": "IRT"},
     })
