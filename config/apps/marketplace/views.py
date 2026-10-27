@@ -1071,7 +1071,7 @@ def vendor_product_update_api(request, listing_id):
                 "supports_custom_printing", "weight_grams",
                 "package_length_cm", "package_width_cm", "package_height_cm", "handling_days",
             }
-            for field in allowed.intersection(payload):
+            for field in allowed.intersection(payload) - {"wholesale_minimum_quantity", "wholesale_unit_price"}:
                 value = payload[field]
                 if field in {"retail_price", "units_per_order", "stock_quantity", "weight_grams", "package_length_cm", "package_width_cm", "package_height_cm", "handling_days"}:
                     value = _strict_int(value, field)
