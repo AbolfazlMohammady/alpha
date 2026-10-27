@@ -925,6 +925,7 @@ def vendor_catalog_products_api(request):
     products = Product.objects.filter(
         is_active=True,
         category__is_active=True,
+        marketplace_only=False,
         name__icontains=query,
     ).select_related("category").order_by("name")[:30]
     return JsonResponse({"ok": True, "results": [{
