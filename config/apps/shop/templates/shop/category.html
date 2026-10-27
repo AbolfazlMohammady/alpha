@@ -29,6 +29,7 @@
         <span class="shop-reference__eyebrow">BABAEI / CATEGORY</span>
         <h1>{{ category.name }}</h1>
         {% if category.description %}<p>{{ category.description }}</p>{% endif %}
+        <a class="sh-btn sh-btn--ghost" href="{% url 'marketplace:storefront' %}?category={{ category.slug|urlencode }}">پیشنهاد فروشندگان این دسته</a>
     </header>
 
     {% include "shop/includes/_catalog.html" %}
