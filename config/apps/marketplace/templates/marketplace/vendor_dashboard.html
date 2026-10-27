@@ -197,7 +197,7 @@
             <div class="vd-product-step" data-wholesale-fields hidden style="grid-column:1/-1">
                 <h3>قیمت عمده و حداقل سفارش</h3>
                 <div class="vd-form">
-                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity"><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select><small class="vd-muted">اگر واحد فروش «جین» باشد، ۱ واحد فروش یعنی ۱۲ عدد.</small></label>
+                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity"><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="4">۴ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select><small class="vd-muted">اگر واحد فروش «جین» باشد، ۱ واحد فروش یعنی ۱۲ عدد.</small></label>
                     <label class="vd-field">قیمت هر واحد عمده (تومان)<input name="wholesale_unit_price" type="number" min="1"></label>
                 </div>
             </div>
@@ -375,6 +375,13 @@
                         <label class="vd-field">قیمت اصلی هر واحد (تومان)<input name="regular_price" type="number" min="1" value="${item.compare_at_price || item.retail_price}" required></label>
                         <label class="vd-field">درصد تخفیف<input name="discount_percent" type="number" min="0" max="99" value="${item.compare_at_price ? Math.round((item.compare_at_price-item.retail_price)*100/item.compare_at_price) : 0}" required></label>
                     </div>
+                    <div class="vd-form" data-wholesale-fields style="grid-column:1/-1">
+                        <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity">
+                            ${[[1,"۱ واحد"],[2,"۲ واحد"],[3,"۳ واحد"],[4,"۴ واحد"],[6,"۶ واحد"],[12,"۱۲ واحد"],[24,"۲۴ واحد"],[36,"۳۶ واحد"],[48,"۴۸ واحد"],[72,"۷۲ واحد"],[144,"۱۴۴ واحد"]].map(([count,label]) => `<option value="${count}" ${Number(item.wholesale_tiers[0]?.minimum_quantity ?? 3) === count ? "selected" : ""}>${label}</option>`).join("")}
+                            ${[1,2,3,4,6,12,24,36,48,72,144].includes(Number(item.wholesale_tiers[0]?.minimum_quantity)) ? "" : `<option value="${item.wholesale_tiers[0]?.minimum_quantity}" selected>${item.wholesale_tiers[0]?.minimum_quantity} واحد (مقدار قبلی)</option>`}
+                        </select><small class="vd-muted">تعداد، بر اساس «واحد فروش» بالاست؛ اگر واحد فروش جین باشد، ۱ واحد یعنی ۱۲ عدد.</small></label>
+                        <label class="vd-field">قیمت هر واحد عمده (تومان)<input name="wholesale_unit_price" type="number" min="1" value="${item.wholesale_tiers[0]?.unit_price ?? ""}"></label>
+                    </div>
                     <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="${item.stock_quantity}" required></label>
                     <label class="vd-field">آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="${item.handling_days}" required></label>
                     <label class="vd-field">چاپ سفارشی<select name="supports_custom_printing"><option value="false" ${item.supports_custom_printing ? "" : "selected"}>خیر</option><option value="true" ${item.supports_custom_printing ? "selected" : ""}>بله</option></select></label>
@@ -389,7 +396,7 @@
                 <div class="vd-list vd-wholesale-tier-list" style="margin-top:10px">
                     ${item.wholesale_tiers.map((tier) => `
                         <form class="vd-tier-update vd-form" data-tier-id="${tier.id}">
-                            <label class="vd-field">حداقل واحد فروش<select name="minimum_quantity" required>${[[1,"۱ واحد فروش"],[2,"۲ واحد فروش"],[3,"۳ واحد فروش"],[6,"۶ واحد فروش"],[12,"۱۲ واحد فروش"],[24,"۲۴ واحد فروش"],[36,"۳۶ واحد فروش"],[48,"۴۸ واحد فروش"],[72,"۷۲ واحد فروش"],[144,"۱۴۴ واحد فروش"]].map(([count,label]) => `<option value="${count}" ${Number(tier.minimum_quantity) === count ? "selected" : ""}>${label}</option>`).join("")}${[1,2,3,6,12,24,36,48,72,144].includes(Number(tier.minimum_quantity)) ? "" : `<option value="${tier.minimum_quantity}" selected>${tier.minimum_quantity} واحد فروش (مقدار قبلی)</option>`}</select></label>
+                            <label class="vd-field">حداقل واحد فروش<select name="minimum_quantity" required>${[[1,"۱ واحد فروش"],[2,"۲ واحد فروش"],[3,"۳ واحد فروش"],[4,"۴ واحد فروش"],[6,"۶ واحد فروش"],[12,"۱۲ واحد فروش"],[24,"۲۴ واحد فروش"],[36,"۳۶ واحد فروش"],[48,"۴۸ واحد فروش"],[72,"۷۲ واحد فروش"],[144,"۱۴۴ واحد فروش"]].map(([count,label]) => `<option value="${count}" ${Number(tier.minimum_quantity) === count ? "selected" : ""}>${label}</option>`).join("")}${[1,2,3,6,12,24,36,48,72,144].includes(Number(tier.minimum_quantity)) ? "" : `<option value="${tier.minimum_quantity}" selected>${tier.minimum_quantity} واحد فروش (مقدار قبلی)</option>`}</select></label>
                             <label class="vd-field">قیمت واحد عمده<input name="unit_price" type="number" min="1" value="${tier.unit_price}" required></label>
                             <button class="vd-btn vd-btn--soft" type="submit">به‌روزرسانی پله</button>
                             <button class="vd-btn vd-btn--soft" type="button" data-delete-tier="${tier.id}">حذف پله</button>
