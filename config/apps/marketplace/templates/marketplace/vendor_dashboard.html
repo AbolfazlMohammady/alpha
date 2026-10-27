@@ -688,6 +688,9 @@
             payload.wholesale_unit_price = payload.wholesale_unit_price ? Number(payload.wholesale_unit_price) : null;
             await request("/marketplace/api/vendor/products/", {method:"POST", body:JSON.stringify(payload)});
             form.reset();
+            form.querySelector('select[name="sale_unit"]')?.dispatchEvent(new Event("change"));
+            form.querySelector('input[name="regular_price"]')?.dispatchEvent(new Event("input"));
+            form.querySelector('input[name="sale_type"]:checked')?.dispatchEvent(new Event("change"));
             document.getElementById("vd-product-id").value = "";
             document.getElementById("vd-catalog-search").value = "";
             form.querySelector('input[name="regular_price"]')?.dispatchEvent(new Event("input"));
