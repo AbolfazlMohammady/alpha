@@ -674,6 +674,9 @@ class VendorSalesAnalyticsTests(TestCase):
         )
         order = Order.objects.create(
             user=user,
+            status=Order.Status.PAID,
+            payment_status=Order.PaymentStatus.PAID,
+            paid_at=timezone.now(),
             shipping_title="خانه",
             shipping_recipient="گیرنده آزمایشی",
             shipping_phone="+989120000705",

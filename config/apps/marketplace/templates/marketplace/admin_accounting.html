@@ -119,7 +119,7 @@
     <section class="ma-card ma-section" id="ma-carriers">
         <h2>وضعیت تنظیمات اتصال حمل‌ونقل</h2>
         <p class="ma-muted">توکن‌ها از متغیرهای محیطی Docker خوانده می‌شوند و عمداً در مرورگر یا دیتابیس نمایش داده نمی‌شوند. وضعیت زیر فقط نشان می‌دهد هر مقدار تنظیم شده است یا خیر.</p>
-        <div class="ma-note">مسیر پیشنهادی: فایل <code>.env</code> کنار <code>docker-compose.yml</code> روی سرور؛ نام متغیرها را دقیق وارد کن و سپس سرویس‌های Django و Celery را بازسازی/راه‌اندازی مجدد کن. فایل حاوی توکن را هرگز به Git push نکن.</div>
+        <div class="ma-note">در این پروژه، متغیرها را در فایل <code>config/.env</code> وارد کن؛ همان فایلی که Docker Compose به سرویس‌های Django و Celery می‌دهد. نام متغیرها را دقیق وارد کن و بعد سرویس‌های Django و Celery را بازسازی/راه‌اندازی مجدد کن. فایل حاوی توکن را هرگز به Git push نکن. این صفحه فقط وضعیت پیکربندی را نشان می‌دهد و عمداً توکن را دریافت یا نمایش نمی‌دهد.</div>
         {% for key, provider in carrier_providers.items %}
         <div class="ma-provider">
             <div><strong>{{ provider.label }}</strong><div class="ma-muted">API: <code>{{ key|upper }}_API_BASE_URL</code> · Token: <code>{{ key|upper }}_API_TOKEN</code></div><div class="ma-muted">Endpointها: <code>{{ key|upper }}_QUOTE_PATH</code> / <code>{{ key|upper }}_SHIPMENT_PATH</code> / <code>{{ key|upper }}_TRACKING_PATH</code></div></div>

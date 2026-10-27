@@ -356,6 +356,7 @@ def portal_section_page(request, section):
         vendor_summary = {}
         recent_vendor_orders = VendorOrder.objects.filter(
             created_at__gte=cutoff,
+            order__payment_status=Order.PaymentStatus.PAID,
         ).exclude(status=VendorOrder.Status.CANCELLED).select_related("vendor").only(
             "vendor_id", "vendor__store_name", "subtotal", "status", "vendor_payable",
         )
@@ -639,12 +640,19 @@ def vendor_dashboard_api(request):
 
     # Real seller sales reporting, derived from immutable paid-order snapshots.
     sales_since = timezone.now() - timedelta(days=30)
+    # Sales analytics must reflect successful payments only. Pending, failed,
+    # cancelled and refunded payments are not seller revenue.
     recent_orders = list(
-        orders.filter(created_at__gte=sales_since)
+        orders.filter(
+            created_at__gte=sales_since,
+            order__payment_status=Order.PaymentStatus.PAID,
+        )
         .exclude(status=VendorOrder.Status.CANCELLED)
-        .only("subtotal", "items_snapshot", "status")
+        .only("subtotal", "items_snapshot", "status", "commission_amount", "vendor_payable")
     )
     sales_30d = sum(int(row.subtotal or 0) for row in recent_orders)
+    commission_30d = sum(int(row.commission_amount or 0) for row in recent_orders)
+    vendor_payable_30d = sum(int(row.vendor_payable or 0) for row in recent_orders)
     sold_units_30d = 0
     physical_units_30d = 0
     products = {}
@@ -695,6 +703,8 @@ def vendor_dashboard_api(request):
         "orders": {"pending_fulfilment": pending, "delivered": delivered, "total": orders.count()},
         "sales": {
             "last_30_days": sales_30d,
+            "commission_last_30_days": commission_30d,
+            "vendor_payable_last_30_days": vendor_payable_30d,
             "sold_units_last_30_days": sold_units_30d,
             "physical_units_last_30_days": physical_units_30d,
             "top_products": top_products,

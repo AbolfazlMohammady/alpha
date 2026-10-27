@@ -1455,3 +1455,66 @@ class MarketplaceOperationalPagesTests(TestCase):
         self.assertTemplateUsed(response, "marketplace/admin_accounting.html")
         self.assertContains(response, "تراز آزمایشی دفترکل")
         self.assertNotContains(response, "در حال تکمیل است")
+
+
+class VendorPaidSalesReportingTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            phone="+989121234578",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.vendor = Vendor.objects.create(
+            user=self.user,
+            store_name="فروشگاه گزارش فروش",
+            slug="vendor-paid-sales-report-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        self.client.force_login(self.user)
+
+    def _make_vendor_order(self, suffix, payment_status, subtotal, commission, payable):
+        order = Order.objects.create(
+            user=self.user,
+            status=Order.Status.PAID if payment_status == Order.PaymentStatus.PAID else Order.Status.PENDING,
+            payment_status=payment_status,
+            shipping_title="نشانی آزمایشی",
+            shipping_phone="09120000000",
+            shipping_province="تهران",
+            shipping_city="تهران",
+            shipping_postal_code="1234567890",
+            shipping_address="نشانی آزمایشی",
+            subtotal=subtotal,
+            total_amount=subtotal,
+        )
+        VendorOrder.objects.create(
+            order=order,
+            vendor=self.vendor,
+            status=VendorOrder.Status.NEW,
+            items_snapshot=[{
+                "product_id": 999,
+                "product_name": "شلوار آزمایشی",
+                "quantity": 2,
+                "sale_unit": "عدد",
+                "units_per_order": 1,
+                "line_total": subtotal,
+            }],
+            subtotal=subtotal,
+            commission_amount=commission,
+            vendor_payable=payable,
+        )
+        return order
+
+    def test_dashboard_sales_report_excludes_unpaid_orders(self):
+        self._make_vendor_order("paid", Order.PaymentStatus.PAID, 100000, 10000, 90000)
+        self._make_vendor_order("unpaid", Order.PaymentStatus.UNPAID, 50000, 5000, 45000)
+        self._make_vendor_order("refunded", Order.PaymentStatus.REFUNDED, 20000, 2000, 18000)
+
+        response = self.client.get("/marketplace/api/vendor/dashboard/")
+
+        self.assertEqual(response.status_code, 200)
+        sales = response.json()["sales"]
+        self.assertEqual(sales["last_30_days"], 100000)
+        self.assertEqual(sales["commission_last_30_days"], 10000)
+        self.assertEqual(sales["vendor_payable_last_30_days"], 90000)
+        self.assertEqual(sales["sold_units_last_30_days"], 2)
+        self.assertEqual(sales["top_products"][0]["revenue"], 100000)
