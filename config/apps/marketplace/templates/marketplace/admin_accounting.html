@@ -66,7 +66,7 @@
         <div id="ma-journal-list" class="ma-list"><p class="ma-muted">در حال خواندن اسناد حسابداری…</p></div>
     </section>
     <section class="ma-card ma-section" id="ma-settlement-queue">
-        <h2>صف تسویه فروشندگان</h2><p class="ma-muted">تأیید هر ردیف باعث اجرای اعتبارسنجی مجدد می‌شود. تا وقتی پرداخت بانکی واقعی پیکربندی نشده، تأیید به‌معنای واریز وجه نیست.</p>
+        <h2>صف و سوابق تسویه فروشندگان</h2><p class="ma-muted">در اینجا تسویه‌های در انتظار تأیید، در حال پرداخت، ناموفق و پرداخت‌شده را می‌بینی. فقط ردیف‌های منتظر تأیید دکمه اقدام دارند؛ تأیید به‌تنهایی به معنی واریز وجه نیست.</p>
         <div id="ma-settlement-list" class="ma-list">در حال بارگذاری…</div>
     </section>
     <section class="ma-card ma-section" id="ma-gateway">
@@ -180,10 +180,10 @@
     }
     async function loadSettlements() {
         const data = await request("/marketplace/api/admin/settlements/");
-        document.getElementById("ma-pending-count").textContent = money(data.results.length);
+        document.getElementById("ma-pending-count").textContent = money(data.results.filter(row => row.status === "pending_approval").length);
         document.getElementById("ma-settlement-list").innerHTML = data.results.length ? data.results.map(row =>
-            `<div class="ma-row"><div><strong>${escapeHtml(row.vendor)}</strong><div class="ma-muted">دوره: ${escapeHtml(row.period_start?.slice(0,10))} تا ${escapeHtml(row.period_end?.slice(0,10))}</div><div class="ma-muted">فروش: ${money(row.gross_amount)} · کمیسیون: ${money(row.commission_amount)} · قابل پرداخت: ${money(row.payable_amount)} تومان</div></div><button type="button" class="ma-btn primary" data-approve-settlement="${row.id}">بررسی و تأیید</button></div>`
-        ).join("") : '<p class="ma-muted">در حال حاضر تسویه‌ای در انتظار تأیید نیست.</p>';
+            `<div class="ma-row"><div><strong>${escapeHtml(row.vendor)}</strong> <span class="ma-status">${escapeHtml(row.status_label || row.status)}</span><div class="ma-muted">دوره: ${escapeHtml(row.period_start?.slice(0,10))} تا ${escapeHtml(row.period_end?.slice(0,10))}</div><div class="ma-muted">فروش: ${money(row.gross_amount)} · کمیسیون: ${money(row.commission_amount)} · قابل پرداخت: ${money(row.payable_amount)} تومان</div>${row.payout_reference ? `<div class="ma-muted">مرجع پرداخت: ${escapeHtml(row.payout_reference)}</div>` : ""}${row.paid_at ? `<div class="ma-muted">پرداخت در: ${escapeHtml(row.paid_at.slice(0,19).replace("T"," "))}</div>` : ""}${row.failure_reason ? `<div class="ma-bad">نیازمند بررسی: ${escapeHtml(row.failure_reason)}</div>` : ""}</div>${row.status === "pending_approval" ? `<button type="button" class="ma-btn primary" data-approve-settlement="${row.id}">بررسی و تأیید</button>` : ""}</div>`
+        ).join("") : '<p class="ma-muted">هنوز سابقه تسویه‌ای ثبت نشده است.</p>';
     }
     async function loadReconciliations() {
         const data = await request("/marketplace/api/admin/accounting/reconciliation/");
