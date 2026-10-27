@@ -162,6 +162,10 @@ class VendorDashboardAccessTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "پنل فروشنده")
+        self.assertContains(response, 'href="/marketplace/store/"')
+        self.assertContains(response, 'href="/marketplace/vendor/dashboard/#vd-orders-section"')
+        self.assertNotContains(response, 'href="/control/products/"')
+        self.assertNotContains(response, 'href="/control/"')
         vendor = Vendor.objects.get(user=user)
         self.assertEqual(vendor.status, Vendor.Status.ACTIVE)
         self.assertIsNotNone(vendor.approved_at)
