@@ -149,7 +149,7 @@
                 <h3>قیمت عمده و حداقل سفارش</h3>
                 <p class="vd-muted">این قیمت برای هر واحد فروش است و از قیمت نهایی تکی بیشتر نمی‌تواند باشد.</p>
                 <div class="vd-form">
-                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity"><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="4">۴ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش (یک جین، اگر واحد فروش عدد باشد)</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select><small class="vd-muted">حداقل سفارش بر اساس واحد فروش انتخاب‌شده محاسبه می‌شود.</small></label>
+                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity"><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="4">۴ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش (یک جین، اگر واحد فروش عدد باشد)</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select><small data-wholesale-unit-help class="vd-muted">حداقل سفارش بر اساس واحد فروش انتخاب‌شده محاسبه می‌شود.</small></label>
                     <label class="vd-field">قیمت هر واحد در سفارش عمده (تومان)<input name="wholesale_unit_price" type="number" min="1"></label>
                 </div>
             </div>
@@ -197,7 +197,7 @@
             <div class="vd-product-step" data-wholesale-fields hidden style="grid-column:1/-1">
                 <h3>قیمت عمده و حداقل سفارش</h3>
                 <div class="vd-form">
-                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity"><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="4">۴ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select><small class="vd-muted">حداقل سفارش بر اساس واحد فروش انتخاب‌شده محاسبه می‌شود.</small></label>
+                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity"><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="4">۴ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select><small data-wholesale-unit-help class="vd-muted">حداقل سفارش بر اساس واحد فروش انتخاب‌شده محاسبه می‌شود.</small></label>
                     <label class="vd-field">قیمت هر واحد عمده (تومان)<input name="wholesale_unit_price" type="number" min="1"></label>
                 </div>
             </div>
@@ -379,7 +379,7 @@
                         <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity">
                             ${[[1,"۱ واحد"],[2,"۲ واحد"],[3,"۳ واحد"],[4,"۴ واحد"],[6,"۶ واحد"],[12,"۱۲ واحد"],[24,"۲۴ واحد"],[36,"۳۶ واحد"],[48,"۴۸ واحد"],[72,"۷۲ واحد"],[144,"۱۴۴ واحد"]].map(([count,label]) => `<option value="${count}" ${Number(item.wholesale_tiers[0]?.minimum_quantity ?? 3) === count ? "selected" : ""}>${label}</option>`).join("")}
                             ${[1,2,3,4,6,12,24,36,48,72,144].includes(Number(item.wholesale_tiers[0]?.minimum_quantity)) ? "" : `<option value="${item.wholesale_tiers[0]?.minimum_quantity}" selected>${item.wholesale_tiers[0]?.minimum_quantity} واحد (مقدار قبلی)</option>`}
-                        </select><small class="vd-muted">حداقل سفارش بر اساس واحد فروش انتخاب‌شده محاسبه می‌شود.</small></label>
+                        </select><small data-wholesale-unit-help class="vd-muted">حداقل سفارش بر اساس واحد فروش انتخاب‌شده محاسبه می‌شود.</small></label>
                         <label class="vd-field">قیمت هر واحد عمده (تومان)<input name="wholesale_unit_price" type="number" min="1" value="${item.wholesale_tiers[0]?.unit_price ?? ""}"></label>
                     </div>
                     <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="${item.stock_quantity}" required></label>
@@ -389,7 +389,7 @@
                 </form>
                 {% if vendor.seller_type != "retail" %}
                 <form class="vd-tier-form vd-form" data-listing-id="${item.id}" style="margin-top:10px">
-                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="minimum_quantity" required><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select></label>
+                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="minimum_quantity" required><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="4">۴ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select></label>
                     <label class="vd-field">قیمت هر واحد عمده<input name="unit_price" type="number" min="1" required></label>
                     <button class="vd-btn vd-btn--soft" type="submit">افزودن پله عمده</button>
                 </form>
