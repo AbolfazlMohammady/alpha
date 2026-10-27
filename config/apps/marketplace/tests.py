@@ -1334,4 +1334,24 @@ class SellerPackChoiceValidationTests(TestCase):
         from .views import _validate_sale_pack
 
         self.assertEqual(_validate_sale_pack("جین", 12), ("جین", 12))
-        self.assertEqual(WholesalePriceTier._meta.get_field("minimum_quantity").validators[0].limit_value, 1)
+        self.assertTrue(any(getattr(validator, "limit_value", None) == 1 for validator in WholesalePriceTier._meta.get_field("minimum_quantity").validators))
+
+
+class MarketplaceOperationalPagesTests(TestCase):
+    def test_public_marketplace_page_is_available_without_login(self):
+        response = self.client.get("/marketplace/store/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "بازار فروشندگان")
+
+    def test_admin_accounting_portal_is_not_a_placeholder(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234572",
+            password="test-password",
+            is_staff=True,
+        )
+        self.client.force_login(user)
+        response = self.client.get("/marketplace/portal/accounting-overview/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "marketplace/admin_accounting.html")
+        self.assertContains(response, "تراز آزمایشی دفترکل")
+        self.assertNotContains(response, "در حال تکمیل است")
