@@ -1306,3 +1306,32 @@ class VendorSaleModeApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertFalse(VendorProduct.objects.filter(vendor=self.vendor, product=self.product).exists())
+
+
+class SellerPackChoiceValidationTests(TestCase):
+    def test_fixed_units_map_to_known_physical_quantities(self):
+        from .views import _validate_sale_pack
+
+        self.assertEqual(_validate_sale_pack("عدد", 1), ("عدد", 1))
+        self.assertEqual(_validate_sale_pack("جفت", 2), ("جفت", 2))
+        self.assertEqual(_validate_sale_pack("جین", 12), ("جین", 12))
+
+    def test_fixed_unit_rejects_inconsistent_quantity(self):
+        from .views import _validate_sale_pack
+
+        with self.assertRaises(ValidationError):
+            _validate_sale_pack("جین", 6)
+
+    def test_arbitrary_unit_and_pack_sizes_are_rejected(self):
+        from .views import _validate_sale_pack
+
+        with self.assertRaises(ValidationError):
+            _validate_sale_pack("هرچی", 1)
+        with self.assertRaises(ValidationError):
+            _validate_sale_pack("بسته", 7)
+
+    def test_one_sellable_unit_can_be_wholesale_minimum(self):
+        from .views import _validate_sale_pack
+
+        self.assertEqual(_validate_sale_pack("جین", 12), ("جین", 12))
+        self.assertEqual(WholesalePriceTier._meta.get_field("minimum_quantity").validators[0].limit_value, 1)
