@@ -51,7 +51,11 @@
             <h1>پنل فروشنده</h1>
             <p class="vd-muted">{{ vendor.store_name }} · مدیریت محصولات، سفارش‌ها و تسویه‌ها</p>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="vd-badge">وضعیت فروشگاه: {{ vendor.get_status_display }}</span><span class="vd-badge">نوع فعالیت: {{ vendor.get_seller_type_display }}</span></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <a class="vd-btn vd-btn--soft" href="{% url 'marketplace:storefront' %}">مشاهده بازار فروشندگان</a>
+            <span class="vd-badge">وضعیت فروشگاه: {{ vendor.get_status_display }}</span>
+            <span class="vd-badge">نوع فعالیت: {{ vendor.get_seller_type_display }}</span>
+        </div>
     </header>
 
     <nav class="vd-nav" aria-label="بخش‌های پنل فروشنده">
