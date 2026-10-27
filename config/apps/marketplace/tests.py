@@ -1417,6 +1417,41 @@ class VendorSaleModeApiTests(TestCase):
         self.assertEqual(tier.minimum_quantity, 1)
         self.assertEqual(tier.unit_price, 800)
 
+    def test_switching_listing_to_retail_clears_inactive_wholesale_tiers(self):
+        create_response = self.client.post(
+            "/marketplace/api/vendor/products/",
+            data={
+                "product_id": self.product.pk,
+                "sale_type": "both",
+                "retail_price": 1000,
+                "sale_unit": "عدد",
+                "units_per_order": 1,
+                "stock_quantity": 20,
+                "wholesale_enabled": False,
+                "wholesale_minimum_quantity": 6,
+                "wholesale_unit_price": 800,
+                "supports_custom_printing": False,
+                "handling_days": 2,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(create_response.status_code, 201, create_response.content)
+        listing = VendorProduct.objects.get(vendor=self.vendor, product=self.product)
+        response = self.client.post(
+            f"/marketplace/api/vendor/products/{listing.pk}/",
+            data={
+                "sale_type": "retail",
+                "retail_price": 1000,
+                "compare_at_price": None,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        listing.refresh_from_db()
+        self.assertEqual(listing.sale_type, VendorProduct.SaleType.RETAIL)
+        self.assertFalse(listing.wholesale_enabled)
+        self.assertFalse(listing.wholesale_tiers.exists())
+
 
 class SellerPackChoiceValidationTests(TestCase):
     def test_fixed_units_map_to_known_physical_quantities(self):
@@ -1495,6 +1530,43 @@ class MarketplaceOperationalPagesTests(TestCase):
         self.assertContains(response, "شلوار جین عمده")
         self.assertContains(response, "۱۰,۰۰۰")
         self.assertContains(response, "قیمت عمده")
+
+    def test_marketplace_product_detail_waits_for_seller_offer_price(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234591",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        vendor = Vendor.objects.create(
+            user=user,
+            store_name="فروشگاه قیمت زنده",
+            slug="marketplace-live-price-vendor",
+            status=Vendor.Status.ACTIVE,
+        )
+        category = Category.objects.create(name="دسته قیمت زنده", slug="live-price-category")
+        product = Product.objects.create(
+            category=category,
+            name="محصول با قیمت فروشنده",
+            slug="live-seller-price-product",
+            base_price=1000,
+            is_active=True,
+            marketplace_only=True,
+        )
+        VendorProduct.objects.create(
+            vendor=vendor,
+            product=product,
+            status=VendorProduct.Status.ACTIVE,
+            sale_type=VendorProduct.SaleType.RETAIL,
+            retail_price=15000,
+            sale_unit="عدد",
+            units_per_order=1,
+            stock_quantity=8,
+        )
+        response = self.client.get(f"/shop/product/{product.slug}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="product-price" class="pd-price__value">انتخاب فروشنده</strong>')
+        self.assertContains(response, 'data-price="15000"')
+        self.assertNotContains(response, 'id="product-price" class="pd-price__value">۱,۰۰۰</strong>')
 
     def test_admin_accounting_portal_is_not_a_placeholder(self):
         user = get_user_model().objects.create_user(

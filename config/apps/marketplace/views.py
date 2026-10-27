@@ -1119,6 +1119,10 @@ def vendor_product_update_api(request, listing_id):
                     review_required = True
                 setattr(listing, field, value)
             if listing.sale_type == VendorProduct.SaleType.RETAIL:
+                # Wholesale tiers are live commercial rules, not historical records.
+                # Order lines already snapshot their prices, so remove inactive tiers
+                # when the seller explicitly switches this listing to retail-only.
+                listing.wholesale_tiers.all().delete()
                 listing.wholesale_enabled = False
             elif listing.sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH}:
                 if vendor.seller_type == Vendor.SellerType.RETAIL:
