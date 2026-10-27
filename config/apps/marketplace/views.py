@@ -1871,9 +1871,9 @@ def external_reconciliation_api(request):
 @staff_member_required
 @require_GET
 def settlement_queue_api(request):
-    batches = SettlementBatch.objects.select_related("vendor", "approved_by").filter(
-        status=SettlementBatch.Status.PENDING_APPROVAL
-    ).order_by("created_at")
+    batches = SettlementBatch.objects.select_related("vendor", "approved_by").exclude(
+        status__in=[SettlementBatch.Status.DRAFT, SettlementBatch.Status.CANCELLED]
+    ).order_by("-created_at")[:100]
     return JsonResponse({"ok": True, "results": [{
         "id": batch.id,
         "uuid": str(batch.uuid),
@@ -1885,6 +1885,10 @@ def settlement_queue_api(request):
         "payable_amount": batch.payable_amount,
         "order_ids": batch.order_ids,
         "status": batch.status,
+        "status_label": batch.get_status_display(),
+        "payout_reference": batch.payout_reference,
+        "failure_reason": batch.failure_reason,
+        "paid_at": batch.paid_at.isoformat() if batch.paid_at else None,
     } for batch in batches]})
 
 
