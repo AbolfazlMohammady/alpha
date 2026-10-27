@@ -6,6 +6,8 @@
     const colorButtons = [...document.querySelectorAll(".color-option")];
     const sizeButtons = [...document.querySelectorAll(".size-option")];
     const priceEl = document.getElementById("product-price");
+    const priceCurrencyEl = document.getElementById("product-price-currency");
+    const marketplaceOnly = document.querySelector(".pd")?.dataset.marketplaceOnly === "true";
     const saleUnitEl = document.getElementById("product-sale-unit");
     const quantityLabel = document.getElementById("cart-quantity-label");
     const oldPriceRow = document.getElementById("product-old-price-row");
@@ -56,9 +58,23 @@
             if (saleUnitEl) { saleUnitEl.textContent = ""; saleUnitEl.hidden = true; }
             if (quantityLabel) quantityLabel.textContent = "تعداد";
             if (quantityInput) quantityInput.min = "1";
+            if (marketplaceOnly) {
+                if (priceEl) priceEl.textContent = "انتخاب فروشنده";
+                if (priceCurrencyEl) priceCurrencyEl.hidden = true;
+                oldPriceRow?.classList.add("is-hidden");
+                if (oldPriceEl) oldPriceEl.textContent = "";
+                if (discountEl) discountEl.textContent = "";
+                if (statusEl && variants.length === 0) statusEl.textContent = "برای مشاهده قیمت و موجودی، فروشنده را انتخاب کن.";
+            }
             return;
         }
+        if (marketplaceOnly && priceCurrencyEl) priceCurrencyEl.hidden = false;
         const saleUnit = option.dataset.saleUnit || "عدد";
+        if (marketplaceOnly && statusEl && variants.length === 0) {
+            statusEl.textContent = option.disabled || Number(option.dataset.stock || 0) <= 0
+                ? "این پیشنهاد در حال حاضر قابل سفارش نیست."
+                : "موجودی فروشنده: " + formatPrice(option.dataset.stock) + " " + saleUnit;
+        }
         if (saleUnitEl) {
             saleUnitEl.textContent = "به‌ازای هر " + saleUnit + (Number(option.dataset.unitsPerOrder || 1) > 1 ? " (شامل " + formatPrice(option.dataset.unitsPerOrder) + " قلم)" : "");
             saleUnitEl.hidden = false;
