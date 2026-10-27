@@ -593,7 +593,7 @@ def vendor_product_submissions_api(request):
             "category_id", "name", "short_description", "description", "retail_price",
             "compare_at_price", "sale_unit", "units_per_order", "stock_quantity", "weight_grams", "package_length_cm",
             "package_width_cm", "package_height_cm", "handling_days", "supports_custom_printing",
-            "csrfmiddlewaretoken",
+            "sale_type", "wholesale_minimum_quantity", "wholesale_unit_price", "csrfmiddlewaretoken",
         }
         if set(request.POST.keys()) - allowed or set(request.FILES.keys()) - {"image"}:
             return _error("فیلد ارسالی غیرمجاز است.")
@@ -606,6 +606,13 @@ def vendor_product_submissions_api(request):
         custom_print = request.POST.get("supports_custom_printing", "false").strip().lower()
         if custom_print not in {"true", "false"}:
             return _error("وضعیت چاپ سفارشی معتبر نیست.")
+        sale_type = request.POST.get("sale_type", VendorProductSubmission.SaleType.RETAIL).strip()
+        if sale_type not in VendorProductSubmission.SaleType.values:
+            return _error("نوع فروش معتبر نیست.")
+        if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} and vendor.seller_type == Vendor.SellerType.RETAIL:
+            return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
+        wholesale_minimum = int(request.POST.get("wholesale_minimum_quantity", 0) or 0)
+        wholesale_price = int(request.POST.get("wholesale_unit_price", 0) or 0)
         submission = VendorProductSubmission(
             vendor=vendor,
             category=category,
@@ -615,6 +622,9 @@ def vendor_product_submissions_api(request):
             image=image,
             retail_price=int(request.POST.get("retail_price", 0)),
             compare_at_price=int(compare_value) if compare_value else None,
+            sale_type=sale_type,
+            wholesale_minimum_quantity=wholesale_minimum if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} else None,
+            wholesale_unit_price=wholesale_price if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} else None,
             sale_unit=request.POST.get("sale_unit", "عدد").strip(),
             units_per_order=int(request.POST.get("units_per_order", 1)),
             stock_quantity=int(request.POST.get("stock_quantity", 0)),
