@@ -541,3 +541,54 @@ class VendorProductArchiveTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.listing.refresh_from_db()
         self.assertEqual(self.listing.status, VendorProduct.Status.ACTIVE)
+
+
+class AccountingJournalApiTests(TestCase):
+    def setUp(self):
+        self.cash = LedgerAccount.objects.create(
+            code="journal_api_test_cash",
+            name="وجه نقد تست API",
+            kind=LedgerAccount.Kind.ASSET,
+            currency="IRT",
+        )
+        self.revenue = LedgerAccount.objects.create(
+            code="journal_api_test_revenue",
+            name="درآمد تست API",
+            kind=LedgerAccount.Kind.REVENUE,
+            currency="IRT",
+        )
+
+    def test_staff_can_inspect_posted_journal_entries_and_lines(self):
+        post_journal(
+            idempotency_key="release-journal-inspection-001",
+            kind="release_smoke",
+            description="ثبت فروش آزمایشی",
+            lines=[
+                {"account": self.cash, "debit": 75000, "credit": 0},
+                {"account": self.revenue, "debit": 0, "credit": 75000},
+            ],
+        )
+        staff = get_user_model().objects.create_user(
+            phone="+989120000701",
+            password="test-password",
+            is_staff=True,
+        )
+        self.client.force_login(staff)
+        response = self.client.get("/marketplace/api/admin/accounting/journal-entries/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        entry = next(row for row in payload["results"] if row["kind"] == "release_smoke")
+        self.assertEqual(entry["description"], "ثبت فروش آزمایشی")
+        self.assertEqual(entry["debit_total"], 75000)
+        self.assertEqual(entry["credit_total"], 75000)
+        self.assertEqual(len(entry["lines"]), 2)
+
+    def test_non_staff_cannot_inspect_journal_entries(self):
+        user = get_user_model().objects.create_user(
+            phone="+989120000702",
+            password="test-password",
+        )
+        self.client.force_login(user)
+        response = self.client.get("/marketplace/api/admin/accounting/journal-entries/")
+        self.assertEqual(response.status_code, 302)
