@@ -29,11 +29,11 @@ from .models import (
 from apps.saved.models import FavoriteProduct
 
 AUTH_USER_SESSION_KEY = "_auth_user_id"
-CATEGORY_NAV_CACHE_KEY = "babaei:shop:active-categories:v2"
+CATEGORY_NAV_CACHE_KEY = "babaei:shop:active-categories:v3"
 CATEGORY_NAV_CACHE_TTL = 300
 SIZE_NAV_CACHE_KEY = "babaei:shop:active-sizes:v2"
 SIZE_NAV_CACHE_TTL = 300
-SIMILAR_PRODUCT_IDS_CACHE_KEY = "babaei:shop:active-product-ids:v1"
+SIMILAR_PRODUCT_IDS_CACHE_KEY = "babaei:shop:active-product-ids:v2"
 SIMILAR_PRODUCT_IDS_CACHE_TTL = 300
 CONTACT_PAGE_CACHE_TTL = 86400
 
@@ -46,6 +46,7 @@ def get_random_similar_product_ids(exclude_product_id, limit=8):
             Product.objects.filter(
                 is_active=True,
                 category__is_active=True,
+                marketplace_only=False,
             ).values_list("id", flat=True)
         )
         cache.set(SIMILAR_PRODUCT_IDS_CACHE_KEY, candidate_ids, SIMILAR_PRODUCT_IDS_CACHE_TTL)
@@ -63,7 +64,7 @@ def get_active_categories():
     if categories is None:
         categories = list(
             Category.objects.filter(is_active=True)
-            .annotate(product_count=Count("products", filter=Q(products__is_active=True)))
+            .annotate(product_count=Count("products", filter=Q(products__is_active=True, products__marketplace_only=False)))
             .only("id", "name", "slug", "image")
             .order_by("sort_order", "name")
         )
@@ -290,6 +291,7 @@ class ShopSearchView(ListView):
             Product.objects.filter(
                 is_active=True,
                 category__is_active=True,
+                marketplace_only=False,
             )
             .filter(searchable)
             .select_related("category")
@@ -351,6 +353,7 @@ class ShopIndexView(ListView):
         queryset = Product.objects.filter(
             is_active=True,
             category__is_active=True,
+            marketplace_only=False,
         ).select_related("category").annotate(
             listed_price=variant_price,
             listed_compare_price=variant_compare_price,
@@ -431,7 +434,7 @@ class ShopIndexView(ListView):
         # The slider bounds follow the active category. They used to be computed
         # from every active product on the site, so filtering to a category still
         # showed a price range that category did not have.
-        bounds_queryset = Product.objects.filter(is_active=True, category__is_active=True)
+        bounds_queryset = Product.objects.filter(is_active=True, category__is_active=True, marketplace_only=False)
         if context["filter_category"]:
             bounds_queryset = bounds_queryset.filter(category__slug=context["filter_category"])
         context["price_min"], context["price_max"] = catalog_price_bounds(bounds_queryset)
@@ -464,7 +467,7 @@ class CategoryDetailView(ListView):
                 output_field=IntegerField(),
             )
         ).order_by("type_priority", "sort_order", "id")[:2]
-        queryset = Product.objects.filter(category_id=self.category.id, is_active=True).select_related("category").annotate(listed_price=variant_price, listed_compare_price=variant_compare_price, listed_max_price=variant_max_price, **annotations).prefetch_related(Prefetch("images", queryset=card_images, to_attr="card_images"))
+        queryset = Product.objects.filter(category_id=self.category.id, is_active=True, marketplace_only=False).select_related("category").annotate(listed_price=variant_price, listed_compare_price=variant_compare_price, listed_max_price=variant_max_price, **annotations).prefetch_related(Prefetch("images", queryset=card_images, to_attr="card_images"))
 
         size = self.request.GET.get("size") or None
 
@@ -524,7 +527,7 @@ class CategoryDetailView(ListView):
         context["filter_discount"] = self.request.GET.get("discount") == "1"
         context["filter_min_price"] = self.request.GET.get("min_price", "")
         context["filter_max_price"] = self.request.GET.get("max_price", "")
-        base_price_queryset = Product.objects.filter(category_id=self.category.id, is_active=True)
+        base_price_queryset = Product.objects.filter(category_id=self.category.id, is_active=True, marketplace_only=False)
         context["price_min"], context["price_max"] = catalog_price_bounds(base_price_queryset)
         context["canonical_url"] = absolute_url(self.request, self.request.path)
         context["og_title"] = self.category.seo_title or self.category.name
