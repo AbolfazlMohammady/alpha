@@ -312,6 +312,17 @@ def portal_section_page(request, section):
     if audience == "admin":
         if not (request.user.is_staff or request.user.is_superuser):
             return HttpResponseForbidden("دسترسی این بخش فقط برای مدیران مجاز است.")
+        admin_anchors = {
+            "trial-balance": "ma-trial-balance",
+            "reconciliation": "ma-reconciliation",
+            "gateway-settlement": "ma-gateway",
+            "carrier-payment": "ma-carrier-payment",
+            "settlement-queue": "ma-settlement-queue",
+            "accounting-overview": "ma-overview",
+        }
+        if section != "accounting-overview":
+            anchor = admin_anchors.get(section, "ma-overview")
+            return redirect(f"{reverse('marketplace:portal_section_page', kwargs={'section': 'accounting-overview'})}#{anchor}")
         providers = {}
         for prefix, label in (("TIPAX", "تیپاکس"), ("POST", "شرکت ملی پست")):
             providers[prefix.lower()] = {
