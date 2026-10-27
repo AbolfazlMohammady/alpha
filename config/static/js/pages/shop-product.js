@@ -62,17 +62,26 @@
             saleUnitEl.textContent = "به‌ازای هر " + saleUnit + (Number(option.dataset.unitsPerOrder || 1) > 1 ? " (شامل " + formatPrice(option.dataset.unitsPerOrder) + " قلم)" : "");
             saleUnitEl.hidden = false;
         }
-        if (quantityLabel) quantityLabel.textContent = "تعداد (" + saleUnit + ")";
-        let price = Number(option.dataset.price || 0);
-        let compare = Number(option.dataset.comparePrice || 0);
+        const allTiers = (option.dataset.wholesaleTiers || "").split(",").map((item) => {
+            const parts = item.split(":");
+            return {minimum: Number(parts[0] || 0), price: Number(parts[1] || 0)};
+        }).filter((tier) => tier.minimum > 0 && tier.price > 0).sort((a, b) => a.minimum - b.minimum);
         const existingListingQuantity = Object.keys(cartListings)
             .filter((key) => key.startsWith(listingSelect.value + ":"))
             .reduce((total, key) => total + Number(cartListings[key] || 0), 0);
-        const quantity = Math.max(1, Number(quantityInput?.value || 1)) + existingListingQuantity;
-        const tiers = (option.dataset.wholesaleTiers || "").split(",").map((item) => {
-            const parts = item.split(":");
-            return {minimum: Number(parts[0] || 0), price: Number(parts[1] || 0)};
-        }).filter((tier) => tier.minimum > 0 && tier.price > 0 && tier.minimum <= quantity).sort((a, b) => b.minimum - a.minimum);
+        const minimumWholesale = option.dataset.saleType === "wholesale" && allTiers.length ? allTiers[0].minimum : 1;
+        const minimumToAdd = Math.max(1, minimumWholesale - existingListingQuantity);
+        if (quantityInput) {
+            quantityInput.min = String(minimumToAdd);
+            if (Number(quantityInput.value || 1) < minimumToAdd) quantityInput.value = String(minimumToAdd);
+        }
+        if (quantityLabel) quantityLabel.textContent = option.dataset.saleType === "wholesale"
+            ? "حداقل سفارش: " + formatPrice(minimumWholesale) + " " + saleUnit
+            : "تعداد (" + saleUnit + ")";
+        let price = Number(option.dataset.price || 0);
+        let compare = Number(option.dataset.comparePrice || 0);
+        const quantity = Math.max(minimumToAdd, Number(quantityInput?.value || minimumToAdd)) + existingListingQuantity;
+        const tiers = allTiers.filter((tier) => tier.minimum <= quantity).sort((a, b) => b.minimum - a.minimum);
         if (tiers.length) {
             price = tiers[0].price;
             // Bulk savings should be compared with the seller's retail price,
