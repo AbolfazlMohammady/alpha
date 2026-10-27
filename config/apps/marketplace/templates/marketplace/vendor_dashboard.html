@@ -219,8 +219,8 @@
         <form id="vd-product-create" class="vd-form">
             {% csrf_token %}
             <label class="vd-field" style="grid-column:1/-1">کالای انتخاب‌شده<input name="product_id" id="vd-product-id" type="number" min="1" required readonly placeholder="ابتدا کالا را از نتایج جستجو انتخاب کن"></label>
-            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد، جفت، بسته" required></label>
-            <label class="vd-field">تعداد اقلام در هر واحد<input name="units_per_order" type="number" min="1" value="1" required></label>
+            <label class="vd-field">واحد فروش<select name="sale_unit" required><option value="عدد">عدد</option><option value="جفت">جفت</option><option value="بسته">بسته</option><option value="جین">جین (۱۲ عدد)</option><option value="کارتن">کارتن</option></select></label>
+            <label class="vd-field">تعداد اقلام در هر واحد فروش<select name="units_per_order" required><option value="1">۱ عدد</option><option value="2">۲ عدد</option><option value="3">۳ عدد</option><option value="4">۴ عدد</option><option value="6">۶ عدد</option><option value="12">۱۲ عدد (یک جین)</option><option value="24">۲۴ عدد (دو جین)</option><option value="36">۳۶ عدد</option><option value="48">۴۸ عدد</option><option value="72">۷۲ عدد</option><option value="144">۱۴۴ عدد</option></select></label>
             <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="0" required></label>
             <div class="vd-product-step" style="grid-column:1/-1">
                 <h3>۱. روش فروش</h3>
@@ -244,7 +244,7 @@
             <div class="vd-product-step" data-wholesale-fields hidden style="grid-column:1/-1">
                 <h3>۳. قیمت عمده</h3>
                 <div class="vd-form">
-                    <label class="vd-field">حداقل تعداد عمده<input name="wholesale_minimum_quantity" type="number" min="2" value="3"></label>
+                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity"><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select><small class="vd-muted">اگر واحد فروش «جین» باشد، ۱ واحد فروش یعنی ۱۲ عدد.</small></label>
                     <label class="vd-field">قیمت هر واحد عمده (تومان)<input name="wholesale_unit_price" type="number" min="1"></label>
                 </div>
             </div>
@@ -618,6 +618,23 @@
         catalogResults.innerHTML = "";
         notify("محصول انتخاب شد؛ قیمت و موجودی فروشگاه را تکمیل کن.");
     });
+    const configureSaleUnitSelectors = (form) => {
+        if (!form) return;
+        const unit = form.querySelector('select[name="sale_unit"]');
+        const count = form.querySelector('select[name="units_per_order"]');
+        if (!unit || !count || unit.dataset.packSync === "1") return;
+        unit.dataset.packSync = "1";
+        const fixedCounts = {"عدد":"1", "جفت":"2", "جین":"12"};
+        const sync = () => {
+            const fixed = fixedCounts[unit.value];
+            if (fixed) count.value = fixed;
+            count.disabled = Boolean(fixed);
+        };
+        unit.addEventListener("change", sync);
+        sync();
+    };
+    configureSaleUnitSelectors(document.getElementById("vd-product-submission"));
+    configureSaleUnitSelectors(document.getElementById("vd-product-create"));
     const configureProductPricing = (form) => {
         if (!form) return;
         const radios = form.querySelectorAll('input[name="sale_type"]');
@@ -654,6 +671,9 @@
         try {
             const form = event.currentTarget;
             const payload = formJson(form);
+            const selectedUnit = form.querySelector('select[name="sale_unit"]')?.value;
+            const fixedCounts = {"عدد":1, "جفت":2, "جین":12};
+            if (selectedUnit && fixedCounts[selectedUnit]) payload.units_per_order = fixedCounts[selectedUnit];
             const regularPrice = Number(payload.regular_price || 0);
             const discountPercent = Number(payload.discount_percent || 0);
             if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
@@ -692,6 +712,9 @@
             try {
                 const form = event.target;
                 const formData = new FormData(form);
+                const selectedUnit = form.querySelector('select[name="sale_unit"]')?.value;
+                const fixedCounts = {"عدد":"1", "جفت":"2", "جین":"12"};
+                if (selectedUnit && fixedCounts[selectedUnit]) formData.set("units_per_order", fixedCounts[selectedUnit]);
                 const regularPrice = Number(formData.get("regular_price") || 0);
                 const discountPercent = Number(formData.get("discount_percent") || 0);
                 if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
