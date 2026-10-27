@@ -800,7 +800,6 @@
                 delete payload.discount_percent;
                 ["retail_price","units_per_order","stock_quantity","handling_days"].forEach((key) => payload[key] = Number(payload[key]));
                 payload.supports_custom_printing = payload.supports_custom_printing === "true";
-                payload.wholesale_enabled = payload.wholesale_enabled === "true";
                 await request("/marketplace/api/vendor/products/" + event.target.dataset.listingId + "/", {method:"POST", body:JSON.stringify(payload)});
                 notify("تغییرات ثبت شد؛ تغییر قیمت تا تأیید مدیر از فروش خارج می‌شود.");
                 await loadProducts();
