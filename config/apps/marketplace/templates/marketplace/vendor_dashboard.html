@@ -399,7 +399,10 @@
                 </div>
             </article>
         `).join("");
-        box.querySelectorAll(".vd-stock-form").forEach(configureSaleUnitSelectors);
+        box.querySelectorAll(".vd-stock-form").forEach((form) => {
+            configureSaleUnitSelectors(form);
+            configureProductPricing(form);
+        });
     }
     const actionButtons = (order) => {
         const buttons = [];
@@ -558,7 +561,7 @@
         const minimum = form.querySelector('input[name="wholesale_minimum_quantity"]');
         const wholesalePrice = form.querySelector('input[name="wholesale_unit_price"]');
         const refresh = () => {
-            const mode = form.querySelector('input[name="sale_type"]:checked')?.value || "retail";
+            const mode = form.querySelector('select[name="sale_type"]')?.value || form.querySelector('input[name="sale_type"]:checked')?.value || "retail";
             if (wholesale) wholesale.hidden = mode === "retail";
             if (retailPricing) retailPricing.hidden = mode === "wholesale";
             if (regular) { regular.required = mode !== "wholesale"; regular.disabled = mode === "wholesale"; }
@@ -576,6 +579,7 @@
             } else preview.textContent = "قیمت اصلی را وارد کن تا قیمت نهایی محاسبه شود.";
         };
         radios.forEach((radio) => radio.addEventListener("change", refresh));
+        form.querySelector('select[name="sale_type"]')?.addEventListener("change", refresh);
         regular?.addEventListener("input", refresh);
         discount?.addEventListener("input", refresh);
         refresh();
@@ -686,15 +690,22 @@
         if (event.target.matches(".vd-stock-form")) {
             event.preventDefault();
             try {
-                const payload = Object.fromEntries(new FormData(event.target).entries());
-                const selectedUnit = event.target.querySelector('select[name="sale_unit"]')?.value;
+                const form = event.target;
+                const payload = Object.fromEntries(new FormData(form).entries());
+                const selectedUnit = form.querySelector('select[name="sale_unit"]')?.value;
                 const fixedCounts = {"عدد":1, "جفت":2, "جین":12};
                 if (selectedUnit && fixedCounts[selectedUnit]) payload.units_per_order = fixedCounts[selectedUnit];
+                const mode = payload.sale_type || "retail";
                 const regularPrice = Number(payload.regular_price || 0);
                 const discountPercent = Number(payload.discount_percent || 0);
-                if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
-                payload.retail_price = Math.round(regularPrice * (100 - discountPercent) / 100);
-                payload.compare_at_price = discountPercent > 0 ? regularPrice : null;
+                if (mode === "wholesale") {
+                    payload.retail_price = Number(form.dataset.currentRetailPrice || 0);
+                    payload.compare_at_price = null;
+                } else {
+                    if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
+                    payload.retail_price = Math.round(regularPrice * (100 - discountPercent) / 100);
+                    payload.compare_at_price = discountPercent > 0 ? regularPrice : null;
+                }
                 delete payload.regular_price;
                 delete payload.discount_percent;
                 ["retail_price","units_per_order","stock_quantity","handling_days"].forEach((key) => payload[key] = Number(payload[key]));
