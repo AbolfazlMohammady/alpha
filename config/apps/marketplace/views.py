@@ -10,8 +10,9 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.db.models import Sum
+from django.db.models import Prefetch, Q, Sum
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -22,7 +23,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
 from apps.orders.models import Cart, CartItem, Order
 from apps.users.models import Address, City, Province, RoleUser, User
-from apps.shop.models import Category, Product
+from apps.shop.models import Category, Product, ProductImage
 from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorApplication, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from .services import _strict_int, approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_carrier_invoice_payment, record_external_reconciliation, record_full_order_refund, record_gateway_settlement, record_payout_result, trial_balance
 from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
@@ -228,6 +229,59 @@ def vendor_application_page(request):
         return redirect("marketplace:vendor_application_page")
     return render(request, "marketplace/vendor_application.html", {
         "application": existing, "form_data": {}, "errors": [],
+    })
+
+
+@require_GET
+def marketplace_storefront_page(request):
+    """Public discovery page for seller-owned listings, distinct from platform catalog pricing."""
+    listings = VendorProduct.objects.filter(
+        status=VendorProduct.Status.ACTIVE,
+        vendor__status=Vendor.Status.ACTIVE,
+        vendor__user__is_active=True,
+        stock_quantity__gt=0,
+        product__is_active=True,
+        product__category__is_active=True,
+    ).select_related("vendor", "product", "product__category").prefetch_related(
+        Prefetch(
+            "product__images",
+            queryset=ProductImage.objects.order_by("sort_order", "id"),
+            to_attr="marketplace_images",
+        ),
+        "wholesale_tiers",
+    )
+    query = str(request.GET.get("q") or "").strip()[:100]
+    if query:
+        listings = listings.filter(
+            Q(product__name__icontains=query)
+            | Q(vendor__store_name__icontains=query)
+            | Q(product__short_description__icontains=query)
+        )
+    category_slug = str(request.GET.get("category") or "").strip()
+    if category_slug:
+        listings = listings.filter(product__category__slug=category_slug)
+    sale_type = str(request.GET.get("sale_type") or "").strip()
+    if sale_type in VendorProduct.SaleType.values:
+        listings = listings.filter(sale_type=sale_type)
+    sort = str(request.GET.get("sort") or "newest")
+    sort_map = {
+        "newest": ("-created_at", "id"),
+        "price_asc": ("retail_price", "id"),
+        "price_desc": ("-retail_price", "id"),
+        "store": ("vendor__store_name", "product__name"),
+    }
+    listings = listings.order_by(*sort_map.get(sort, sort_map["newest"]))
+    page_obj = Paginator(listings, 12).get_page(request.GET.get("page"))
+    return render(request, "marketplace/storefront.html", {
+        "listings": page_obj.object_list,
+        "page_obj": page_obj,
+        "paginator": page_obj.paginator,
+        "categories": Category.objects.filter(is_active=True).order_by("name"),
+        "query": query,
+        "filter_category": category_slug,
+        "filter_sale_type": sale_type,
+        "filter_sort": sort,
+        "result_count": page_obj.paginator.count,
     })
 
 
