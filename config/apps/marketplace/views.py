@@ -1006,13 +1006,20 @@ def vendor_product_update_api(request, listing_id):
             if unknown:
                 return _error("فیلدهای غیرمجاز: " + ", ".join(sorted(unknown)))
             if "sale_unit" in payload or "units_per_order" in payload:
-                try:
-                    payload["sale_unit"], payload["units_per_order"] = _validate_sale_pack(
-                        payload.get("sale_unit", listing.sale_unit),
-                        payload.get("units_per_order", listing.units_per_order),
-                    )
-                except ValidationError as exc:
-                    return _error(exc)
+                candidate_unit = payload.get("sale_unit", listing.sale_unit)
+                candidate_count = payload.get("units_per_order", listing.units_per_order)
+                if str(candidate_unit).strip() != listing.sale_unit or str(candidate_count) != str(listing.units_per_order):
+                    try:
+                        payload["sale_unit"], payload["units_per_order"] = _validate_sale_pack(
+                            candidate_unit,
+                            candidate_count,
+                        )
+                    except ValidationError as exc:
+                        return _error(exc)
+                else:
+                    # Preserve unchanged legacy units so sellers can still update stock/price.
+                    payload["sale_unit"] = listing.sale_unit
+                    payload["units_per_order"] = listing.units_per_order
             review_required = False
             review_fields = {
                 "retail_price", "compare_at_price", "sale_unit", "units_per_order",
