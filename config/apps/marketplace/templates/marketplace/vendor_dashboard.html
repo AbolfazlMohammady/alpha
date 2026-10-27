@@ -467,8 +467,6 @@
                     ${item.compare_at_price ? `<span>تخفیف فعلی: ${Math.round((item.compare_at_price-item.retail_price)*100/item.compare_at_price)}٪</span>` : ""}
                     <span>موجودی: ${money(item.stock_quantity)}</span>
                     <span>واحد فروش: ${escapeHtml(item.sale_unit)} · هر واحد شامل ${money(item.units_per_order)} قلم</span>
-                    ${item.weight_grams ? `<span>وزن ثبت‌شده بسته: ${money(item.weight_grams)} گرم</span>` : `<span class="vd-muted">وزن و ابعاد بسته هنگام ثبت ارسال وارد می‌شود.</span>`}
-                    <span>ابعاد واحد فروش: ${item.package_dimensions_cm.map(money).join(" × ")} سانتی‌متر</span>
                     <span>عمده: ${item.wholesale_enabled ? "فعال" : "غیرفعال"}</span>
                 </div>
                 <form class="vd-stock-form vd-form" data-listing-id="${item.id}" style="margin-top:12px">
