@@ -26,6 +26,27 @@ from .services import _strict_int, approve_settlement, create_shipping_quote, ma
 from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
 
 
+SELLABLE_UNIT_COUNTS = {1, 2, 3, 4, 6, 12, 24, 36, 48, 72, 144}
+FIXED_SALE_UNITS = {"عدد": 1, "جفت": 2, "جین": 12}
+ALLOWED_SALE_UNITS = set(FIXED_SALE_UNITS) | {"بسته", "کارتن"}
+
+
+def _validate_sale_pack(sale_unit, units_per_order):
+    unit = " ".join(str(sale_unit or "").split())
+    if unit not in ALLOWED_SALE_UNITS:
+        raise ValidationError({"sale_unit": "واحد فروش را از فهرست انتخاب کن."})
+    try:
+        count = int(units_per_order)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError({"units_per_order": "اندازه واحد فروش معتبر نیست."}) from exc
+    if count not in SELLABLE_UNIT_COUNTS:
+        raise ValidationError({"units_per_order": "اندازه بسته را از فهرست انتخاب کن."})
+    fixed_count = FIXED_SALE_UNITS.get(unit)
+    if fixed_count is not None and count != fixed_count:
+        raise ValidationError({"units_per_order": f"واحد «{unit}» باید دقیقاً شامل {fixed_count} قلم باشد."})
+    return unit, count
+
+
 def _validate_product_upload(uploaded_file):
     if uploaded_file is None:
         raise ValidationError("تصویر اصلی محصول الزامی است.")
@@ -662,6 +683,13 @@ def vendor_product_submissions_api(request):
             return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
         wholesale_minimum = int(request.POST.get("wholesale_minimum_quantity", 0) or 0)
         wholesale_price = int(request.POST.get("wholesale_unit_price", 0) or 0)
+        try:
+            sale_unit, units_per_order = _validate_sale_pack(
+                request.POST.get("sale_unit", "عدد"),
+                request.POST.get("units_per_order", 1),
+            )
+        except ValidationError as exc:
+            return _error(exc)
         submission = VendorProductSubmission(
             vendor=vendor,
             category=category,
@@ -674,8 +702,8 @@ def vendor_product_submissions_api(request):
             sale_type=sale_type,
             wholesale_minimum_quantity=wholesale_minimum if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} else None,
             wholesale_unit_price=wholesale_price if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} else None,
-            sale_unit=request.POST.get("sale_unit", "عدد").strip(),
-            units_per_order=int(request.POST.get("units_per_order", 1)),
+            sale_unit=sale_unit,
+            units_per_order=units_per_order,
             stock_quantity=int(request.POST.get("stock_quantity", 0)),
             weight_grams=int(request.POST.get("weight_grams", 0)),
             package_length_cm=int(request.POST.get("package_length_cm", 0)),
@@ -782,6 +810,13 @@ def vendor_products_api(request):
         wholesale_price = _strict_int(payload.get("wholesale_unit_price", 0), "قیمت واحد عمده") if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} else 0
         if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and (wholesale_minimum < 1 or wholesale_price < 1):
             return _error("برای فروش عمده، حداقل یک واحد فروش و قیمت واحد عمده را وارد کن.")
+        try:
+            sale_unit, units_per_order = _validate_sale_pack(
+                payload.get("sale_unit", "عدد"),
+                payload.get("units_per_order", 1),
+            )
+        except ValidationError as exc:
+            return _error(exc)
         retail_price = _strict_int(payload.get("retail_price", 0), "قیمت فروش")
         if wholesale_price and wholesale_price > retail_price:
             return _error("قیمت واحد عمده نباید از قیمت تکی بیشتر باشد.")
@@ -792,8 +827,8 @@ def vendor_products_api(request):
             sale_type=sale_type,
             retail_price=retail_price,
             compare_at_price=None if payload.get("compare_at_price") in (None, "") else _strict_int(payload.get("compare_at_price"), "قیمت قبل از تخفیف"),
-            sale_unit=str(payload.get("sale_unit", "عدد")).strip(),
-            units_per_order=_strict_int(payload.get("units_per_order", 1), "تعداد اقلام در واحد فروش"),
+            sale_unit=sale_unit,
+            units_per_order=units_per_order,
             stock_quantity=_strict_int(payload.get("stock_quantity", 0), "موجودی"),
             wholesale_enabled=payload.get("wholesale_enabled") is True,
             supports_custom_printing=payload.get("supports_custom_printing") is True,
@@ -838,6 +873,14 @@ def vendor_product_update_api(request, listing_id):
             unknown = set(payload) - allowed
             if unknown:
                 return _error("فیلدهای غیرمجاز: " + ", ".join(sorted(unknown)))
+            if "sale_unit" in payload or "units_per_order" in payload:
+                try:
+                    payload["sale_unit"], payload["units_per_order"] = _validate_sale_pack(
+                        payload.get("sale_unit", listing.sale_unit),
+                        payload.get("units_per_order", listing.units_per_order),
+                    )
+                except ValidationError as exc:
+                    return _error(exc)
             review_required = False
             review_fields = {
                 "retail_price", "compare_at_price", "sale_unit", "units_per_order",
