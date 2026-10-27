@@ -1230,3 +1230,79 @@ class VendorProductParcelDetailsWorkflowTests(TestCase):
         self.assertNotContains(response, "عرض هر واحد فروش (سانتی‌متر)")
         self.assertNotContains(response, "ارتفاع هر واحد فروش (سانتی‌متر)")
         self.assertContains(response, "وزن بسته (گرم)")
+
+
+class VendorSaleModeApiTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            phone="+989121234571",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.vendor = Vendor.objects.create(
+            user=self.user,
+            store_name="فروشگاه حالت فروش",
+            slug="vendor-sale-mode-api-test",
+            status=Vendor.Status.ACTIVE,
+            seller_type=Vendor.SellerType.BOTH,
+        )
+        category = Category.objects.create(name="دسته حالت فروش", slug="sale-mode-api-category")
+        self.product = Product.objects.create(
+            category=category,
+            name="محصول حالت فروش",
+            slug="sale-mode-api-product",
+            base_price=1000,
+        )
+        self.client.force_login(self.user)
+
+    def test_listing_accepts_discounted_price_and_wholesale_tier_together(self):
+        response = self.client.post(
+            "/marketplace/api/vendor/products/",
+            data={
+                "product_id": self.product.pk,
+                "sale_type": "both",
+                "retail_price": 900,
+                "compare_at_price": 1000,
+                "sale_unit": "عدد",
+                "units_per_order": 1,
+                "stock_quantity": 20,
+                "wholesale_enabled": False,
+                "wholesale_minimum_quantity": 5,
+                "wholesale_unit_price": 800,
+                "supports_custom_printing": False,
+                "handling_days": 2,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        listing = VendorProduct.objects.get(vendor=self.vendor, product=self.product)
+        self.assertEqual(listing.sale_type, VendorProduct.SaleType.BOTH)
+        self.assertEqual(listing.retail_price, 900)
+        self.assertEqual(listing.compare_at_price, 1000)
+        self.assertTrue(listing.wholesale_enabled)
+        tier = listing.wholesale_tiers.get()
+        self.assertEqual(tier.minimum_quantity, 5)
+        self.assertEqual(tier.unit_price, 800)
+
+    def test_retail_only_vendor_cannot_create_wholesale_listing(self):
+        self.vendor.seller_type = Vendor.SellerType.RETAIL
+        self.vendor.save(update_fields=("seller_type", "updated_at"))
+        response = self.client.post(
+            "/marketplace/api/vendor/products/",
+            data={
+                "product_id": self.product.pk,
+                "sale_type": "wholesale",
+                "retail_price": 1000,
+                "sale_unit": "عدد",
+                "units_per_order": 1,
+                "stock_quantity": 20,
+                "wholesale_enabled": False,
+                "wholesale_minimum_quantity": 5,
+                "wholesale_unit_price": 800,
+                "supports_custom_printing": False,
+                "handling_days": 2,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(VendorProduct.objects.filter(vendor=self.vendor, product=self.product).exists())
