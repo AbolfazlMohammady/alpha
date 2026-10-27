@@ -319,6 +319,9 @@ def portal_section_page(request, section):
                 "base_url": bool(os.environ.get(f"{prefix}_API_BASE_URL", "").strip()),
                 "token": bool(os.environ.get(f"{prefix}_API_TOKEN", "").strip()),
                 "quote_path": bool(os.environ.get(f"{prefix}_QUOTE_PATH", "").strip()),
+                "quote_amount_path": bool(os.environ.get(f"{prefix}_QUOTE_AMOUNT_PATH", "").strip()),
+                "quote_currency_path": bool(os.environ.get(f"{prefix}_QUOTE_CURRENCY_PATH", "").strip()),
+                "amount_divisor": bool(os.environ.get(f"{prefix}_AMOUNT_DIVISOR", "").strip()),
                 "shipment_path": bool(os.environ.get(f"{prefix}_SHIPMENT_PATH", "").strip()),
                 "tracking_path": bool(os.environ.get(f"{prefix}_TRACKING_PATH", "").strip()),
             }
