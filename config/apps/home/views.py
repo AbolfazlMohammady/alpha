@@ -35,7 +35,7 @@ class HomeView(TemplateView):
             output_field=IntegerField(),
         )
         context["home_products"] = (
-            Product.objects.filter(is_active=True, category__is_active=True)
+            Product.objects.filter(is_active=True, category__is_active=True, marketplace_only=False)
             .select_related("category")
             .annotate(
                 listed_price=variant_price,
