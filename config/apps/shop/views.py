@@ -345,6 +345,11 @@ class ShopSearchView(ListView):
         variant_q = variant_search_exists(query)
 
         variant_price, variant_compare_price, variant_max_price = price_annotations()
+        _, seller_price, seller_compare, seller_max = marketplace_listing_annotations()
+        listed_price, listed_compare, listed_max = catalog_price_expressions(
+            variant_price, variant_compare_price, variant_max_price,
+            seller_price, seller_compare, seller_max,
+        )
 
         return (
             Product.objects.filter(
@@ -364,9 +369,9 @@ class ShopSearchView(ListView):
                     output_field=IntegerField(),
                 ),
                 **card_annotations(self.request),
-                listed_price=variant_price,
-                listed_compare_price=variant_compare_price,
-                listed_max_price=variant_max_price,
+                listed_price=listed_price,
+                listed_compare_price=listed_compare,
+                listed_max_price=listed_max,
             )
             .prefetch_related(
                 Prefetch(
@@ -408,24 +413,8 @@ class ShopIndexView(ListView):
             )
         ).order_by("type_priority", "sort_order", "id")[:2]
 
-        queryset = Product.objects.filter(
-            is_active=True,
-            category__is_active=True,
-        ).select_related("category").annotate(
-            listed_price=variant_price,
-            listed_compare_price=variant_compare_price,
-            listed_max_price=variant_max_price,
-            **annotations,
-        ).prefetch_related(
-            Prefetch("images", queryset=card_images, to_attr="card_images")
-        )
-
         category = self.request.GET.get("category")
-        if category:
-            queryset = queryset.filter(category__slug=category)
-
         size = self.request.GET.get("size") or None
-
         min_price = None
         raw_min_price = self.request.GET.get("min_price")
         if raw_min_price:
@@ -433,7 +422,6 @@ class ShopIndexView(ListView):
                 min_price = int(raw_min_price)
             except (TypeError, ValueError):
                 pass
-
         max_price = None
         raw_max_price = self.request.GET.get("max_price")
         if raw_max_price:
@@ -442,15 +430,36 @@ class ShopIndexView(ListView):
             except (TypeError, ValueError):
                 pass
 
-        # EXISTS keeps the Product row at one row per product. The previous
-        # reverse-FK filter joined every matching variant and then needed
-        # DISTINCT, which becomes expensive as a product accumulates variants.
+        seller_exists, _, _, _ = marketplace_listing_annotations(
+            min_price=min_price, max_price=max_price,
+            include_without_variants=not bool(size),
+        )
+        _, seller_price, seller_compare, seller_max = marketplace_listing_annotations()
+        listed_price, listed_compare, listed_max = catalog_price_expressions(
+            variant_price, variant_compare_price, variant_max_price,
+            seller_price, seller_compare, seller_max,
+        )
+        queryset = Product.objects.filter(
+            is_active=True,
+            category__is_active=True,
+        ).select_related("category").annotate(
+            listed_price=listed_price,
+            listed_compare_price=listed_compare,
+            listed_max_price=listed_max,
+            _has_marketplace_offer=seller_exists,
+            **annotations,
+        ).prefetch_related(
+            Prefetch("images", queryset=card_images, to_attr="card_images")
+        )
+        if category:
+            queryset = queryset.filter(category__slug=category)
+
+        # Keep legacy variant products intact, while allowing approved seller-only
+        # catalog products (which intentionally have no ProductVariant rows) into
+        # the same first-party store listing.
         queryset = queryset.filter(
-            variant_exists_for_product(
-                size_slug=size,
-                min_price=min_price,
-                max_price=max_price,
-            )
+            Q(variant_exists_for_product(size_slug=size, min_price=min_price, max_price=max_price))
+            | Q(marketplace_only=True, _has_marketplace_offer=True)
         )
 
         if self.request.GET.get("discount") == "1":
@@ -524,10 +533,8 @@ class CategoryDetailView(ListView):
                 output_field=IntegerField(),
             )
         ).order_by("type_priority", "sort_order", "id")[:2]
-        queryset = Product.objects.filter(category_id=self.category.id, is_active=True).select_related("category").annotate(listed_price=variant_price, listed_compare_price=variant_compare_price, listed_max_price=variant_max_price, **annotations).prefetch_related(Prefetch("images", queryset=card_images, to_attr="card_images"))
 
         size = self.request.GET.get("size") or None
-
         min_price = None
         raw_min_price = self.request.GET.get("min_price")
         if raw_min_price:
@@ -535,7 +542,6 @@ class CategoryDetailView(ListView):
                 min_price = int(raw_min_price)
             except (TypeError, ValueError):
                 pass
-
         max_price = None
         raw_max_price = self.request.GET.get("max_price")
         if raw_max_price:
@@ -544,15 +550,30 @@ class CategoryDetailView(ListView):
             except (TypeError, ValueError):
                 pass
 
-        # EXISTS keeps the Product row at one row per product. The previous
-        # reverse-FK filter joined every matching variant and then needed
-        # DISTINCT, which becomes expensive as a product accumulates variants.
+        seller_exists, _, _, _ = marketplace_listing_annotations(
+            min_price=min_price, max_price=max_price,
+            include_without_variants=not bool(size),
+        )
+        _, seller_price, seller_compare, seller_max = marketplace_listing_annotations()
+        listed_price, listed_compare, listed_max = catalog_price_expressions(
+            variant_price, variant_compare_price, variant_max_price,
+            seller_price, seller_compare, seller_max,
+        )
+        queryset = Product.objects.filter(
+            category_id=self.category.id, is_active=True, category__is_active=True,
+        ).select_related("category").annotate(
+            listed_price=listed_price,
+            listed_compare_price=listed_compare,
+            listed_max_price=listed_max,
+            _has_marketplace_offer=seller_exists,
+            **annotations,
+        ).prefetch_related(Prefetch("images", queryset=card_images, to_attr="card_images"))
+
+        # Seller-only products share the normal category listing, but never leak
+        # back into the legacy product/variant cart flow.
         queryset = queryset.filter(
-            variant_exists_for_product(
-                size_slug=size,
-                min_price=min_price,
-                max_price=max_price,
-            )
+            Q(variant_exists_for_product(size_slug=size, min_price=min_price, max_price=max_price))
+            | Q(marketplace_only=True, _has_marketplace_offer=True)
         )
 
         if self.request.GET.get("discount") == "1":
