@@ -838,6 +838,16 @@ def vendor_product_submissions_api(request):
             )
         except ValidationError as exc:
             return _error(exc)
+        if sale_type == VendorProductSubmission.SaleType.WHOLESALE:
+            if wholesale_price < 1:
+                return _error("قیمت واحد عمده را وارد کن.")
+            retail_price = wholesale_price
+            compare_at_price = None
+        else:
+            retail_price = int(request.POST.get("retail_price", 0))
+            compare_at_price = int(compare_value) if compare_value else None
+            if sale_type == VendorProductSubmission.SaleType.BOTH and wholesale_price > retail_price:
+                return _error("قیمت عمده نباید از قیمت نهایی تکی بیشتر باشد.")
         submission = VendorProductSubmission(
             vendor=vendor,
             category=category,
@@ -845,8 +855,8 @@ def vendor_product_submissions_api(request):
             short_description=strip_tags(request.POST.get("short_description", "")).strip(),
             description=strip_tags(request.POST.get("description", "")).strip(),
             image=image,
-            retail_price=int(request.POST.get("retail_price", 0)),
-            compare_at_price=int(compare_value) if compare_value else None,
+            retail_price=retail_price,
+            compare_at_price=compare_at_price,
             sale_type=sale_type,
             wholesale_minimum_quantity=wholesale_minimum if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} else None,
             wholesale_unit_price=wholesale_price if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} else None,
@@ -967,16 +977,21 @@ def vendor_products_api(request):
             )
         except ValidationError as exc:
             return _error(exc)
-        retail_price = _strict_int(payload.get("retail_price", 0), "قیمت فروش")
-        if wholesale_price and wholesale_price > retail_price:
-            return _error("قیمت واحد عمده نباید از قیمت تکی بیشتر باشد.")
+        if sale_type == VendorProduct.SaleType.WHOLESALE:
+            retail_price = wholesale_price
+            compare_at_price = None
+        else:
+            retail_price = _strict_int(payload.get("retail_price", 0), "قیمت فروش")
+            compare_at_price = None if payload.get("compare_at_price") in (None, "") else _strict_int(payload.get("compare_at_price"), "قیمت قبل از تخفیف")
+            if sale_type == VendorProduct.SaleType.BOTH and wholesale_price > retail_price:
+                return _error("قیمت واحد عمده نباید از قیمت نهایی تکی بیشتر باشد.")
         listing = VendorProduct(
             vendor=vendor,
             product=product,
             status=VendorProduct.Status.PENDING,
             sale_type=sale_type,
             retail_price=retail_price,
-            compare_at_price=None if payload.get("compare_at_price") in (None, "") else _strict_int(payload.get("compare_at_price"), "قیمت قبل از تخفیف"),
+            compare_at_price=compare_at_price,
             sale_unit=sale_unit,
             units_per_order=units_per_order,
             stock_quantity=_strict_int(payload.get("stock_quantity", 0), "موجودی"),
