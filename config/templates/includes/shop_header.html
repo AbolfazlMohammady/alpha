@@ -38,7 +38,8 @@
             <a class="sh-nav__link" href="{% url 'home:index' %}">خانه</a>
             <a class="sh-nav__link"
                href="{% url 'shop:index' %}"
-               {% if request.resolver_match.url_name == 'index' %}aria-current="page"{% endif %}>فروشگاه</a>
+               {% if request.resolver_match.namespace == 'shop' and request.resolver_match.url_name == 'index' %}aria-current="page"{% endif %}>فروشگاه</a>
+            <a class="sh-nav__link" href="{% url 'marketplace:storefront' %}" {% if request.resolver_match.namespace == 'marketplace' and request.resolver_match.url_name == 'storefront' %}aria-current="page"{% endif %}>بازار فروشندگان</a>
             {% if designer_product %}
                 <a class="sh-nav__link sh-nav__link--design"
                    href="{% url 'customizer:designer' designer_product.uuid %}"
