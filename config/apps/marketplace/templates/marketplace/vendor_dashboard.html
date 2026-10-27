@@ -73,7 +73,9 @@
     <div id="vd-message" class="vd-message" role="status" aria-live="polite"></div>
 
     <section class="vd-grid" id="vd-overview" aria-label="خلاصه فروشگاه">
-        <div class="vd-card"><span class="vd-muted">فروش ثبت‌شده در ۳۰ روز اخیر</span><strong class="vd-number" id="vd-sales-30d">—</strong><span class="vd-muted">تومان · پس از تخفیف سفارش</span></div>
+        <div class="vd-card"><span class="vd-muted">فروش سفارش‌های پرداخت‌شده · ۳۰ روز</span><strong class="vd-number" id="vd-sales-30d">—</strong><span class="vd-muted">تومان · پس از تخفیف سفارش</span></div>
+        <div class="vd-card"><span class="vd-muted">کمیسیون فروشگاه · ۳۰ روز</span><strong class="vd-number" id="vd-commission-30d">—</strong><span class="vd-muted">تومان</span></div>
+        <div class="vd-card"><span class="vd-muted">سهم محاسبه‌شده فروشنده · ۳۰ روز</span><strong class="vd-number" id="vd-payable-30d">—</strong><span class="vd-muted">تومان · قبل از تسویه نهایی</span></div>
         <div class="vd-card"><span class="vd-muted">تعداد بسته / واحد فروش در ۳۰ روز</span><strong class="vd-number" id="vd-units-30d">—</strong></div>
         <div class="vd-card"><span class="vd-muted">تعداد اقلام فیزیکی فروخته‌شده در ۳۰ روز</span><strong class="vd-number" id="vd-physical-units-30d">—</strong></div>
         <div class="vd-card"><span class="vd-muted">سفارش‌های در جریان</span><strong class="vd-number" id="vd-pending-orders">—</strong></div>
@@ -223,8 +225,9 @@
     </section>
 
     <section class="vd-card vd-section" id="vd-settlements-section">
-        <div class="vd-item-head"><h2>تاریخچه تسویه‌ها</h2><button class="vd-btn vd-btn--soft" type="button" id="vd-refresh-settlements">به‌روزرسانی</button></div>
+        <div class="vd-item-head"><h2>صورت‌حساب و تاریخچه تسویه‌ها</h2><button class="vd-btn vd-btn--soft" type="button" id="vd-refresh-settlements">به‌روزرسانی</button></div>
         <div id="vd-settlements" class="vd-list"><p class="vd-muted">در حال بارگذاری...</p></div>
+        <p class="vd-muted">این صورت‌حساب، مبالغ فروش، کمیسیون و تسویه‌های ثبت‌شده را نشان می‌دهد. دفترکل دوطرفه و عملیات مغایرت‌گیری در بخش حسابداری مدیران نگهداری می‌شود.</p>
     </section>
 
     <section class="vd-card vd-section" id="vd-orders-section">
@@ -333,6 +336,8 @@
         document.getElementById("vd-pending-settlement").textContent = money(data.settlement.pending_amount);
         document.getElementById("vd-paid-settlement").textContent = money(data.settlement.paid_amount);
         document.getElementById("vd-sales-30d").textContent = money(data.sales?.last_30_days || 0);
+        document.getElementById("vd-commission-30d").textContent = money(data.sales?.commission_last_30_days || 0);
+        document.getElementById("vd-payable-30d").textContent = money(data.sales?.vendor_payable_last_30_days || 0);
         document.getElementById("vd-units-30d").textContent = money(data.sales?.sold_units_last_30_days || 0);
         document.getElementById("vd-physical-units-30d").textContent = money(data.sales?.physical_units_last_30_days || 0);
         const topBox = document.getElementById("vd-top-products");
