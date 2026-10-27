@@ -74,7 +74,8 @@
 
     <section class="vd-grid" id="vd-overview" aria-label="خلاصه فروشگاه">
         <div class="vd-card"><span class="vd-muted">فروش ثبت‌شده در ۳۰ روز اخیر</span><strong class="vd-number" id="vd-sales-30d">—</strong><span class="vd-muted">تومان · پس از تخفیف سفارش</span></div>
-        <div class="vd-card"><span class="vd-muted">واحدهای فروخته‌شده در ۳۰ روز اخیر</span><strong class="vd-number" id="vd-units-30d">—</strong></div>
+        <div class="vd-card"><span class="vd-muted">تعداد بسته / واحد فروش در ۳۰ روز</span><strong class="vd-number" id="vd-units-30d">—</strong></div>
+        <div class="vd-card"><span class="vd-muted">تعداد اقلام فیزیکی فروخته‌شده در ۳۰ روز</span><strong class="vd-number" id="vd-physical-units-30d">—</strong></div>
         <div class="vd-card"><span class="vd-muted">سفارش‌های در جریان</span><strong class="vd-number" id="vd-pending-orders">—</strong></div>
         <div class="vd-card"><span class="vd-muted">سفارش‌های تحویل‌شده</span><strong class="vd-number" id="vd-delivered-orders">—</strong></div>
         <div class="vd-card"><span class="vd-muted">در انتظار تسویه / پرداخت</span><strong class="vd-number" id="vd-pending-settlement">—</strong><span class="vd-muted">تومان</span></div>
@@ -334,10 +335,11 @@
         document.getElementById("vd-paid-settlement").textContent = money(data.settlement.paid_amount);
         document.getElementById("vd-sales-30d").textContent = money(data.sales?.last_30_days || 0);
         document.getElementById("vd-units-30d").textContent = money(data.sales?.sold_units_last_30_days || 0);
+        document.getElementById("vd-physical-units-30d").textContent = money(data.sales?.physical_units_last_30_days || 0);
         const topBox = document.getElementById("vd-top-products");
         const topProducts = data.sales?.top_products || [];
         topBox.innerHTML = topProducts.length ? topProducts.map((item, index) =>
-            `<div class="vd-item"><div class="vd-item-head"><h3>${index + 1}. ${escapeHtml(item.name)}</h3><span class="vd-badge">${money(item.quantity)} واحد فروخته‌شده</span></div><div class="vd-details"><span>فروش تخصیص‌یافته: ${money(item.revenue)} تومان</span></div></div>`
+            `<div class="vd-item"><div class="vd-item-head"><h3>${index + 1}. ${escapeHtml(item.name)}</h3><span class="vd-badge">${money(item.quantity)} ${escapeHtml(item.sale_unit || "واحد فروش")}</span></div><div class="vd-details"><span>اقلام فیزیکی فروخته‌شده: ${money(item.physical_units || 0)}</span><span>فروش تخصیص‌یافته: ${money(item.revenue)} تومان</span></div></div>`
         ).join("") : '<p class="vd-muted">در ۳۰ روز اخیر فروشی برای نمایش ثبت نشده است.</p>';
     }
     async function loadProducts() {
