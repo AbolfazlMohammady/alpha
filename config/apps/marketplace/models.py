@@ -145,6 +145,10 @@ class VendorProduct(models.Model):
             raise ValidationError({"units_per_order": "تعداد اقلام در هر واحد فروش باید حداقل ۱ باشد."})
         if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
+        if self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH} and self.vendor.seller_type == Vendor.SellerType.RETAIL:
+            raise ValidationError({"sale_type": "این فروشگاه فقط مجوز خرده‌فروشی دارد."})
+        if self.sale_type == self.SaleType.RETAIL and self.wholesale_enabled:
+            raise ValidationError({"sale_type": "برای فروش تکی، پله‌های عمده را حذف کن."})
         if self.wholesale_enabled and self.vendor.seller_type == Vendor.SellerType.RETAIL:
             raise ValidationError({"wholesale_enabled": "فروشگاه شما برای فروش عمده تأیید نشده است."})
         if self.supports_custom_printing and not self.vendor.supports_custom_printing:
@@ -723,6 +727,13 @@ class VendorProductSubmission(models.Model):
             raise ValidationError({"units_per_order": "تعداد اقلام در هر واحد فروش باید حداقل ۱ باشد."})
         if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
+        if self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH}:
+            if not self.wholesale_minimum_quantity or self.wholesale_minimum_quantity < 2:
+                raise ValidationError({"wholesale_minimum_quantity": "حداقل تعداد عمده باید حداقل ۲ باشد."})
+            if not self.wholesale_unit_price or self.wholesale_unit_price > self.retail_price:
+                raise ValidationError({"wholesale_unit_price": "قیمت واحد عمده باید مثبت و از قیمت نهایی تکی بیشتر نباشد."})
+        elif self.wholesale_minimum_quantity or self.wholesale_unit_price:
+            raise ValidationError({"sale_type": "برای محصول تکی، اطلاعات قیمت عمده را خالی بگذار."})
         if self.category_id and not self.category.is_active:
             raise ValidationError({"category": "دسته‌بندی انتخاب‌شده فعال نیست."})
         if self.product_id and not self.product.is_active:
