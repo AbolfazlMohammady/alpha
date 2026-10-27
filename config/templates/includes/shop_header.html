@@ -127,6 +127,10 @@
                 <span>همه محصولات</span>
                 <span class="sh-drawer__num">۰۱</span>
             </a>
+            <a class="sh-drawer__link" href="{% url 'marketplace:storefront' %}">
+                <span>بازار فروشندگان</span>
+                <span class="sh-drawer__num">۰۲</span>
+            </a>
             {% if designer_product %}
                 <a class="sh-drawer__link sh-drawer__link--design" href="{% url 'customizer:designer' designer_product.uuid %}">
                     <span class="sh-drawer__link-main">
