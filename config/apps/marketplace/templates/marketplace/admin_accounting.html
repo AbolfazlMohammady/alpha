@@ -45,7 +45,7 @@
         <button type="button" class="ma-btn primary" id="ma-refresh">به‌روزرسانی گزارش‌ها</button>
     </header>
     <nav class="ma-nav" aria-label="بخش‌های حسابداری">
-        <a href="#ma-overview">نمای کلی</a><a href="#ma-trial-balance">تراز آزمایشی</a><a href="#ma-settlement-queue">صف تسویه فروشندگان</a><a href="#ma-gateway">تسویه درگاه</a><a href="#ma-carrier-payment">پرداخت حمل</a><a href="#ma-reconciliation">مغایرت‌گیری</a><a href="#ma-carriers">تنظیمات حمل</a>
+        <a href="#ma-overview">نمای کلی</a><a href="#ma-trial-balance">تراز آزمایشی</a><a href="#ma-settlement-queue">صف تسویه فروشندگان</a><a href="#ma-vendor-performance">عملکرد فروشندگان</a><a href="#ma-gateway">تسویه درگاه</a><a href="#ma-carrier-payment">پرداخت حمل</a><a href="#ma-reconciliation">مغایرت‌گیری</a><a href="#ma-carriers">تنظیمات حمل</a>
     </nav>
     <p id="ma-message" class="ma-message" role="status"></p>
     <section class="ma-grid" id="ma-overview">
@@ -94,6 +94,21 @@
             <button class="ma-btn primary" type="submit">ثبت مغایرت / تطبیق</button>
         </form>
         <div id="ma-reconciliation-list" class="ma-list">در حال بارگذاری…</div>
+    </section>
+    <section class="ma-card ma-section" id="ma-vendor-performance">
+        <h2>عملکرد فروشندگان در ۳۰ روز اخیر</h2>
+        <p class="ma-muted">این گزارش از سفارش‌های پرداخت‌شده‌ای ساخته می‌شود که برای فروشندگان تفکیک شده‌اند. مبلغ فروش پس از تخفیف سفارش است؛ سفارش لغوشده محاسبه نمی‌شود.</p>
+        <div class="ma-table-wrap"><table class="ma-table"><thead><tr><th>فروشگاه</th><th>فروش ثبت‌شده</th><th>تعداد سفارش</th><th>تحویل‌شده</th><th>در جریان</th></tr></thead><tbody>
+        {% for vendor in vendor_sales_summary %}<tr><td>{{ vendor.store_name }}</td><td>{{ vendor.sales|price }}</td><td>{{ vendor.orders|price }}</td><td>{{ vendor.delivered|price }}</td><td>{{ vendor.in_progress|price }}</td></tr>
+        {% empty %}<tr><td colspan="5">در ۳۰ روز اخیر سفارش فروشنده‌ای ثبت نشده است.</td></tr>{% endfor %}
+        </tbody></table></div>
+    </section>
+    <section class="ma-card ma-section" id="ma-payout-config">
+        <h2>وضعیت اتصال پرداخت تسویه فروشندگان</h2>
+        <p class="ma-muted">این تنظیمات برای اتصال بانکی/پرداخت تسویه هستند و با توکن شرکت حمل تفاوت دارند. تا زمانی که قرارداد رسمی و مسیرهای پاسخ تأیید نشده‌اند، پرداخت خودکار را فعال نکن.</p>
+        <div class="ma-provider"><div><strong>API و توکن</strong><div class="ma-muted"><code>PAYOUT_API_BASE_URL</code> · <code>PAYOUT_API_TOKEN</code> · <code>PAYOUT_API_PATH</code></div></div><span class="ma-status">{% if payout_config.base_url and payout_config.token and payout_config.path %}تنظیم شده{% else %}پیکربندی ناقص{% endif %}</span></div>
+        <div class="ma-provider"><div><strong>واحد مبلغ</strong><div class="ma-muted"><code>PAYOUT_AMOUNT_MULTIPLIER</code> · <code>PAYOUT_API_CURRENCY</code></div></div><span class="ma-status">{% if payout_config.amount_multiplier and payout_config.currency %}تنظیم شده{% else %}تنظیم نشده{% endif %}</span></div>
+        <div class="ma-provider"><div><strong>مسیرهای نتیجه پرداخت</strong><div class="ma-muted"><code>PAYOUT_RESPONSE_REFERENCE_PATH</code> · <code>PAYOUT_RESPONSE_STATUS_PATH</code> · <code>PAYOUT_RESPONSE_AMOUNT_PATH</code> · <code>PAYOUT_RESPONSE_CURRENCY_PATH</code></div></div><span class="ma-status">{% if payout_config.reference_path and payout_config.status_path and payout_config.amount_path and payout_config.currency_path %}تنظیم شده{% else %}ناقص{% endif %}</span></div>
     </section>
     <section class="ma-card ma-section" id="ma-carriers">
         <h2>وضعیت تنظیمات اتصال حمل‌ونقل</h2>
