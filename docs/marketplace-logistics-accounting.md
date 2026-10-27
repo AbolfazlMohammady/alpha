@@ -87,6 +87,7 @@ Seller dashboard UI is available at /marketplace/vendor/dashboard/. All seller e
 - POST /marketplace/api/admin/settlements/<batch_id>/approve/
 - POST /marketplace/api/admin/orders/<order_uuid>/refund/ (records a full refund only after staff confirms the external refund and exact amount; it does not initiate the bank transfer)
 - POST /marketplace/api/admin/settlements/<batch_id>/payout-result/ (successful results require the actual transfer amount)
+- GET /marketplace/api/admin/accounting/journal-entries/ — latest posted/reversed journal entries with debit/credit lines for staff review
 - GET /marketplace/api/admin/accounting/trial-balance/
 - POST /marketplace/api/admin/accounting/reconciliation/
 - POST /marketplace/api/admin/accounting/carrier-payment/
@@ -119,7 +120,7 @@ Before production, add provider-specific integration tests, a real gateway payme
 - Staff review applications in Django admin under **Vendor applications**. For an anonymous applicant, create the account using the submitted phone and email, link that user to the application, and then set the account role to `store_manager`. The admin validates that the linked account's phone and email match the application.
 - On first seller dashboard access, an approved application is copied into the vendor profile (store name and seller type). Legacy pending vendor profiles are activated only when the staff-assigned `store_manager` role is present. Suspended and rejected profiles are not automatically reactivated.
 - Retail-only vendors cannot create or edit wholesale price tiers through either the UI or API. The seller-type migration preserves vendors that already have wholesale-enabled listings or tiers.
-- The home page includes role-protected shortcuts for seller and admin sections. Links marked as temporary open a placeholder page only; they do not execute financial or order operations. Admin placeholders require staff/superuser permissions.
+- Operational seller links live in the seller's Control Center shell and point to real dashboard sections. The public home page links to the actual seller-offer marketplace; it no longer displays temporary operational shortcut cards. Staff accounting links lead to the live accounting operations page.
 - Release checks: `python manage.py check`, `python manage.py makemigrations --check --dry-run`, and `python manage.py test apps.marketplace.test_release_checks`. Run migrations before starting the updated application. The current external carrier adapters remain unconfigured until provider documentation, credentials, and sandbox access are supplied.
 
 
