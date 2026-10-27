@@ -610,15 +610,59 @@
         catalogResults.innerHTML = "";
         notify("محصول انتخاب شد؛ قیمت و موجودی فروشگاه را تکمیل کن.");
     });
+    const configureProductPricing = (form) => {
+        if (!form) return;
+        const radios = form.querySelectorAll('input[name="sale_type"]');
+        const wholesale = form.querySelector("[data-wholesale-fields]");
+        const regular = form.querySelector('input[name="regular_price"]');
+        const discount = form.querySelector('input[name="discount_percent"]');
+        const preview = form.querySelector("[data-price-preview]");
+        const minimum = form.querySelector('input[name="wholesale_minimum_quantity"]');
+        const wholesalePrice = form.querySelector('input[name="wholesale_unit_price"]');
+        const refresh = () => {
+            const mode = form.querySelector('input[name="sale_type"]:checked')?.value || "retail";
+            if (wholesale) wholesale.hidden = mode === "retail";
+            if (minimum) { minimum.required = mode !== "retail"; minimum.disabled = mode === "retail"; }
+            if (wholesalePrice) { wholesalePrice.required = mode !== "retail"; wholesalePrice.disabled = mode === "retail"; }
+            const base = Number(regular?.value || 0);
+            const pct = Number(discount?.value || 0);
+            if (!preview) return;
+            if (base > 0 && pct >= 0 && pct <= 99) {
+                const finalPrice = Math.round(base * (100 - pct) / 100);
+                preview.textContent = pct > 0
+                    ? "قیمت اصلی: " + money(base) + " تومان · تخفیف: " + pct + "٪ · قیمت نهایی: " + money(finalPrice) + " تومان"
+                    : "قیمت نهایی: " + money(base) + " تومان · بدون تخفیف";
+            } else preview.textContent = "قیمت اصلی را وارد کن تا قیمت نهایی محاسبه شود.";
+        };
+        radios.forEach((radio) => radio.addEventListener("change", refresh));
+        regular?.addEventListener("input", refresh);
+        discount?.addEventListener("input", refresh);
+        refresh();
+    };
+    configureProductPricing(document.getElementById("vd-product-submission"));
+    configureProductPricing(document.getElementById("vd-product-create"));
     document.getElementById("vd-product-create").addEventListener("submit", async (event) => {
         event.preventDefault();
         try {
-            const payload = formJson(event.currentTarget);
-            payload.wholesale_enabled = payload.wholesale_enabled === "true";
+            const form = event.currentTarget;
+            const payload = formJson(form);
+            const regularPrice = Number(payload.regular_price || 0);
+            const discountPercent = Number(payload.discount_percent || 0);
+            if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
+            payload.retail_price = Math.round(regularPrice * (100 - discountPercent) / 100);
+            payload.compare_at_price = discountPercent > 0 ? regularPrice : null;
+            delete payload.regular_price;
+            delete payload.discount_percent;
+            payload.wholesale_enabled = false;
             payload.supports_custom_printing = payload.supports_custom_printing === "true";
+            payload.wholesale_minimum_quantity = payload.wholesale_minimum_quantity ? Number(payload.wholesale_minimum_quantity) : null;
+            payload.wholesale_unit_price = payload.wholesale_unit_price ? Number(payload.wholesale_unit_price) : null;
             await request("/marketplace/api/vendor/products/", {method:"POST", body:JSON.stringify(payload)});
-            event.currentTarget.reset();
-            notify("محصول برای بررسی مدیر ثبت شد.");
+            form.reset();
+            document.getElementById("vd-product-id").value = "";
+            document.getElementById("vd-catalog-search").value = "";
+            configureProductPricing(form);
+            notify("شرایط فروش کالا برای بررسی مدیر ثبت شد.");
             await loadProducts();
         } catch (error) { notify(error.message, true); }
     });
@@ -637,10 +681,24 @@
         if (event.target.matches("#vd-product-submission")) {
             event.preventDefault();
             try {
-                const formData = new FormData(event.target);
+                const form = event.target;
+                const formData = new FormData(form);
+                const regularPrice = Number(formData.get("regular_price") || 0);
+                const discountPercent = Number(formData.get("discount_percent") || 0);
+                if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
+                formData.set("retail_price", String(Math.round(regularPrice * (100 - discountPercent) / 100)));
+                formData.set("compare_at_price", discountPercent > 0 ? String(regularPrice) : "");
+                formData.delete("regular_price");
+                formData.delete("discount_percent");
+                const mode = formData.get("sale_type") || "retail";
+                if (mode === "retail") {
+                    formData.delete("wholesale_minimum_quantity");
+                    formData.delete("wholesale_unit_price");
+                }
                 const data = await request("/marketplace/api/vendor/product-submissions/", {method:"POST", body:formData});
                 notify(data.message || "محصول برای بررسی ارسال شد.");
-                event.target.reset();
+                form.reset();
+                configureProductPricing(form);
                 await loadProductSubmissions();
             } catch (error) { notify(error.message, true); }
         }
