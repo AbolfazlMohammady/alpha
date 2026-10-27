@@ -102,10 +102,11 @@
         {% for key, provider in carrier_providers.items %}
         <div class="ma-provider">
             <div><strong>{{ provider.label }}</strong><div class="ma-muted">API: <code>{{ key|upper }}_API_BASE_URL</code> · Token: <code>{{ key|upper }}_API_TOKEN</code></div><div class="ma-muted">Endpointها: <code>{{ key|upper }}_QUOTE_PATH</code> / <code>{{ key|upper }}_SHIPMENT_PATH</code> / <code>{{ key|upper }}_TRACKING_PATH</code></div></div>
-            <span class="ma-status">{% if provider.base_url and provider.token and provider.quote_path %}حداقل تنظیمات استعلام موجود است{% else %}پیکربندی ناقص{% endif %}</span>
+            <span class="ma-status">{% if provider.base_url and provider.token and provider.quote_path and provider.quote_amount_path and provider.quote_currency_path and provider.amount_divisor %}تنظیمات ضروری استعلام موجود است{% else %}پیکربندی ناقص{% endif %}</span>
             <div class="ma-muted">آدرس API</div><span class="{% if provider.base_url %}ma-ok{% else %}ma-bad{% endif %}">{% if provider.base_url %}تنظیم شده{% else %}تنظیم نشده{% endif %}</span>
             <div class="ma-muted">توکن</div><span class="{% if provider.token %}ma-ok{% else %}ma-bad{% endif %}">{% if provider.token %}تنظیم شده (مخفی) {% else %}تنظیم نشده{% endif %}</span>
             <div class="ma-muted">مسیر استعلام / ثبت مرسوله / رهگیری</div><span>{% if provider.quote_path %}استعلام ✓{% else %}استعلام ✕{% endif %} / {% if provider.shipment_path %}ثبت ✓{% else %}ثبت ✕{% endif %} / {% if provider.tracking_path %}رهگیری ✓{% else %}رهگیری ✕{% endif %}</span>
+            <div class="ma-muted">مسیر مبلغ / ارز / ضریب تبدیل</div><span>{% if provider.quote_amount_path %}مبلغ ✓{% else %}مبلغ ✕{% endif %} / {% if provider.quote_currency_path %}ارز ✓{% else %}ارز ✕{% endif %} / {% if provider.amount_divisor %}ضریب ✓{% else %}ضریب ✕{% endif %}</span>
         </div>
         {% endfor %}
     </section>
