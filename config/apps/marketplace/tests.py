@@ -8,6 +8,7 @@ from django.utils import timezone
 
 from .models import FinancialReconciliation, JournalEntry, LedgerAccount, SettlementBatch, SettlementLine, Shipment, Vendor, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from apps.shop.models import Category, Product
+from apps.users.models import City, Province, RoleUser
 from apps.orders.models import Cart, CartItem, Order, OrderItem
 from .payouts import PayoutNotConfigured, submit_settlement_payout
 from .carriers import CarrierError, JsonCarrierClient, TipaxClient, validate_quote_input
@@ -515,7 +516,7 @@ class WholesalePricingValidationTests(TestCase):
         with self.assertRaises(ValidationError):
             self.listing.full_clean()
 
-    def test_new_product_submission_requires_shipping_dimensions(self):
+    def test_new_product_submission_does_not_require_shipping_dimensions(self):
         submission = VendorProductSubmission(
             vendor=self.listing.vendor,
             category=self.listing.product.category,
@@ -526,9 +527,11 @@ class WholesalePricingValidationTests(TestCase):
             package_width_cm=0,
             package_height_cm=0,
         )
-        with self.assertRaises(ValidationError) as context:
-            submission.clean()
-        self.assertIn("weight_grams", context.exception.message_dict)
+        submission.clean()
+        self.assertEqual(submission.weight_grams, 0)
+        self.assertEqual(submission.package_length_cm, 0)
+        self.assertEqual(submission.package_width_cm, 0)
+        self.assertEqual(submission.package_height_cm, 0)
 
 
 class VendorShippingSettlementTests(TestCase):
@@ -1123,3 +1126,183 @@ class ExternalReconciliationTests(TestCase):
             actual_amount=130000,
         )
         self.assertEqual(mismatch.status, FinancialReconciliation.Status.MISMATCH)
+
+
+class VendorPickupLocationSelectionTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            phone="+989121234569",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.vendor = Vendor.objects.create(
+            user=self.user,
+            store_name="فروشگاه موقعیت آزمایشی",
+            slug="vendor-pickup-location-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        self.province = Province.objects.create(name="استان آزمایشی")
+        self.city = City.objects.create(province=self.province, name="شهر آزمایشی")
+        self.client.force_login(self.user)
+
+    def test_shipping_profile_saves_city_and_province_from_canonical_records(self):
+        response = self.client.post(
+            "/marketplace/api/vendor/profile/shipping/",
+            data={
+                "pickup_postal_code": "1234567890",
+                "pickup_address": "نشانی آزمایشی",
+                "contact_phone": "09120000000",
+                "pickup_province_id": self.province.pk,
+                "pickup_city_id": self.city.pk,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.vendor.refresh_from_db()
+        self.assertEqual(self.vendor.pickup_province, self.province.name)
+        self.assertEqual(self.vendor.pickup_city, self.city.name)
+
+    def test_shipping_profile_rejects_city_that_does_not_belong_to_selected_province(self):
+        other_province = Province.objects.create(name="استان دیگر آزمایشی")
+        response = self.client.post(
+            "/marketplace/api/vendor/profile/shipping/",
+            data={
+                "pickup_province_id": other_province.pk,
+                "pickup_city_id": self.city.pk,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.vendor.refresh_from_db()
+        self.assertEqual(self.vendor.pickup_city, "")
+        self.assertEqual(self.vendor.pickup_province, "")
+
+    def test_vendor_dashboard_uses_existing_province_and_city_lists(self):
+        response = self.client.get("/marketplace/vendor/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-vd-picker="province"')
+        self.assertContains(response, 'data-vd-picker="city"')
+        self.assertContains(response, self.province.name)
+        self.assertContains(response, self.city.name)
+
+
+class VendorProductParcelDetailsWorkflowTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            phone="+989121234570",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.vendor = Vendor.objects.create(
+            user=self.user,
+            store_name="فروشگاه کالای آزمایشی",
+            slug="vendor-product-parcel-workflow-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        category = Category.objects.create(name="دسته کالای آزمایشی", slug="parcel-workflow-category")
+        self.product = Product.objects.create(
+            category=category,
+            name="کالای بدون ابعاد ثبت‌شده",
+            slug="parcel-workflow-product",
+            base_price=10000,
+        )
+
+    def test_vendor_can_create_listing_before_entering_parcel_dimensions(self):
+        listing = VendorProduct(
+            vendor=self.vendor,
+            product=self.product,
+            retail_price=10000,
+            stock_quantity=5,
+        )
+        listing.full_clean()
+        listing.save()
+        self.assertEqual(listing.weight_grams, 0)
+        self.assertEqual(listing.package_length_cm, 0)
+        self.assertEqual(listing.package_width_cm, 0)
+        self.assertEqual(listing.package_height_cm, 0)
+
+    def test_vendor_product_form_does_not_show_parcel_dimensions_as_catalog_fields(self):
+        self.client.force_login(self.user)
+        response = self.client.get("/marketplace/vendor/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "وزن هر واحد فروش")
+        self.assertNotContains(response, "طول هر واحد فروش (سانتی‌متر)")
+        self.assertNotContains(response, "عرض هر واحد فروش (سانتی‌متر)")
+        self.assertNotContains(response, "ارتفاع هر واحد فروش (سانتی‌متر)")
+        self.assertContains(response, "وزن بسته (گرم)")
+
+
+class VendorSaleModeApiTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            phone="+989121234571",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        self.vendor = Vendor.objects.create(
+            user=self.user,
+            store_name="فروشگاه حالت فروش",
+            slug="vendor-sale-mode-api-test",
+            status=Vendor.Status.ACTIVE,
+            seller_type=Vendor.SellerType.BOTH,
+        )
+        category = Category.objects.create(name="دسته حالت فروش", slug="sale-mode-api-category")
+        self.product = Product.objects.create(
+            category=category,
+            name="محصول حالت فروش",
+            slug="sale-mode-api-product",
+            base_price=1000,
+        )
+        self.client.force_login(self.user)
+
+    def test_listing_accepts_discounted_price_and_wholesale_tier_together(self):
+        response = self.client.post(
+            "/marketplace/api/vendor/products/",
+            data={
+                "product_id": self.product.pk,
+                "sale_type": "both",
+                "retail_price": 900,
+                "compare_at_price": 1000,
+                "sale_unit": "عدد",
+                "units_per_order": 1,
+                "stock_quantity": 20,
+                "wholesale_enabled": False,
+                "wholesale_minimum_quantity": 5,
+                "wholesale_unit_price": 800,
+                "supports_custom_printing": False,
+                "handling_days": 2,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        listing = VendorProduct.objects.get(vendor=self.vendor, product=self.product)
+        self.assertEqual(listing.sale_type, VendorProduct.SaleType.BOTH)
+        self.assertEqual(listing.retail_price, 900)
+        self.assertEqual(listing.compare_at_price, 1000)
+        self.assertTrue(listing.wholesale_enabled)
+        tier = listing.wholesale_tiers.get()
+        self.assertEqual(tier.minimum_quantity, 5)
+        self.assertEqual(tier.unit_price, 800)
+
+    def test_retail_only_vendor_cannot_create_wholesale_listing(self):
+        self.vendor.seller_type = Vendor.SellerType.RETAIL
+        self.vendor.save(update_fields=("seller_type", "updated_at"))
+        response = self.client.post(
+            "/marketplace/api/vendor/products/",
+            data={
+                "product_id": self.product.pk,
+                "sale_type": "wholesale",
+                "retail_price": 1000,
+                "sale_unit": "عدد",
+                "units_per_order": 1,
+                "stock_quantity": 20,
+                "wholesale_enabled": False,
+                "wholesale_minimum_quantity": 5,
+                "wholesale_unit_price": 800,
+                "supports_custom_printing": False,
+                "handling_days": 2,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(VendorProduct.objects.filter(vendor=self.vendor, product=self.product).exists())

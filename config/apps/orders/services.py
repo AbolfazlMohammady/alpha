@@ -232,6 +232,10 @@ def add_to_cart(request, *, product, variant=None, custom_design=None, vendor_li
         )
         if vendor_listing.stock_quantity < quantity:
             raise ValueError("موجودی این فروشنده برای تعداد انتخاب‌شده کافی نیست.")
+        if vendor_listing.sale_type == VendorProduct.SaleType.WHOLESALE:
+            minimum_tier = vendor_listing.wholesale_tiers.order_by("minimum_quantity").first()
+            if minimum_tier and quantity < minimum_tier.minimum_quantity:
+                raise ValueError(f"این کالا فقط عمده فروخته می‌شود؛ حداقل سفارش {minimum_tier.minimum_quantity} واحد است.")
         if custom_design is not None and not vendor_listing.supports_custom_printing:
             raise ValueError("این فروشنده چاپ سفارشی این محصول را پشتیبانی نمی‌کند.")
     with transaction.atomic():
@@ -309,6 +313,10 @@ def update_cart_item(request, item_id: int, quantity: int) -> CartItem:
             requested_total = cart_listing_quantity - item.quantity + quantity
             if requested_total > listing.stock_quantity:
                 raise ValueError("مجموع تعداد انتخاب‌شده بیشتر از موجودی فروشنده است.")
+            if listing.sale_type == VendorProduct.SaleType.WHOLESALE:
+                minimum_tier = listing.wholesale_tiers.order_by("minimum_quantity").first()
+                if minimum_tier and requested_total < minimum_tier.minimum_quantity:
+                    raise ValueError(f"این کالا فقط عمده فروخته می‌شود؛ حداقل سفارش {minimum_tier.minimum_quantity} واحد است.")
         elif item.variant_id:
             variant = type(item.variant).objects.select_for_update().get(pk=item.variant_id)
             if quantity > variant.stock_quantity:
@@ -401,6 +409,14 @@ def create_order_from_cart(*, user, cart, address, customer_note="", shipping_qu
                 listing_stock_quantities[cart_item.vendor_listing_id] = listing_stock_quantities.get(cart_item.vendor_listing_id, 0) + cart_item.quantity
                 if cart_item.custom_design_id is None:
                     listing_quantities[cart_item.vendor_listing_id] = listing_quantities.get(cart_item.vendor_listing_id, 0) + cart_item.quantity
+
+        for listing_id, total_quantity in listing_quantities.items():
+            from apps.marketplace.models import VendorProduct
+            listing = VendorProduct.objects.select_for_update().prefetch_related("wholesale_tiers").get(pk=listing_id)
+            if listing.sale_type == VendorProduct.SaleType.WHOLESALE:
+                minimum_tier = listing.wholesale_tiers.order_by("minimum_quantity").first()
+                if minimum_tier and total_quantity < minimum_tier.minimum_quantity:
+                    raise ValidationError(f"این کالا فقط عمده فروخته می‌شود؛ حداقل سفارش {minimum_tier.minimum_quantity} واحد است.")
 
         for item in items:
             product = item.product

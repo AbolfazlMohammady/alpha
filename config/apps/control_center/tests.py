@@ -243,13 +243,13 @@ class AuditReportTests(TestCase):
         self.assertContains(response, "گزارش فعالیت‌ها")
 
     def test_control_activity_is_logged_with_exact_request_data(self):
-        self.client.force_login(self.staff)
+        self.client.force_login(self.superuser)
         response = self.client.get("/control/", {"q": "orders"})
         self.assertEqual(response.status_code, 200)
 
         from apps.control_center.models import AuditLog
 
-        log = AuditLog.objects.filter(actor=self.staff, path="/control/").latest("created_at")
+        log = AuditLog.objects.filter(actor=self.superuser, path="/control/").latest("created_at")
         self.assertEqual(log.method, AuditLog.Method.GET)
         self.assertEqual(log.action, "مشاهده داشبورد")
         self.assertEqual(log.status_code, 200)

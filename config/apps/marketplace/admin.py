@@ -148,8 +148,8 @@ class WholesaleTierInline(admin.TabularInline):
 
 @admin.register(VendorProduct)
 class VendorProductAdmin(admin.ModelAdmin):
-    list_display = ("product", "vendor", "status", "retail_price", "sale_unit", "units_per_order", "stock_quantity", "wholesale_enabled", "supports_custom_printing")
-    list_filter = ("status", "wholesale_enabled", "supports_custom_printing", "vendor")
+    list_display = ("product", "vendor", "status", "sale_type", "retail_price", "sale_unit", "units_per_order", "stock_quantity", "wholesale_enabled", "supports_custom_printing")
+    list_filter = ("status", "sale_type", "wholesale_enabled", "supports_custom_printing", "vendor")
     search_fields = ("product__name", "vendor__store_name", "product__slug")
     autocomplete_fields = ("vendor", "product")
     inlines = (WholesaleTierInline,)
@@ -402,8 +402,8 @@ class FinancialReconciliationAdmin(ReadOnlyAuditAdmin):
 
 @admin.register(VendorProductSubmission)
 class VendorProductSubmissionAdmin(admin.ModelAdmin):
-    list_display = ("name", "vendor", "category", "retail_price", "sale_unit", "units_per_order", "stock_quantity", "weight_grams", "status", "created_at")
-    list_filter = ("status", "category", "created_at")
+    list_display = ("name", "vendor", "category", "sale_type", "retail_price", "compare_at_price", "wholesale_minimum_quantity", "wholesale_unit_price", "sale_unit", "units_per_order", "stock_quantity", "status", "created_at")
+    list_filter = ("status", "sale_type", "category", "created_at")
     search_fields = ("name", "vendor__store_name", "category__name")
     autocomplete_fields = ("vendor", "category", "product")
     readonly_fields = ("status", "listing", "reviewed_by", "reviewed_at", "created_at", "updated_at")
@@ -472,6 +472,7 @@ class VendorProductSubmissionAdmin(admin.ModelAdmin):
                         vendor=locked.vendor,
                         product=product,
                         status=VendorProduct.Status.ACTIVE,
+                        sale_type=locked.sale_type,
                         retail_price=locked.retail_price,
                         compare_at_price=locked.compare_at_price,
                         sale_unit=locked.sale_unit,
@@ -486,6 +487,16 @@ class VendorProductSubmissionAdmin(admin.ModelAdmin):
                     )
                     listing.full_clean()
                     listing.save()
+                    if locked.sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH}:
+                        tier = WholesalePriceTier(
+                            listing=listing,
+                            minimum_quantity=locked.wholesale_minimum_quantity,
+                            unit_price=locked.wholesale_unit_price,
+                        )
+                        tier.full_clean()
+                        tier.save()
+                        listing.wholesale_enabled = True
+                        listing.save(update_fields=("wholesale_enabled", "updated_at"))
                     locked.status = VendorProductSubmission.Status.APPROVED
                     locked.product = product
                     locked.listing = listing

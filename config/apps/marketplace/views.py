@@ -19,7 +19,7 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
 from apps.orders.models import Cart, CartItem, Order
-from apps.users.models import Address, RoleUser, User
+from apps.users.models import Address, City, Province, RoleUser, User
 from apps.shop.models import Category, Product
 from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorApplication, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from .services import _strict_int, approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_carrier_invoice_payment, record_external_reconciliation, record_full_order_refund, record_gateway_settlement, record_payout_result, trial_balance
@@ -324,7 +324,18 @@ def vendor_dashboard_page(request):
         vendor = _vendor_for_user(request.user)
     except PermissionDenied as exc:
         return HttpResponseForbidden(str(exc))
-    return render(request, "marketplace/vendor_dashboard.html", {"vendor": vendor})
+    selected_city = City.objects.select_related("province").filter(
+        name=vendor.pickup_city, province__name=vendor.pickup_province
+    ).first()
+    selected_province_id = selected_city.province_id if selected_city else ""
+    selected_city_id = selected_city.pk if selected_city else ""
+    return render(request, "marketplace/vendor_dashboard.html", {
+        "vendor": vendor,
+        "provinces": Province.objects.order_by("name"),
+        "cities": City.objects.select_related("province").order_by("name"),
+        "selected_province_id": selected_province_id,
+        "selected_city_id": selected_city_id,
+    })
 
 
 @login_required
@@ -333,16 +344,45 @@ def vendor_shipping_profile_api(request):
     try:
         vendor = _vendor_for_user(request.user)
         payload = _json_body(request)
-        allowed = {"pickup_postal_code", "pickup_address", "pickup_city", "pickup_province", "contact_phone"}
+        allowed = {"pickup_postal_code", "pickup_address", "pickup_city", "pickup_province", "pickup_city_id", "pickup_province_id", "contact_phone"}
         if set(payload) - allowed:
             return _error("فقط اطلاعات مبدأ ارسال قابل ویرایش است.")
         postal = str(payload.get("pickup_postal_code", vendor.pickup_postal_code)).strip()
         if postal and (len(postal) != 10 or not postal.isdigit()):
             return _error("کد پستی مبدأ باید ۱۰ رقم باشد.")
-        for field in allowed.intersection(payload):
-            setattr(vendor, field, str(payload[field] or "").strip())
-        vendor.save(update_fields=tuple(allowed.intersection(payload)) + ("updated_at",))
-        return JsonResponse({"ok": True, "pickup_postal_code": vendor.pickup_postal_code, "message": "اطلاعات مبدأ ارسال ذخیره شد."})
+        updates = set()
+        if "pickup_city_id" in payload or "pickup_province_id" in payload:
+            city_id = payload.get("pickup_city_id")
+            province_id = payload.get("pickup_province_id")
+            if not city_id or not province_id:
+                return _error("استان و شهر مبدأ را از فهرست انتخاب کن.")
+            city = City.objects.select_related("province").filter(
+                pk=city_id, province_id=province_id
+            ).first()
+            if city is None:
+                return _error("شهر انتخاب‌شده با استان انتخابی مطابقت ندارد.")
+            vendor.pickup_city = city.name
+            vendor.pickup_province = city.province.name
+            updates.update(("pickup_city", "pickup_province"))
+        else:
+            # Compatibility with existing clients; the new form always submits
+            # validated IDs from the canonical Province/City tables.
+            for field in ("pickup_city", "pickup_province"):
+                if field in payload:
+                    setattr(vendor, field, str(payload[field] or "").strip())
+                    updates.add(field)
+        for field in ("pickup_postal_code", "pickup_address", "contact_phone"):
+            if field in payload:
+                setattr(vendor, field, str(payload[field] or "").strip())
+                updates.add(field)
+        vendor.save(update_fields=tuple(updates) + ("updated_at",))
+        return JsonResponse({
+            "ok": True,
+            "pickup_postal_code": vendor.pickup_postal_code,
+            "pickup_city": vendor.pickup_city,
+            "pickup_province": vendor.pickup_province,
+            "message": "اطلاعات مبدأ ارسال ذخیره شد.",
+        })
     except PermissionDenied as exc:
         return _error(exc, 403)
     except (TypeError, ValueError) as exc:
@@ -540,6 +580,9 @@ def vendor_product_submissions_api(request):
                     "category": item.category.name,
                     "status": item.status,
                     "status_label": item.get_status_display(),
+                    "sale_type": item.sale_type,
+                    "wholesale_minimum_quantity": item.wholesale_minimum_quantity,
+                    "wholesale_unit_price": item.wholesale_unit_price,
                     "reviewer_note": item.reviewer_note,
                     "product_id": item.product_id,
                     "created_at": item.created_at.isoformat(),
@@ -553,7 +596,7 @@ def vendor_product_submissions_api(request):
             "category_id", "name", "short_description", "description", "retail_price",
             "compare_at_price", "sale_unit", "units_per_order", "stock_quantity", "weight_grams", "package_length_cm",
             "package_width_cm", "package_height_cm", "handling_days", "supports_custom_printing",
-            "csrfmiddlewaretoken",
+            "sale_type", "wholesale_minimum_quantity", "wholesale_unit_price", "csrfmiddlewaretoken",
         }
         if set(request.POST.keys()) - allowed or set(request.FILES.keys()) - {"image"}:
             return _error("فیلد ارسالی غیرمجاز است.")
@@ -566,6 +609,13 @@ def vendor_product_submissions_api(request):
         custom_print = request.POST.get("supports_custom_printing", "false").strip().lower()
         if custom_print not in {"true", "false"}:
             return _error("وضعیت چاپ سفارشی معتبر نیست.")
+        sale_type = request.POST.get("sale_type", VendorProductSubmission.SaleType.RETAIL).strip()
+        if sale_type not in VendorProductSubmission.SaleType.values:
+            return _error("نوع فروش معتبر نیست.")
+        if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} and vendor.seller_type == Vendor.SellerType.RETAIL:
+            return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
+        wholesale_minimum = int(request.POST.get("wholesale_minimum_quantity", 0) or 0)
+        wholesale_price = int(request.POST.get("wholesale_unit_price", 0) or 0)
         submission = VendorProductSubmission(
             vendor=vendor,
             category=category,
@@ -575,6 +625,9 @@ def vendor_product_submissions_api(request):
             image=image,
             retail_price=int(request.POST.get("retail_price", 0)),
             compare_at_price=int(compare_value) if compare_value else None,
+            sale_type=sale_type,
+            wholesale_minimum_quantity=wholesale_minimum if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} else None,
+            wholesale_unit_price=wholesale_price if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} else None,
             sale_unit=request.POST.get("sale_unit", "عدد").strip(),
             units_per_order=int(request.POST.get("units_per_order", 1)),
             stock_quantity=int(request.POST.get("stock_quantity", 0)),
@@ -639,6 +692,7 @@ def vendor_products_api(request):
             "status_label": listing.get_status_display(),
             "retail_price": listing.retail_price,
             "compare_at_price": listing.compare_at_price,
+            "sale_type": listing.sale_type,
             "sale_unit": listing.sale_unit,
             "units_per_order": listing.units_per_order,
             "stock_quantity": listing.stock_quantity,
@@ -657,7 +711,8 @@ def vendor_products_api(request):
             return _error("فروشنده تا زمان تأیید و فعال‌شدن حساب نمی‌تواند محصول ثبت کند.", 403)
         allowed = {
             "product_id", "retail_price", "compare_at_price", "sale_unit", "units_per_order",
-            "stock_quantity", "wholesale_enabled", "supports_custom_printing", "weight_grams",
+            "stock_quantity", "wholesale_enabled", "sale_type", "wholesale_minimum_quantity",
+            "wholesale_unit_price", "supports_custom_printing", "weight_grams",
             "package_length_cm", "package_width_cm", "package_height_cm", "handling_days",
         }
         unknown = set(payload) - allowed
@@ -670,13 +725,26 @@ def vendor_products_api(request):
         for flag in ("wholesale_enabled", "supports_custom_printing"):
             if flag in payload and not isinstance(payload[flag], bool):
                 return _error(f"{flag} باید true یا false باشد.")
+        sale_type = str(payload.get("sale_type", "retail")).strip()
+        if sale_type not in VendorProduct.SaleType.values:
+            return _error("نوع فروش را از بین تکی، عمده یا تکی و عمده انتخاب کن.")
+        if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and vendor.seller_type == Vendor.SellerType.RETAIL:
+            return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
         if payload.get("wholesale_enabled") is True:
-            return _error("ابتدا محصول را بدون فروش عمده ثبت کن؛ پس از ذخیره، پله‌های قیمت عمده را اضافه کن.")
+            return _error("برای ثبت فروش عمده از فیلدهای نوع فروش و قیمت عمده استفاده کن.")
+        wholesale_minimum = _strict_int(payload.get("wholesale_minimum_quantity", 0), "حداقل تعداد عمده") if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} else 0
+        wholesale_price = _strict_int(payload.get("wholesale_unit_price", 0), "قیمت واحد عمده") if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} else 0
+        if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and (wholesale_minimum < 2 or wholesale_price < 1):
+            return _error("برای فروش عمده، حداقل تعداد (۲ یا بیشتر) و قیمت واحد عمده را وارد کن.")
+        retail_price = _strict_int(payload.get("retail_price", 0), "قیمت فروش")
+        if wholesale_price and wholesale_price > retail_price:
+            return _error("قیمت واحد عمده نباید از قیمت تکی بیشتر باشد.")
         listing = VendorProduct(
             vendor=vendor,
             product=product,
             status=VendorProduct.Status.PENDING,
-            retail_price=_strict_int(payload.get("retail_price", 0), "قیمت فروش"),
+            sale_type=sale_type,
+            retail_price=retail_price,
             compare_at_price=None if payload.get("compare_at_price") in (None, "") else _strict_int(payload.get("compare_at_price"), "قیمت قبل از تخفیف"),
             sale_unit=str(payload.get("sale_unit", "عدد")).strip(),
             units_per_order=_strict_int(payload.get("units_per_order", 1), "تعداد اقلام در واحد فروش"),
@@ -690,8 +758,19 @@ def vendor_products_api(request):
             handling_days=_strict_int(payload.get("handling_days", 2), "زمان آماده‌سازی"),
         )
         listing.full_clean()
-        listing.save()
-        return JsonResponse({"ok": True, "listing_id": listing.id, "status": listing.status, "message": "محصول برای بررسی مدیر ثبت شد."}, status=201)
+        with transaction.atomic():
+            listing.save()
+            if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH}:
+                tier = WholesalePriceTier(
+                    listing=listing,
+                    minimum_quantity=wholesale_minimum,
+                    unit_price=wholesale_price,
+                )
+                tier.full_clean()
+                tier.save()
+                listing.wholesale_enabled = True
+                listing.save(update_fields=("wholesale_enabled", "updated_at"))
+        return JsonResponse({"ok": True, "listing_id": listing.id, "status": listing.status, "sale_type": listing.sale_type, "message": "محصول و شرایط فروش برای بررسی مدیر ثبت شد."}, status=201)
     except (ValidationError, TypeError, ValueError) as exc:
         return _error(exc)
 

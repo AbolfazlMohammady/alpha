@@ -3,8 +3,49 @@
 {% block title %}پنل فروشنده | BABAEI{% endblock %}
 {% block content %}
 <style>
-.vendor-dashboard{direction:rtl;max-width:1240px;margin:32px auto;padding:0 18px;color:var(--text-primary,#1f2937)}
+.vendor-dashboard{direction:rtl;max-width:1240px;margin:32px auto;padding:0 18px;color:#172b2b;font-family:inherit;--vd-ink:#172b2b;--vd-green:#145b50;--vd-green-dark:#0e443d;--vd-mint:#e6f3ef;--vd-canvas:#f4f7f6;--vd-border:#d8e3df;--vd-muted:#657a75}
 .vendor-dashboard *{box-sizing:border-box}
+.vendor-dashboard .vd-card{background:#fff;border:1px solid var(--vd-border);border-radius:18px;box-shadow:0 6px 24px rgba(20,55,48,.055)}
+.vendor-dashboard .vd-muted{color:var(--vd-muted);line-height:1.9}
+.vendor-dashboard .vd-nav{background:#eaf1ef;border:1px solid var(--vd-border);box-shadow:0 4px 14px rgba(20,55,48,.06)}
+.vendor-dashboard .vd-nav a{background:transparent;color:#37534d;border:1px solid transparent;transition:background .15s ease,color .15s ease}
+.vendor-dashboard .vd-nav a:hover{background:#dcebe6;color:var(--vd-green-dark)}
+.vendor-dashboard .vd-nav a[aria-current="page"]{background:var(--vd-green);color:#fff;box-shadow:0 3px 8px rgba(20,91,80,.18)}
+.vendor-dashboard .vd-field{color:#314b45;font-weight:650;gap:8px}
+.vendor-dashboard .vd-field input,.vendor-dashboard .vd-field select,.vendor-dashboard .vd-field textarea{background:#fbfdfc!important;color:#172b2b!important;border:1px solid #cad9d4!important;border-radius:11px!important;min-height:44px;padding:11px 13px;box-shadow:none!important;font:inherit}
+.vendor-dashboard .vd-field input:focus,.vendor-dashboard .vd-field select:focus,.vendor-dashboard .vd-field textarea:focus{outline:3px solid rgba(20,91,80,.14);border-color:var(--vd-green)!important}
+.vendor-dashboard .vd-btn{background:var(--vd-green)!important;color:#fff!important;border:1px solid var(--vd-green)!important;border-radius:11px!important;min-height:42px;padding:10px 16px;transition:background .15s ease,transform .15s ease}
+.vendor-dashboard .vd-btn:hover{background:var(--vd-green-dark)!important;transform:translateY(-1px)}
+.vendor-dashboard .vd-btn--soft{background:#fff!important;color:var(--vd-green-dark)!important;border-color:#c6d9d2!important}
+.vendor-dashboard .vd-btn--soft:hover{background:var(--vd-mint)!important}
+.vendor-dashboard .vd-item{border:1px solid var(--vd-border);border-radius:14px;background:#fcfefd;padding:16px}
+.vendor-dashboard .vd-badge{background:var(--vd-mint);color:var(--vd-green-dark);font-weight:700}
+.vendor-dashboard .vd-message{padding:0 2px}
+.vendor-dashboard .vd-form{gap:16px;align-items:start}
+.vendor-dashboard .vd-field[hidden],.vendor-dashboard [hidden]{display:none!important}
+.vendor-dashboard .vd-form > button[type=submit]{align-self:end;justify-self:start;min-width:170px}
+.vendor-dashboard .vd-product-step{padding:18px;border:1px solid var(--vd-border);border-radius:15px;background:#fbfdfc;margin:16px 0}
+.vendor-dashboard .vd-product-step h3{margin:0 0 6px;color:var(--vd-green-dark);font-size:16px}
+.vendor-dashboard .vd-price-preview{grid-column:1/-1;padding:12px 14px;border-radius:10px;background:var(--vd-mint);color:var(--vd-green-dark);font-size:13px;line-height:1.9}
+.vendor-dashboard .vd-choice-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;grid-column:1/-1}
+.vendor-dashboard .vd-choice-card{display:flex;align-items:flex-start;gap:9px;padding:13px;border:1px solid var(--vd-border);border-radius:12px;background:#fff;cursor:pointer}
+.vendor-dashboard .vd-choice-card:has(input:checked){border-color:var(--vd-green);background:var(--vd-mint);box-shadow:inset 0 0 0 1px var(--vd-green)}
+.vendor-dashboard .vd-choice-card input{width:auto;min-height:auto;margin-top:4px;accent-color:var(--vd-green)}
+.vendor-dashboard .vd-choice-card strong{display:block;color:var(--vd-ink);font-size:13px}
+.vendor-dashboard .vd-choice-card small{display:block;color:var(--vd-muted);font-size:12px;font-weight:400;line-height:1.7;margin-top:4px}
+.vendor-dashboard .vd-location-trigger{background:#fbfdfc!important;color:#172b2b!important;border-color:#cad9d4!important;border-radius:11px!important;min-height:44px}
+.vendor-dashboard .vd-location-picker.is-open .vd-location-trigger{border-color:var(--vd-green)!important;box-shadow:0 0 0 3px rgba(20,91,80,.12)}
+.vendor-dashboard .vd-location-option[aria-selected=true],.vendor-dashboard .vd-location-option:hover{background:var(--vd-mint);color:var(--vd-green-dark)}
+.vendor-dashboard .vd-select-wrap{position:relative;width:100%;min-width:0}
+.vendor-dashboard .vd-select-native{position:absolute!important;inset:0 auto auto 0!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important}
+.vendor-dashboard .vd-field select.vd-select-native{position:absolute!important;top:0!important;right:0!important;left:auto!important;width:1px!important;min-width:1px!important;height:1px!important;min-height:1px!important;padding:0!important;border:0!important;opacity:0!important;pointer-events:none!important}
+.vendor-dashboard .vd-select-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:11px 13px;border:1px solid #cad9d4;border-radius:11px;background:#fbfdfc;color:#172b2b;text-align:right;font:inherit;cursor:pointer}
+.vendor-dashboard .vd-select-trigger:focus-visible{outline:3px solid rgba(20,91,80,.14);border-color:var(--vd-green)}
+.vendor-dashboard .vd-select-menu{position:absolute;top:calc(100% + 5px);right:0;left:0;z-index:40;max-height:260px;overflow:auto;padding:6px;border:1px solid var(--vd-border);border-radius:12px;background:#fff;box-shadow:0 14px 35px rgba(20,55,48,.15)}
+.vendor-dashboard .vd-select-menu[hidden]{display:none}
+.vendor-dashboard .vd-select-option{display:block;width:100%;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:#314b45;text-align:right;cursor:pointer;font:inherit}
+.vendor-dashboard .vd-select-option:hover,.vendor-dashboard .vd-select-option.is-selected{background:var(--vd-mint);color:var(--vd-green-dark)}
+
 .vd-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px}
 .vd-header h1{margin:0;font-size:clamp(24px,3vw,34px)}
 .vd-muted{color:var(--text-secondary,#6b7280);font-size:14px}
@@ -34,6 +75,8 @@
 .vd-nav a{flex:0 0 auto;text-decoration:none;color:inherit;font-size:13px;font-weight:700;padding:9px 13px;border-radius:10px;background:var(--surface-secondary,#f3f4f6);white-space:nowrap}
 .vd-nav a:hover,.vd-nav a:focus-visible{outline:2px solid var(--primary,#1f2937);outline-offset:2px}
 .vd-section{scroll-margin-top:150px}
+.vd-location-picker{position:relative;min-width:0}.vd-location-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:42px;padding:10px 12px;border:1px solid var(--border,#d1d5db);border-radius:9px;background:var(--surface,#fff);color:inherit;text-align:right;cursor:pointer}.vd-location-trigger:disabled{opacity:.55;cursor:not-allowed}.vd-location-menu{position:absolute;z-index:30;top:calc(100% + 5px);right:0;left:0;min-width:220px;max-height:290px;overflow:auto;padding:8px;background:#fff;color:#1f2937;border:1px solid #dbe2e8;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.16)}.vd-location-menu[hidden]{display:none}.vd-location-search{width:100%;min-height:38px;padding:8px 10px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;color:#1f2937}.vd-location-options{display:grid;gap:3px}.vd-location-option{padding:8px 10px;border:0;border-radius:7px;background:transparent;color:#334155;text-align:right;cursor:pointer}.vd-location-option:hover,.vd-location-option[aria-selected=true]{background:#e8f2f0;color:#173f3e}.vd-location-option[hidden]{display:none}.vd-location-empty{margin:8px;color:#64748b;font-size:12px}.vd-location-picker.is-open .vd-location-trigger{border-color:#173f3e}
+
 .vd-nav a[aria-current="page"]{background:#173b3c;color:#fff}
 .vd-panel-title{margin:0 0 6px;font-size:22px}
 .vd-panel-subtitle{margin:0 0 18px;color:var(--text-secondary,#64748b);font-size:13px;line-height:1.9}
@@ -78,8 +121,36 @@
         <form id="vd-shipping-profile" class="vd-form">
             {% csrf_token %}
             <label class="vd-field">کد پستی مبدأ<input name="pickup_postal_code" value="{{ vendor.pickup_postal_code }}" inputmode="numeric" maxlength="10" required></label>
-            <label class="vd-field">استان<input name="pickup_province" value="{{ vendor.pickup_province }}"></label>
-            <label class="vd-field">شهر<input name="pickup_city" value="{{ vendor.pickup_city }}"></label>
+            <label class="vd-field">استان
+                <div class="vd-location-picker" data-vd-picker="province">
+                    <input type="hidden" name="pickup_province_id" id="vd-province-value" value="{{ selected_province_id }}">
+                    <button type="button" class="vd-location-trigger" id="vd-province-trigger" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="vd-location-value">{% if vendor.pickup_province %}{{ vendor.pickup_province }}{% else %}انتخاب استان{% endif %}</span><span aria-hidden="true">⌄</span>
+                    </button>
+                    <div class="vd-location-menu" role="listbox" aria-label="انتخاب استان" hidden>
+                        <input class="vd-location-search" type="search" placeholder="جستجوی استان..." autocomplete="off" aria-label="جستجوی استان">
+                        <div class="vd-location-options">
+                            {% for province in provinces %}<button type="button" class="vd-location-option" data-value="{{ province.id }}" data-label="{{ province.name }}" aria-selected="{% if selected_province_id == province.id %}true{% else %}false{% endif %}">{{ province.name }}</button>{% endfor %}
+                            <p class="vd-location-empty" hidden>استانی پیدا نشد.</p>
+                        </div>
+                    </div>
+                </div>
+            </label>
+            <label class="vd-field">شهر
+                <div class="vd-location-picker" data-vd-picker="city">
+                    <input type="hidden" name="pickup_city_id" id="vd-city-value" value="{{ selected_city_id }}">
+                    <button type="button" class="vd-location-trigger" id="vd-city-trigger" aria-haspopup="listbox" aria-expanded="false" {% if not selected_province_id %}disabled{% endif %}>
+                        <span class="vd-location-value">{% if vendor.pickup_city %}{{ vendor.pickup_city }}{% else %}ابتدا استان را انتخاب کن{% endif %}</span><span aria-hidden="true">⌄</span>
+                    </button>
+                    <div class="vd-location-menu" role="listbox" aria-label="انتخاب شهر" hidden>
+                        <input class="vd-location-search" type="search" placeholder="جستجوی شهر..." autocomplete="off" aria-label="جستجوی شهر">
+                        <div class="vd-location-options">
+                            {% for city in cities %}<button type="button" class="vd-location-option" data-value="{{ city.id }}" data-province="{{ city.province_id }}" data-label="{{ city.name }}" aria-selected="{% if selected_city_id == city.id %}true{% else %}false{% endif %}">{{ city.name }}</button>{% endfor %}
+                            <p class="vd-location-empty" hidden>شهری برای این استان پیدا نشد.</p>
+                        </div>
+                    </div>
+                </div>
+            </label>
             <label class="vd-field">تلفن تماس<input name="contact_phone" value="{{ vendor.contact_phone }}"></label>
             <label class="vd-field" style="grid-column:1/-1">نشانی مبدأ<textarea name="pickup_address">{{ vendor.pickup_address }}</textarea></label>
             <button class="vd-btn" type="submit">ذخیره اطلاعات ارسال</button>
@@ -99,56 +170,96 @@
     </section>
 
     <section class="vd-card vd-section" id="vd-new-product-section">
-        <h2>ثبت محصول جدید</h2>
-        <p class="vd-muted">اگر محصولت در کاتالوگ نیست، این فرم را پر کن. پس از بررسی مدیر، محصول و آگهی فروش با قیمت و موجودی ثبت‌شده فعال می‌شوند. موجودی، قیمت، وزن و ابعاد برحسب واحد فروش ثبت می‌شوند؛ برای جعبه ۱۲تایی، واحد فروش را «جعبه ۱۲تایی» و تعداد اقلام را ۱۲ بگذار. تصویر اصلی حداکثر ۵ مگابایت باشد.</p>
+        <h2>پیشنهاد کالای جدید</h2>
+        <p class="vd-muted">این بخش برای کالایی است که هنوز در کاتالوگ مرکزی سایت نیست. ابتدا اطلاعات پایه کالا و شیوه فروش را مشخص کن؛ بعد از بررسی مدیر، کالا به کاتالوگ اضافه می‌شود.</p>
         <form id="vd-product-submission" class="vd-form" enctype="multipart/form-data">
             {% csrf_token %}
-            <label class="vd-field">نام محصول<input name="name" maxlength="200" required></label>
-            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد یا جعبه ۱۲تایی" required></label>
-            <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="1" required></label>
+            <label class="vd-field">نام محصول<input name="name" maxlength="200" required placeholder="مثلاً تیشرت پنبه‌ای"></label>
             <label class="vd-field">دسته‌بندی<select name="category_id" id="vd-submission-category" required><option value="">در حال بارگذاری…</option></select></label>
+            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد، جفت، بسته" required></label>
+            <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="1" required><small class="vd-muted">مثلاً برای یک بسته ۶تایی، عدد ۶ را وارد کن.</small></label>
             <label class="vd-field">توضیح کوتاه<input name="short_description" maxlength="500"></label>
-            <label class="vd-field" style="grid-column:1/-1">توضیحات کامل<textarea name="description" rows="3"></textarea></label>
-            <label class="vd-field">تصویر اصلی<input name="image" type="file" accept="image/*" required></label>
-            <label class="vd-field">قیمت هر واحد فروش (تومان)<input name="retail_price" type="number" min="1" required></label>
-            <label class="vd-field">قیمت قبل از تخفیف<input name="compare_at_price" type="number" min="0"></label>
+            <label class="vd-field">توضیحات کامل<textarea name="description" rows="3"></textarea></label>
+            <label class="vd-field">تصویر اصلی محصول<input name="image" type="file" accept="image/*" required></label>
+            <div class="vd-product-step" style="grid-column:1/-1">
+                <h3>۱. روش فروش</h3>
+                <p class="vd-muted">مشخص کن مشتری می‌تواند تکی بخرد، عمده بخرد یا هر دو روش فعال باشد.</p>
+                <div class="vd-choice-cards">
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="retail" checked><span><strong>فقط تکی</strong><small>قیمت برای هر واحد فروش</small></span></label>
+                    {% if vendor.seller_type != "retail" %}
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="wholesale"><span><strong>فقط عمده</strong><small>خرید با حداقل تعداد مشخص</small></span></label>
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="both"><span><strong>تکی و عمده</strong><small>قیمت تکی و قیمت ویژه عمده</small></span></label>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="vd-product-step" style="grid-column:1/-1">
+                <h3>۲. قیمت و تخفیف</h3>
+                <p class="vd-muted">فقط قیمت اصلی و درصد تخفیف را وارد کن؛ قیمت نهایی را سیستم محاسبه می‌کند. برای نمونه، ۱۰ یعنی ۱۰٪ تخفیف.</p>
+                <div class="vd-form">
+                    <label class="vd-field">قیمت اصلی هر واحد (تومان)<input name="regular_price" type="number" min="1" required></label>
+                    <label class="vd-field">درصد تخفیف<input name="discount_percent" type="number" min="0" max="99" step="1" value="0" required><small class="vd-muted">عدد صحیح از ۰ تا ۹۹</small></label>
+                    <div class="vd-price-preview" data-price-preview>قیمت نهایی پس از تخفیف اینجا نمایش داده می‌شود.</div>
+                </div>
+            </div>
+            <div class="vd-product-step" data-wholesale-fields hidden style="grid-column:1/-1">
+                <h3>۳. قیمت عمده</h3>
+                <p class="vd-muted">این قیمت برای هر واحد فروش است و از قیمت نهایی تکی بیشتر نمی‌تواند باشد.</p>
+                <div class="vd-form">
+                    <label class="vd-field">حداقل تعداد سفارش عمده<input name="wholesale_minimum_quantity" type="number" min="2" value="3"></label>
+                    <label class="vd-field">قیمت هر واحد در سفارش عمده (تومان)<input name="wholesale_unit_price" type="number" min="1"></label>
+                </div>
+            </div>
             <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="0" required></label>
-            <label class="vd-field">وزن هر واحد فروش (گرم)<input name="weight_grams" type="number" min="1" required></label>
-            <label class="vd-field">طول هر واحد فروش (سانتی‌متر)<input name="package_length_cm" type="number" min="1" required></label>
-            <label class="vd-field">عرض هر واحد فروش (سانتی‌متر)<input name="package_width_cm" type="number" min="1" required></label>
-            <label class="vd-field">ارتفاع هر واحد فروش (سانتی‌متر)<input name="package_height_cm" type="number" min="1" required></label>
             <label class="vd-field">زمان آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="2" required></label>
-            <label class="vd-field"><span>قابلیت چاپ سفارشی</span><select name="supports_custom_printing"><option value="false">ندارد</option><option value="true">دارد</option></select></label>
-            <button class="vd-btn" type="submit">ارسال محصول برای بررسی</button>
+            <label class="vd-field">قابلیت چاپ سفارشی<select name="supports_custom_printing"><option value="false">ندارد</option><option value="true">دارد</option></select></label>
+            <button class="vd-btn" type="submit">ارسال کالا برای بررسی</button>
         </form>
         <div id="vd-product-submissions" class="vd-list" style="margin-top:14px"></div>
     </section>
 
     <section class="vd-card vd-section" id="vd-new-product-existing-section">
-        <h2>ثبت محصول برای فروش</h2>
-        <p class="vd-muted">برای کالایی که از قبل در کاتالوگ وجود دارد، آن را انتخاب کن. قیمت و پله‌های عمده برحسب واحد فروش محاسبه می‌شوند.</p>
-        <p class="vd-muted">محصول باید از کاتالوگ مرکزی سایت انتخاب شود؛ قیمت جدید و تغییر قیمت پس از بررسی مدیر فعال می‌شود. وزن و ابعاد واردشده باید مربوط به بسته‌بندی نهایی باشند.</p>
-        <div class="vd-field" style="margin-bottom:12px">
-            <label for="vd-catalog-search">جستجوی محصول در کاتالوگ</label>
-            <input id="vd-catalog-search" autocomplete="off" placeholder="حداقل دو حرف از نام محصول را وارد کن">
+        <h2>افزودن کالای کاتالوگ به فروشگاه</h2>
+        <p class="vd-muted">اگر کالا در کاتالوگ سایت وجود دارد، از همین بخش انتخابش کن. اطلاعات کالا را دوباره وارد نکن؛ فقط شرایط فروش فروشگاهت را مشخص کن.</p>
+        <div class="vd-field" style="margin-bottom:16px">
+            <label for="vd-catalog-search">جستجو در کاتالوگ</label>
+            <input id="vd-catalog-search" autocomplete="off" placeholder="نام کالا را جستجو کن…">
             <div id="vd-catalog-results" class="vd-list" role="listbox"></div>
         </div>
         <form id="vd-product-create" class="vd-form">
             {% csrf_token %}
-            <label class="vd-field">شناسه محصول انتخاب‌شده<input name="product_id" id="vd-product-id" type="number" min="1" required readonly></label>
-            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد یا جعبه ۱۲تایی" required></label>
-            <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="1" required></label>
-            <label class="vd-field">قیمت هر واحد فروش (تومان)<input name="retail_price" type="number" min="1" required></label>
-            <label class="vd-field">قیمت قبل از تخفیف (اختیاری)<input name="compare_at_price" type="number" min="0"></label>
-            <label class="vd-field">موجودی انبار<input name="stock_quantity" type="number" min="0" value="0" required></label>
-            <label class="vd-field">وزن هر واحد فروش (گرم)<input name="weight_grams" type="number" min="1" required></label>
-            <label class="vd-field">طول هر واحد فروش (سانتی‌متر)<input name="package_length_cm" type="number" min="1" required></label>
-            <label class="vd-field">عرض هر واحد فروش (سانتی‌متر)<input name="package_width_cm" type="number" min="1" required></label>
-            <label class="vd-field">ارتفاع هر واحد فروش (سانتی‌متر)<input name="package_height_cm" type="number" min="1" required></label>
+            <label class="vd-field" style="grid-column:1/-1">کالای انتخاب‌شده<input name="product_id" id="vd-product-id" type="number" min="1" required readonly placeholder="ابتدا کالا را از نتایج جستجو انتخاب کن"></label>
+            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد، جفت، بسته" required></label>
+            <label class="vd-field">تعداد اقلام در هر واحد<input name="units_per_order" type="number" min="1" value="1" required></label>
+            <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="0" required></label>
+            <div class="vd-product-step" style="grid-column:1/-1">
+                <h3>۱. روش فروش</h3>
+                <div class="vd-choice-cards">
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="retail" checked><span><strong>فقط تکی</strong><small>فروش با قیمت واحد</small></span></label>
+                    {% if vendor.seller_type != "retail" %}
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="wholesale"><span><strong>فقط عمده</strong><small>با حداقل تعداد</small></span></label>
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="both"><span><strong>تکی و عمده</strong><small>دو روش خرید</small></span></label>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="vd-product-step" style="grid-column:1/-1">
+                <h3>۲. قیمت و تخفیف</h3>
+                <p class="vd-muted">قیمت اصلی و درصد تخفیف را وارد کن؛ قیمت نهایی خودکار محاسبه می‌شود. مثلاً ۱۰ یعنی ۱۰٪ تخفیف.</p>
+                <div class="vd-form">
+                    <label class="vd-field">قیمت اصلی هر واحد (تومان)<input name="regular_price" type="number" min="1" required></label>
+                    <label class="vd-field">درصد تخفیف<input name="discount_percent" type="number" min="0" max="99" step="1" value="0" required></label>
+                    <div class="vd-price-preview" data-price-preview>قیمت نهایی پس از تخفیف اینجا نمایش داده می‌شود.</div>
+                </div>
+            </div>
+            <div class="vd-product-step" data-wholesale-fields hidden style="grid-column:1/-1">
+                <h3>۳. قیمت عمده</h3>
+                <div class="vd-form">
+                    <label class="vd-field">حداقل تعداد عمده<input name="wholesale_minimum_quantity" type="number" min="2" value="3"></label>
+                    <label class="vd-field">قیمت هر واحد عمده (تومان)<input name="wholesale_unit_price" type="number" min="1"></label>
+                </div>
+            </div>
             <label class="vd-field">زمان آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="2" required></label>
-            <p class="vd-muted" style="grid-column:1/-1">برای فروش عمده، ابتدا محصول را ثبت کن؛ سپس از بخش «محصولات من» پله‌های قیمت عمده را اضافه کن.</p>
-            <label class="vd-field"><span>چاپ سفارشی</span><select name="supports_custom_printing"><option value="false">خیر</option><option value="true">بله</option></select></label>
-            <button class="vd-btn" type="submit">ثبت برای بررسی</button>
+            <label class="vd-field">قابلیت چاپ سفارشی<select name="supports_custom_printing"><option value="false">ندارد</option><option value="true">دارد</option></select></label>
+            <button class="vd-btn" type="submit">ثبت شرایط فروش</button>
         </form>
     </section>
 
@@ -183,6 +294,65 @@
     const root = document.querySelector(".vendor-dashboard");
     if (!root) return;
     const csrf = root.querySelector("input[name='csrfmiddlewaretoken']")?.value || "";
+    const syncCustomSelect = (select) => {
+        const wrap = select?.closest(".vd-select-wrap");
+        if (!wrap) return;
+        const trigger = wrap.querySelector(".vd-select-trigger");
+        const menu = wrap.querySelector(".vd-select-menu");
+        if (!trigger || !menu) return;
+        trigger.textContent = select.options[select.selectedIndex]?.textContent?.trim() || "انتخاب کن";
+        menu.innerHTML = "";
+        Array.from(select.options).forEach((option) => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "vd-select-option" + (option.value === select.value ? " is-selected" : "");
+            item.textContent = option.textContent;
+            item.disabled = option.disabled;
+            item.addEventListener("click", () => {
+                select.value = option.value;
+                select.dispatchEvent(new Event("change", {bubbles:true}));
+                syncCustomSelect(select);
+                menu.hidden = true;
+                trigger.setAttribute("aria-expanded", "false");
+            });
+            menu.appendChild(item);
+        });
+    };
+    const enhanceSelect = (select) => {
+        if (!select || select.dataset.vdEnhanced === "1") return;
+        select.dataset.vdEnhanced = "1";
+        const wrap = document.createElement("div");
+        wrap.className = "vd-select-wrap";
+        select.parentNode.insertBefore(wrap, select);
+        wrap.appendChild(select);
+        select.classList.add("vd-select-native");
+        const trigger = document.createElement("button");
+        trigger.type = "button";
+        trigger.className = "vd-select-trigger";
+        trigger.setAttribute("aria-haspopup", "listbox");
+        trigger.setAttribute("aria-expanded", "false");
+        const menu = document.createElement("div");
+        menu.className = "vd-select-menu";
+        menu.setAttribute("role", "listbox");
+        menu.hidden = true;
+        wrap.append(trigger, menu);
+        trigger.addEventListener("click", () => {
+            const willOpen = menu.hidden;
+            root.querySelectorAll(".vd-select-menu").forEach((item) => { item.hidden = true; });
+            root.querySelectorAll(".vd-select-trigger").forEach((item) => item.setAttribute("aria-expanded", "false"));
+            menu.hidden = !willOpen;
+            trigger.setAttribute("aria-expanded", String(willOpen));
+        });
+        select.addEventListener("change", () => syncCustomSelect(select));
+        syncCustomSelect(select);
+    };
+    root.querySelectorAll("select").forEach(enhanceSelect);
+    document.addEventListener("click", (event) => {
+        if (root.contains(event.target) && !event.target.closest(".vd-select-wrap")) {
+            root.querySelectorAll(".vd-select-menu").forEach((menu) => { menu.hidden = true; });
+            root.querySelectorAll(".vd-select-trigger").forEach((trigger) => trigger.setAttribute("aria-expanded", "false"));
+        }
+    });
     const sectionNav = root.querySelector(".vd-nav");
     const overview = document.getElementById("vd-overview");
     const panels = Array.from(root.querySelectorAll(".vd-section[id]"));
@@ -226,7 +396,7 @@
     const formJson = (form) => {
         const data = Object.fromEntries(new FormData(form).entries());
         delete data.csrfmiddlewaretoken;
-        ["product_id","retail_price","compare_at_price","units_per_order","stock_quantity","weight_grams","package_length_cm","package_width_cm","package_height_cm","handling_days"].forEach((key) => {
+        ["product_id","retail_price","compare_at_price","units_per_order","stock_quantity","handling_days"].forEach((key) => {
             if (data[key] === "" && key === "compare_at_price") data[key] = null;
             else if (data[key] === "") delete data[key];
             else if (data[key] !== undefined) data[key] = Number(data[key]);
@@ -255,6 +425,7 @@
                 `<option value="${category.id}">${escapeHtml(category.name)}</option>`
             ).join("");
             if (selected) categorySelect.value = selected;
+            syncCustomSelect(categorySelect);
         }
         const box = document.getElementById("vd-product-submissions");
         if (!box) return;
@@ -291,23 +462,19 @@
                 <p class="vd-muted">خروج از فروش، سابقه محصول و سفارش‌ها را نگه می‌دارد. اگر سفارش در حال انجام داشته باشد، سیستم عملیات را مسدود می‌کند.</p>
                 <div class="vd-details">
                     <span>شناسه محصول: ${item.product_id}</span>
-                    <span>قیمت: ${money(item.retail_price)} تومان</span>
+                    <span>قیمت نهایی تکی: ${money(item.retail_price)} تومان</span>
+                    <span>نوع فروش: ${item.sale_type === "wholesale" ? "فقط عمده" : item.sale_type === "both" ? "تکی و عمده" : "فقط تکی"}</span>
+                    ${item.compare_at_price ? `<span>تخفیف فعلی: ${Math.round((item.compare_at_price-item.retail_price)*100/item.compare_at_price)}٪</span>` : ""}
                     <span>موجودی: ${money(item.stock_quantity)}</span>
                     <span>واحد فروش: ${escapeHtml(item.sale_unit)} · هر واحد شامل ${money(item.units_per_order)} قلم</span>
-                    <span>وزن واحد فروش: ${money(item.weight_grams)} گرم</span>
-                    <span>ابعاد واحد فروش: ${item.package_dimensions_cm.map(money).join(" × ")} سانتی‌متر</span>
                     <span>عمده: ${item.wholesale_enabled ? "فعال" : "غیرفعال"}</span>
                 </div>
                 <form class="vd-stock-form vd-form" data-listing-id="${item.id}" style="margin-top:12px">
                     <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="${escapeHtml(item.sale_unit)}" required></label>
                     <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="${item.units_per_order}" required></label>
-                    <label class="vd-field">قیمت هر واحد فروش (تومان)<input name="retail_price" type="number" min="1" value="${item.retail_price}" required></label>
-                    <label class="vd-field">قیمت قبل تخفیف (خالی = بدون تخفیف)<input name="compare_at_price" type="number" min="0" value="${item.compare_at_price ?? ""}"></label>
+                    <label class="vd-field">قیمت اصلی هر واحد (تومان)<input name="regular_price" type="number" min="1" value="${item.compare_at_price || item.retail_price}" required></label>
+                    <label class="vd-field">درصد تخفیف<input name="discount_percent" type="number" min="0" max="99" value="${item.compare_at_price ? Math.round((item.compare_at_price-item.retail_price)*100/item.compare_at_price) : 0}" required></label>
                     <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="${item.stock_quantity}" required></label>
-                    <label class="vd-field">وزن هر واحد فروش (گرم)<input name="weight_grams" type="number" min="1" value="${item.weight_grams}" required></label>
-                    <label class="vd-field">طول هر واحد فروش (سانتی‌متر)<input name="package_length_cm" type="number" min="1" value="${item.package_dimensions_cm[0]}" required></label>
-                    <label class="vd-field">عرض هر واحد فروش (سانتی‌متر)<input name="package_width_cm" type="number" min="1" value="${item.package_dimensions_cm[1]}" required></label>
-                    <label class="vd-field">ارتفاع هر واحد فروش (سانتی‌متر)<input name="package_height_cm" type="number" min="1" value="${item.package_dimensions_cm[2]}" required></label>
                     <label class="vd-field">آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="${item.handling_days}" required></label>
                     <label class="vd-field">چاپ سفارشی<select name="supports_custom_printing"><option value="false" ${item.supports_custom_printing ? "" : "selected"}>خیر</option><option value="true" ${item.supports_custom_printing ? "selected" : ""}>بله</option></select></label>
                     <button class="vd-btn vd-btn--soft" type="submit">ذخیره تغییرات محصول</button>
@@ -329,6 +496,7 @@
                 </div>
             </article>
         `).join("");
+        box.querySelectorAll("select").forEach(enhanceSelect);
     }
     const actionButtons = (order) => {
         const buttons = [];
@@ -402,6 +570,83 @@
             </article>
         `).join("");
     }
+    (() => {
+        const provincePicker = root.querySelector('[data-vd-picker="province"]');
+        const cityPicker = root.querySelector('[data-vd-picker="city"]');
+        if (!provincePicker || !cityPicker) return;
+        const provinceValue = document.getElementById("vd-province-value");
+        const cityValue = document.getElementById("vd-city-value");
+        const cityTrigger = document.getElementById("vd-city-trigger");
+        const normalize = (value) => String(value || "").trim().toLocaleLowerCase("fa-IR").replace(/[يى]/g, "ی").replace(/ك/g, "ک");
+        const close = (picker) => {
+            [provincePicker, cityPicker].forEach((item) => {
+                if (picker && item === picker) return;
+                item.classList.remove("is-open");
+                item.querySelector(".vd-location-menu").hidden = true;
+                item.querySelector(".vd-location-trigger").setAttribute("aria-expanded", "false");
+            });
+        };
+        const filter = (picker, query) => {
+            const q = normalize(query);
+            let count = 0;
+            picker.querySelectorAll(".vd-location-option").forEach((option) => {
+                const provinceMatches = picker !== cityPicker || option.dataset.province === provinceValue.value;
+                const visible = provinceMatches && (!q || normalize(option.dataset.label).includes(q));
+                option.hidden = !visible;
+                if (visible) count++;
+            });
+            picker.querySelector(".vd-location-empty").hidden = count > 0;
+        };
+        const open = (picker) => {
+            const trigger = picker.querySelector(".vd-location-trigger");
+            if (trigger.disabled) return;
+            close(picker);
+            picker.classList.add("is-open");
+            picker.querySelector(".vd-location-menu").hidden = false;
+            trigger.setAttribute("aria-expanded", "true");
+            const search = picker.querySelector(".vd-location-search");
+            search.value = "";
+            filter(picker, "");
+            search.focus();
+        };
+        const select = (picker, option) => {
+            picker.querySelector('input[type="hidden"]').value = option.dataset.value;
+            picker.querySelector(".vd-location-value").textContent = option.dataset.label;
+            picker.querySelectorAll(".vd-location-option").forEach((item) => item.setAttribute("aria-selected", item === option ? "true" : "false"));
+            picker.classList.remove("is-open");
+            picker.querySelector(".vd-location-menu").hidden = true;
+            picker.querySelector(".vd-location-trigger").setAttribute("aria-expanded", "false");
+        };
+        provincePicker.querySelector(".vd-location-trigger").addEventListener("click", () => open(provincePicker));
+        cityTrigger.addEventListener("click", () => open(cityPicker));
+        provincePicker.querySelectorAll(".vd-location-option").forEach((option) => option.addEventListener("click", () => {
+            const changed = provinceValue.value !== option.dataset.value;
+            select(provincePicker, option);
+            if (changed) {
+                cityValue.value = "";
+                cityPicker.querySelector(".vd-location-value").textContent = "انتخاب شهر";
+                cityPicker.querySelectorAll(".vd-location-option").forEach((item) => item.setAttribute("aria-selected", "false"));
+            }
+            cityTrigger.disabled = false;
+            filter(cityPicker, "");
+        }));
+        cityPicker.querySelectorAll(".vd-location-option").forEach((option) => option.addEventListener("click", () => select(cityPicker, option)));
+        root.querySelectorAll(".vd-location-search").forEach((search) => {
+            search.addEventListener("input", () => filter(search.closest(".vd-location-picker"), search.value));
+            search.addEventListener("keydown", (event) => {
+                if (event.key === "Escape") close();
+                if (event.key === "Enter") {
+                    const first = search.closest(".vd-location-picker").querySelector(".vd-location-option:not([hidden])");
+                    if (first) { event.preventDefault(); first.click(); }
+                }
+            });
+        });
+        document.addEventListener("click", (event) => {
+            if (!event.target.closest(".vd-location-picker")) close();
+        });
+        document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
+        filter(cityPicker, "");
+    })();
     document.getElementById("vd-shipping-profile").addEventListener("submit", async (event) => {
         event.preventDefault();
         try {
@@ -436,15 +681,60 @@
         catalogResults.innerHTML = "";
         notify("محصول انتخاب شد؛ قیمت و موجودی فروشگاه را تکمیل کن.");
     });
+    const configureProductPricing = (form) => {
+        if (!form) return;
+        const radios = form.querySelectorAll('input[name="sale_type"]');
+        const wholesale = form.querySelector("[data-wholesale-fields]");
+        const regular = form.querySelector('input[name="regular_price"]');
+        const discount = form.querySelector('input[name="discount_percent"]');
+        const preview = form.querySelector("[data-price-preview]");
+        const minimum = form.querySelector('input[name="wholesale_minimum_quantity"]');
+        const wholesalePrice = form.querySelector('input[name="wholesale_unit_price"]');
+        const refresh = () => {
+            const mode = form.querySelector('input[name="sale_type"]:checked')?.value || "retail";
+            if (wholesale) wholesale.hidden = mode === "retail";
+            if (minimum) { minimum.required = mode !== "retail"; minimum.disabled = mode === "retail"; }
+            if (wholesalePrice) { wholesalePrice.required = mode !== "retail"; wholesalePrice.disabled = mode === "retail"; }
+            const base = Number(regular?.value || 0);
+            const pct = Number(discount?.value || 0);
+            if (!preview) return;
+            if (base > 0 && pct >= 0 && pct <= 99) {
+                const finalPrice = Math.round(base * (100 - pct) / 100);
+                preview.textContent = pct > 0
+                    ? "قیمت اصلی: " + money(base) + " تومان · تخفیف: " + pct + "٪ · قیمت نهایی: " + money(finalPrice) + " تومان"
+                    : "قیمت نهایی: " + money(base) + " تومان · بدون تخفیف";
+            } else preview.textContent = "قیمت اصلی را وارد کن تا قیمت نهایی محاسبه شود.";
+        };
+        radios.forEach((radio) => radio.addEventListener("change", refresh));
+        regular?.addEventListener("input", refresh);
+        discount?.addEventListener("input", refresh);
+        refresh();
+    };
+    configureProductPricing(document.getElementById("vd-product-submission"));
+    configureProductPricing(document.getElementById("vd-product-create"));
     document.getElementById("vd-product-create").addEventListener("submit", async (event) => {
         event.preventDefault();
         try {
-            const payload = formJson(event.currentTarget);
-            payload.wholesale_enabled = payload.wholesale_enabled === "true";
+            const form = event.currentTarget;
+            const payload = formJson(form);
+            const regularPrice = Number(payload.regular_price || 0);
+            const discountPercent = Number(payload.discount_percent || 0);
+            if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
+            payload.retail_price = Math.round(regularPrice * (100 - discountPercent) / 100);
+            payload.compare_at_price = discountPercent > 0 ? regularPrice : null;
+            delete payload.regular_price;
+            delete payload.discount_percent;
+            payload.wholesale_enabled = false;
             payload.supports_custom_printing = payload.supports_custom_printing === "true";
+            payload.wholesale_minimum_quantity = payload.wholesale_minimum_quantity ? Number(payload.wholesale_minimum_quantity) : null;
+            payload.wholesale_unit_price = payload.wholesale_unit_price ? Number(payload.wholesale_unit_price) : null;
             await request("/marketplace/api/vendor/products/", {method:"POST", body:JSON.stringify(payload)});
-            event.currentTarget.reset();
-            notify("محصول برای بررسی مدیر ثبت شد.");
+            form.reset();
+            document.getElementById("vd-product-id").value = "";
+            document.getElementById("vd-catalog-search").value = "";
+            form.querySelector('input[name="regular_price"]')?.dispatchEvent(new Event("input"));
+            form.querySelector('input[name="sale_type"]:checked')?.dispatchEvent(new Event("change"));
+            notify("شرایط فروش کالا برای بررسی مدیر ثبت شد.");
             await loadProducts();
         } catch (error) { notify(error.message, true); }
     });
@@ -463,10 +753,25 @@
         if (event.target.matches("#vd-product-submission")) {
             event.preventDefault();
             try {
-                const formData = new FormData(event.target);
+                const form = event.target;
+                const formData = new FormData(form);
+                const regularPrice = Number(formData.get("regular_price") || 0);
+                const discountPercent = Number(formData.get("discount_percent") || 0);
+                if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
+                formData.set("retail_price", String(Math.round(regularPrice * (100 - discountPercent) / 100)));
+                formData.set("compare_at_price", discountPercent > 0 ? String(regularPrice) : "");
+                formData.delete("regular_price");
+                formData.delete("discount_percent");
+                const mode = formData.get("sale_type") || "retail";
+                if (mode === "retail") {
+                    formData.delete("wholesale_minimum_quantity");
+                    formData.delete("wholesale_unit_price");
+                }
                 const data = await request("/marketplace/api/vendor/product-submissions/", {method:"POST", body:formData});
                 notify(data.message || "محصول برای بررسی ارسال شد.");
-                event.target.reset();
+                form.reset();
+                form.querySelector('input[name="regular_price"]')?.dispatchEvent(new Event("input"));
+                form.querySelector('input[name="sale_type"]:checked')?.dispatchEvent(new Event("change"));
                 await loadProductSubmissions();
             } catch (error) { notify(error.message, true); }
         }
@@ -485,10 +790,15 @@
             event.preventDefault();
             try {
                 const payload = Object.fromEntries(new FormData(event.target).entries());
-                ["retail_price","units_per_order","stock_quantity","weight_grams","package_length_cm","package_width_cm","package_height_cm","handling_days"].forEach((key) => payload[key] = Number(payload[key]));
-                payload.compare_at_price = payload.compare_at_price === "" ? null : Number(payload.compare_at_price);
+                const regularPrice = Number(payload.regular_price || 0);
+                const discountPercent = Number(payload.discount_percent || 0);
+                if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
+                payload.retail_price = Math.round(regularPrice * (100 - discountPercent) / 100);
+                payload.compare_at_price = discountPercent > 0 ? regularPrice : null;
+                delete payload.regular_price;
+                delete payload.discount_percent;
+                ["retail_price","units_per_order","stock_quantity","handling_days"].forEach((key) => payload[key] = Number(payload[key]));
                 payload.supports_custom_printing = payload.supports_custom_printing === "true";
-                payload.wholesale_enabled = payload.wholesale_enabled === "true";
                 await request("/marketplace/api/vendor/products/" + event.target.dataset.listingId + "/", {method:"POST", body:JSON.stringify(payload)});
                 notify("تغییرات ثبت شد؛ تغییر قیمت تا تأیید مدیر از فروش خارج می‌شود.");
                 await loadProducts();

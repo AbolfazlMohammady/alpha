@@ -95,6 +95,11 @@ class Vendor(models.Model):
 
 
 class VendorProduct(models.Model):
+    class SaleType(models.TextChoices):
+        RETAIL = "retail", "فقط تکی"
+        WHOLESALE = "wholesale", "فقط عمده"
+        BOTH = "both", "تکی و عمده"
+
     class Status(models.TextChoices):
         DRAFT = "draft", "پیش‌نویس"
         PENDING = "pending", "در انتظار تأیید"
@@ -105,6 +110,7 @@ class VendorProduct(models.Model):
     vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="listings")
     product = models.ForeignKey("shop.Product", on_delete=models.PROTECT, related_name="vendor_listings")
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT, db_index=True)
+    sale_type = models.CharField(max_length=12, choices=SaleType.choices, default=SaleType.RETAIL)
     retail_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
     compare_at_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
     sale_unit = models.CharField(max_length=40, default="عدد", help_text="واحد قابل سفارش؛ مثل عدد یا جعبه ۱۲تایی.")
@@ -127,10 +133,6 @@ class VendorProduct(models.Model):
             models.CheckConstraint(check=Q(retail_price__gt=0), name="vendor_listing_price_gt_zero"),
             models.CheckConstraint(check=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=models.F("retail_price")), name="vendor_listing_compare_gte_retail"),
             models.CheckConstraint(check=Q(units_per_order__gt=0), name="vendor_listing_units_per_order_gt_zero"),
-            models.CheckConstraint(check=Q(weight_grams__gt=0), name="vendor_listing_weight_gt_zero"),
-            models.CheckConstraint(check=Q(package_length_cm__gt=0), name="vendor_listing_length_gt_zero"),
-            models.CheckConstraint(check=Q(package_width_cm__gt=0), name="vendor_listing_width_gt_zero"),
-            models.CheckConstraint(check=Q(package_height_cm__gt=0), name="vendor_listing_height_gt_zero"),
         ]
         indexes = [models.Index(fields=("vendor", "status"), name="market_listing_v_status_idx")]
 
@@ -141,12 +143,10 @@ class VendorProduct(models.Model):
             raise ValidationError({"sale_unit": "واحد فروش را وارد کن."})
         if self.units_per_order < 1:
             raise ValidationError({"units_per_order": "تعداد اقلام در هر واحد فروش باید حداقل ۱ باشد."})
-        if self.weight_grams <= 0:
-            raise ValidationError({"weight_grams": "وزن هر واحد فروش باید بیشتر از صفر باشد."})
-        if not all((self.package_length_cm, self.package_width_cm, self.package_height_cm)):
-            raise ValidationError("طول، عرض و ارتفاع هر واحد فروش باید بیشتر از صفر باشند.")
         if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
+        if self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH} and self.vendor.seller_type == Vendor.SellerType.RETAIL:
+            raise ValidationError({"sale_type": "این فروشگاه فقط مجوز خرده‌فروشی دارد."})
         if self.wholesale_enabled and self.vendor.seller_type == Vendor.SellerType.RETAIL:
             raise ValidationError({"wholesale_enabled": "فروشگاه شما برای فروش عمده تأیید نشده است."})
         if self.supports_custom_printing and not self.vendor.supports_custom_printing:
@@ -654,6 +654,11 @@ class CategoryRequest(models.Model):
 
 
 class VendorProductSubmission(models.Model):
+    class SaleType(models.TextChoices):
+        RETAIL = "retail", "فقط تکی"
+        WHOLESALE = "wholesale", "فقط عمده"
+        BOTH = "both", "تکی و عمده"
+
     class Status(models.TextChoices):
         PENDING = "pending", "در انتظار بررسی"
         APPROVED = "approved", "تأییدشده"
@@ -665,8 +670,11 @@ class VendorProductSubmission(models.Model):
     short_description = models.TextField(blank=True)
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to="marketplace/product-submissions/")
+    sale_type = models.CharField(max_length=12, choices=SaleType.choices, default=SaleType.RETAIL)
     retail_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
     compare_at_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
+    wholesale_minimum_quantity = models.PositiveIntegerField(null=True, blank=True, validators=[MinValueValidator(2)])
+    wholesale_unit_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
     sale_unit = models.CharField(max_length=40, default="عدد",)
     units_per_order = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)],)
     stock_quantity = models.PositiveIntegerField(default=0)
@@ -691,10 +699,6 @@ class VendorProductSubmission(models.Model):
             models.CheckConstraint(check=Q(retail_price__gt=0), name="vendor_submission_price_gt_zero"),
             models.CheckConstraint(check=Q(compare_at_price__isnull=True) | Q(compare_at_price__gte=models.F("retail_price")), name="vendor_submission_compare_gte_retail"),
             models.CheckConstraint(check=Q(units_per_order__gt=0), name="vendor_submission_units_gt_zero"),
-            models.CheckConstraint(check=Q(weight_grams__gt=0), name="vendor_submission_weight_gt_zero"),
-            models.CheckConstraint(check=Q(package_length_cm__gt=0), name="vendor_submission_length_gt_zero"),
-            models.CheckConstraint(check=Q(package_width_cm__gt=0), name="vendor_submission_width_gt_zero"),
-            models.CheckConstraint(check=Q(package_height_cm__gt=0), name="vendor_submission_height_gt_zero"),
         ]
         indexes = [models.Index(fields=("vendor", "status", "created_at"), name="market_prod_sub_status_idx")]
 
@@ -719,12 +723,15 @@ class VendorProductSubmission(models.Model):
             raise ValidationError({"sale_unit": "واحد فروش را وارد کن."})
         if self.units_per_order < 1:
             raise ValidationError({"units_per_order": "تعداد اقلام در هر واحد فروش باید حداقل ۱ باشد."})
-        if self.weight_grams <= 0:
-            raise ValidationError({"weight_grams": "وزن هر واحد فروش باید بیشتر از صفر باشد."})
-        if not all((self.package_length_cm, self.package_width_cm, self.package_height_cm)):
-            raise ValidationError("طول، عرض و ارتفاع هر واحد فروش باید بیشتر از صفر باشند.")
         if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
+        if self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH}:
+            if not self.wholesale_minimum_quantity or self.wholesale_minimum_quantity < 2:
+                raise ValidationError({"wholesale_minimum_quantity": "حداقل تعداد عمده باید حداقل ۲ باشد."})
+            if not self.wholesale_unit_price or self.wholesale_unit_price > self.retail_price:
+                raise ValidationError({"wholesale_unit_price": "قیمت واحد عمده باید مثبت و از قیمت نهایی تکی بیشتر نباشد."})
+        elif self.wholesale_minimum_quantity or self.wholesale_unit_price:
+            raise ValidationError({"sale_type": "برای محصول تکی، اطلاعات قیمت عمده را خالی بگذار."})
         if self.category_id and not self.category.is_active:
             raise ValidationError({"category": "دسته‌بندی انتخاب‌شده فعال نیست."})
         if self.product_id and not self.product.is_active:
