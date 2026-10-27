@@ -652,6 +652,11 @@ class CategoryRequest(models.Model):
 
 
 class VendorProductSubmission(models.Model):
+    class SaleType(models.TextChoices):
+        RETAIL = "retail", "فقط تکی"
+        WHOLESALE = "wholesale", "فقط عمده"
+        BOTH = "both", "تکی و عمده"
+
     class Status(models.TextChoices):
         PENDING = "pending", "در انتظار بررسی"
         APPROVED = "approved", "تأییدشده"
@@ -663,8 +668,11 @@ class VendorProductSubmission(models.Model):
     short_description = models.TextField(blank=True)
     description = models.TextField(blank=True)
     image = models.ImageField(upload_to="marketplace/product-submissions/")
+    sale_type = models.CharField(max_length=12, choices=SaleType.choices, default=SaleType.RETAIL)
     retail_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
     compare_at_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
+    wholesale_minimum_quantity = models.PositiveIntegerField(null=True, blank=True, validators=[MinValueValidator(2)])
+    wholesale_unit_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
     sale_unit = models.CharField(max_length=40, default="عدد",)
     units_per_order = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)],)
     stock_quantity = models.PositiveIntegerField(default=0)
