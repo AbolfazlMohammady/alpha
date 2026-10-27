@@ -366,6 +366,7 @@
                     <label class="vd-field">چاپ سفارشی<select name="supports_custom_printing"><option value="false" ${item.supports_custom_printing ? "" : "selected"}>خیر</option><option value="true" ${item.supports_custom_printing ? "selected" : ""}>بله</option></select></label>
                     <button class="vd-btn vd-btn--soft" type="submit">ذخیره تغییرات محصول</button>
                 </form>
+                {% if vendor.seller_type != "retail" %}
                 <form class="vd-tier-form vd-form" data-listing-id="${item.id}" style="margin-top:10px">
                     <label class="vd-field">حداقل واحد فروش برای عمده<select name="minimum_quantity" required><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select></label>
                     <label class="vd-field">قیمت هر واحد عمده<input name="unit_price" type="number" min="1" required></label>
@@ -380,6 +381,7 @@
                             <button class="vd-btn vd-btn--soft" type="button" data-delete-tier="${tier.id}">حذف پله</button>
                         </form>
                     `).join("") || '<p class="vd-muted">پله عمده ثبت نشده است.</p>'}
+                {% endif %}
                 </div>
             </article>
         `).join("");
