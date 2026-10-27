@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import timedelta
 
 from PIL import Image, UnidentifiedImageError
@@ -9,10 +10,12 @@ from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.db.models import Sum
+from django.db.models import F, Min, Prefetch, Q, Sum
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import strip_tags
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
@@ -20,10 +23,31 @@ from django.views.decorators.http import require_GET, require_POST, require_http
 from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_quote_input
 from apps.orders.models import Cart, CartItem, Order
 from apps.users.models import Address, City, Province, RoleUser, User
-from apps.shop.models import Category, Product
+from apps.shop.models import Category, Product, ProductImage
 from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorApplication, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from .services import _strict_int, approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_carrier_invoice_payment, record_external_reconciliation, record_full_order_refund, record_gateway_settlement, record_payout_result, trial_balance
 from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
+
+
+SELLABLE_UNIT_COUNTS = {1, 2, 3, 4, 6, 12, 24, 36, 48, 72, 144}
+FIXED_SALE_UNITS = {"عدد": 1, "جفت": 2, "جین": 12}
+ALLOWED_SALE_UNITS = set(FIXED_SALE_UNITS) | {"بسته", "کارتن"}
+
+
+def _validate_sale_pack(sale_unit, units_per_order):
+    unit = " ".join(str(sale_unit or "").split())
+    if unit not in ALLOWED_SALE_UNITS:
+        raise ValidationError({"sale_unit": "واحد فروش را از فهرست انتخاب کن."})
+    try:
+        count = int(units_per_order)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError({"units_per_order": "اندازه واحد فروش معتبر نیست."}) from exc
+    if count not in SELLABLE_UNIT_COUNTS:
+        raise ValidationError({"units_per_order": "اندازه بسته را از فهرست انتخاب کن."})
+    fixed_count = FIXED_SALE_UNITS.get(unit)
+    if fixed_count is not None and count != fixed_count:
+        raise ValidationError({"units_per_order": f"واحد «{unit}» باید دقیقاً شامل {fixed_count} قلم باشد."})
+    return unit, count
 
 
 def _validate_product_upload(uploaded_file):
@@ -208,9 +232,67 @@ def vendor_application_page(request):
     })
 
 
+@require_GET
+def marketplace_storefront_page(request):
+    """Public discovery page for seller-owned listings, distinct from platform catalog pricing."""
+    listings = VendorProduct.objects.filter(
+        status=VendorProduct.Status.ACTIVE,
+        vendor__status=Vendor.Status.ACTIVE,
+        vendor__user__is_active=True,
+        stock_quantity__gt=0,
+        product__is_active=True,
+        product__category__is_active=True,
+    ).annotate(
+        minimum_wholesale_quantity=Min("wholesale_tiers__minimum_quantity"),
+    ).filter(
+        Q(sale_type__in=[VendorProduct.SaleType.RETAIL, VendorProduct.SaleType.BOTH])
+        | Q(stock_quantity__gte=F("minimum_wholesale_quantity"))
+    ).select_related("vendor", "product", "product__category").prefetch_related(
+        Prefetch(
+            "product__images",
+            queryset=ProductImage.objects.order_by("sort_order", "id"),
+            to_attr="marketplace_images",
+        ),
+        "wholesale_tiers",
+    )
+    query = str(request.GET.get("q") or "").strip()[:100]
+    if query:
+        listings = listings.filter(
+            Q(product__name__icontains=query)
+            | Q(vendor__store_name__icontains=query)
+            | Q(product__short_description__icontains=query)
+        )
+    category_slug = str(request.GET.get("category") or "").strip()
+    if category_slug:
+        listings = listings.filter(product__category__slug=category_slug)
+    sale_type = str(request.GET.get("sale_type") or "").strip()
+    if sale_type in VendorProduct.SaleType.values:
+        listings = listings.filter(sale_type=sale_type)
+    sort = str(request.GET.get("sort") or "newest")
+    sort_map = {
+        "newest": ("-created_at", "id"),
+        "price_asc": ("retail_price", "id"),
+        "price_desc": ("-retail_price", "id"),
+        "store": ("vendor__store_name", "product__name"),
+    }
+    listings = listings.order_by(*sort_map.get(sort, sort_map["newest"]))
+    page_obj = Paginator(listings, 12).get_page(request.GET.get("page"))
+    return render(request, "marketplace/storefront.html", {
+        "listings": page_obj.object_list,
+        "page_obj": page_obj,
+        "paginator": page_obj.paginator,
+        "categories": Category.objects.filter(is_active=True).order_by("name"),
+        "query": query,
+        "filter_category": category_slug,
+        "filter_sale_type": sale_type,
+        "filter_sort": sort,
+        "result_count": page_obj.paginator.count,
+    })
+
+
 PORTAL_SECTIONS = {
     "seller-dashboard": ("داشبورد فروشنده", "seller", "نمای کلی فروش، سفارش‌ها و تسویه‌ها."),
-    "new-product": ("ثبت محصول جدید", "seller", "فرم نهایی ثبت محصول در پنل فروشنده در حال تکمیل است."),
+    "new-product": ("ثبت محصول جدید", "seller", "ثبت کالای جدید و تعیین قیمت، موجودی و شرایط عمده در پنل فروشنده."),
     "my-products": ("محصولات من", "seller", "مدیریت آگهی‌ها، قیمت، موجودی و وضعیت تأیید محصولات."),
     "orders-shipping": ("سفارش‌ها و ارسال", "seller", "مدیریت سفارش‌ها، ثبت ارسال و رهگیری مرسوله."),
     "vendor-settlements": ("تسویه‌های من", "seller", "مشاهده تسویه‌ها، مبالغ قابل پرداخت و سوابق پرداخت."),
@@ -235,18 +317,90 @@ def portal_section_page(request, section):
     if audience == "admin":
         if not (request.user.is_staff or request.user.is_superuser):
             return HttpResponseForbidden("دسترسی این بخش فقط برای مدیران مجاز است.")
-    else:
-        try:
-            _vendor_for_user(request.user)
-        except PermissionDenied as exc:
-            return HttpResponseForbidden(str(exc))
-    return render(request, "marketplace/portal_section.html", {
-        "section": section,
-        "section_title": title,
-        "section_description": description,
-        "is_admin_section": audience == "admin",
-        "is_placeholder": True,
-    })
+        admin_anchors = {
+            "trial-balance": "ma-trial-balance",
+            "reconciliation": "ma-reconciliation",
+            "gateway-settlement": "ma-gateway",
+            "carrier-payment": "ma-carrier-payment",
+            "settlement-queue": "ma-settlement-queue",
+            "accounting-overview": "ma-overview",
+        }
+        if section != "accounting-overview":
+            anchor = admin_anchors.get(section, "ma-overview")
+            return redirect(f"{reverse('marketplace:portal_section_page', kwargs={'section': 'accounting-overview'})}#{anchor}")
+        providers = {}
+        for prefix, label in (("TIPAX", "تیپاکس"), ("POST", "شرکت ملی پست")):
+            providers[prefix.lower()] = {
+                "label": label,
+                "base_url": bool(os.environ.get(f"{prefix}_API_BASE_URL", "").strip()),
+                "token": bool(os.environ.get(f"{prefix}_API_TOKEN", "").strip()),
+                "quote_path": bool(os.environ.get(f"{prefix}_QUOTE_PATH", "").strip()),
+                "quote_amount_path": bool(os.environ.get(f"{prefix}_QUOTE_AMOUNT_PATH", "").strip()),
+                "quote_currency_path": bool(os.environ.get(f"{prefix}_QUOTE_CURRENCY_PATH", "").strip()),
+                "amount_divisor": bool(os.environ.get(f"{prefix}_AMOUNT_DIVISOR", "").strip()),
+                "shipment_path": bool(os.environ.get(f"{prefix}_SHIPMENT_PATH", "").strip()),
+                "tracking_path": bool(os.environ.get(f"{prefix}_TRACKING_PATH", "").strip()),
+            }
+        payout_config = {
+            "base_url": bool(os.environ.get("PAYOUT_API_BASE_URL", "").strip()),
+            "token": bool(os.environ.get("PAYOUT_API_TOKEN", "").strip()),
+            "path": bool(os.environ.get("PAYOUT_API_PATH", "").strip()),
+            "amount_multiplier": bool(os.environ.get("PAYOUT_AMOUNT_MULTIPLIER", "").strip()),
+            "currency": bool(os.environ.get("PAYOUT_API_CURRENCY", "").strip()),
+            "reference_path": bool(os.environ.get("PAYOUT_RESPONSE_REFERENCE_PATH", "").strip()),
+            "status_path": bool(os.environ.get("PAYOUT_RESPONSE_STATUS_PATH", "").strip()),
+            "amount_path": bool(os.environ.get("PAYOUT_RESPONSE_AMOUNT_PATH", "").strip()),
+            "currency_path": bool(os.environ.get("PAYOUT_RESPONSE_CURRENCY_PATH", "").strip()),
+        }
+        cutoff = timezone.now() - timedelta(days=30)
+        vendor_summary = {}
+        recent_vendor_orders = VendorOrder.objects.filter(
+            created_at__gte=cutoff,
+        ).exclude(status=VendorOrder.Status.CANCELLED).select_related("vendor").only(
+            "vendor_id", "vendor__store_name", "subtotal", "status", "vendor_payable",
+        )
+        for row in recent_vendor_orders:
+            summary = vendor_summary.setdefault(row.vendor_id, {
+                "store_name": row.vendor.store_name,
+                "sales": 0,
+                "orders": 0,
+                "delivered": 0,
+                "in_progress": 0,
+            })
+            summary["sales"] += int(row.subtotal or 0)
+            summary["orders"] += 1
+            if row.status == VendorOrder.Status.DELIVERED:
+                summary["delivered"] += 1
+            elif row.status not in {VendorOrder.Status.CANCELLED, VendorOrder.Status.DISPUTED}:
+                summary["in_progress"] += 1
+        vendor_sales_summary = sorted(
+            vendor_summary.values(),
+            key=lambda item: (item["sales"], item["orders"]),
+            reverse=True,
+        )[:20]
+        return render(request, "marketplace/admin_accounting.html", {
+            "section": section,
+            "section_title": title,
+            "section_description": description,
+            "carrier_providers": providers,
+            "payout_config": payout_config,
+            "vendor_sales_summary": vendor_sales_summary,
+        })
+    try:
+        _vendor_for_user(request.user)
+    except PermissionDenied as exc:
+        return HttpResponseForbidden(str(exc))
+    seller_anchors = {
+        "seller-dashboard": "vd-overview",
+        "new-product": "vd-new-product-section",
+        "my-products": "vd-products-section",
+        "orders-shipping": "vd-orders-section",
+        "vendor-settlements": "vd-settlements-section",
+        "bank-profile": "vd-financial-section",
+        "shipping-profile": "vd-shipping-section",
+    }
+    anchor = seller_anchors.get(section, "vd-overview")
+    return redirect(f"{reverse('marketplace:vendor_dashboard_page')}#{anchor}")
 
 
 def _vendor_for_user(user):
@@ -482,10 +636,56 @@ def vendor_dashboard_api(request):
             if shipment.payer == Shipment.Payer.VENDOR
         )
     paid = sum(batch.payable_amount for batch in vendor.settlements.filter(status=SettlementBatch.Status.PAID))
+
+    # Real seller sales reporting, derived from immutable paid-order snapshots.
+    sales_since = timezone.now() - timedelta(days=30)
+    recent_orders = list(
+        orders.filter(created_at__gte=sales_since)
+        .exclude(status=VendorOrder.Status.CANCELLED)
+        .only("subtotal", "items_snapshot", "status")
+    )
+    sales_30d = sum(int(row.subtotal or 0) for row in recent_orders)
+    sold_units_30d = 0
+    products = {}
+    for row in recent_orders:
+        snapshot = row.items_snapshot if isinstance(row.items_snapshot, list) else []
+        snapshot_gross = sum(
+            int(item.get("line_total") or 0)
+            for item in snapshot if isinstance(item, dict)
+        )
+        # Distribute order-level discounts proportionally so product revenue
+        # reconciles to the actual vendor-order subtotal.
+        remaining_revenue = int(row.subtotal or 0)
+        remaining_gross = snapshot_gross
+        for index, item in enumerate(snapshot):
+            if not isinstance(item, dict):
+                continue
+            quantity = max(0, int(item.get("quantity") or 0))
+            gross = max(0, int(item.get("line_total") or 0))
+            sold_units_30d += quantity
+            if remaining_gross <= 0:
+                allocated = 0
+            elif index == len(snapshot) - 1:
+                allocated = remaining_revenue
+            else:
+                allocated = min(remaining_revenue, gross * int(row.subtotal or 0) // snapshot_gross)
+            remaining_revenue -= allocated
+            remaining_gross -= gross
+            key = str(item.get("vendor_product_id") or item.get("product_id") or item.get("product_name") or "unknown")
+            entry = products.setdefault(key, {
+                "name": str(item.get("product_name") or "محصول بدون نام"),
+                "quantity": 0,
+                "revenue": 0,
+            })
+            entry["quantity"] += quantity
+            entry["revenue"] += allocated
+    top_products = sorted(products.values(), key=lambda item: (item["quantity"], item["revenue"]), reverse=True)[:5]
+
     return JsonResponse({
         "ok": True,
         "vendor": {"id": vendor.id, "store_name": vendor.store_name, "status": vendor.status},
         "orders": {"pending_fulfilment": pending, "delivered": delivered, "total": orders.count()},
+        "sales": {"last_30_days": sales_30d, "sold_units_last_30_days": sold_units_30d, "top_products": top_products},
         "settlement": {"pending_amount": payable, "paid_amount": paid, "currency": "IRT"},
     })
 
@@ -616,6 +816,15 @@ def vendor_product_submissions_api(request):
             return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
         wholesale_minimum = int(request.POST.get("wholesale_minimum_quantity", 0) or 0)
         wholesale_price = int(request.POST.get("wholesale_unit_price", 0) or 0)
+        if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} and wholesale_minimum not in SELLABLE_UNIT_COUNTS:
+            return _error("حداقل تعداد عمده را از فهرست انتخاب کن.")
+        try:
+            sale_unit, units_per_order = _validate_sale_pack(
+                request.POST.get("sale_unit", "عدد"),
+                request.POST.get("units_per_order", 1),
+            )
+        except ValidationError as exc:
+            return _error(exc)
         submission = VendorProductSubmission(
             vendor=vendor,
             category=category,
@@ -628,8 +837,8 @@ def vendor_product_submissions_api(request):
             sale_type=sale_type,
             wholesale_minimum_quantity=wholesale_minimum if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} else None,
             wholesale_unit_price=wholesale_price if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} else None,
-            sale_unit=request.POST.get("sale_unit", "عدد").strip(),
-            units_per_order=int(request.POST.get("units_per_order", 1)),
+            sale_unit=sale_unit,
+            units_per_order=units_per_order,
             stock_quantity=int(request.POST.get("stock_quantity", 0)),
             weight_grams=int(request.POST.get("weight_grams", 0)),
             package_length_cm=int(request.POST.get("package_length_cm", 0)),
@@ -734,8 +943,17 @@ def vendor_products_api(request):
             return _error("برای ثبت فروش عمده از فیلدهای نوع فروش و قیمت عمده استفاده کن.")
         wholesale_minimum = _strict_int(payload.get("wholesale_minimum_quantity", 0), "حداقل تعداد عمده") if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} else 0
         wholesale_price = _strict_int(payload.get("wholesale_unit_price", 0), "قیمت واحد عمده") if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} else 0
-        if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and (wholesale_minimum < 2 or wholesale_price < 1):
-            return _error("برای فروش عمده، حداقل تعداد (۲ یا بیشتر) و قیمت واحد عمده را وارد کن.")
+        if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and wholesale_minimum not in SELLABLE_UNIT_COUNTS:
+            return _error("حداقل تعداد عمده را از فهرست انتخاب کن.")
+        if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and (wholesale_minimum < 1 or wholesale_price < 1):
+            return _error("برای فروش عمده، حداقل یک واحد فروش و قیمت واحد عمده را وارد کن.")
+        try:
+            sale_unit, units_per_order = _validate_sale_pack(
+                payload.get("sale_unit", "عدد"),
+                payload.get("units_per_order", 1),
+            )
+        except ValidationError as exc:
+            return _error(exc)
         retail_price = _strict_int(payload.get("retail_price", 0), "قیمت فروش")
         if wholesale_price and wholesale_price > retail_price:
             return _error("قیمت واحد عمده نباید از قیمت تکی بیشتر باشد.")
@@ -746,8 +964,8 @@ def vendor_products_api(request):
             sale_type=sale_type,
             retail_price=retail_price,
             compare_at_price=None if payload.get("compare_at_price") in (None, "") else _strict_int(payload.get("compare_at_price"), "قیمت قبل از تخفیف"),
-            sale_unit=str(payload.get("sale_unit", "عدد")).strip(),
-            units_per_order=_strict_int(payload.get("units_per_order", 1), "تعداد اقلام در واحد فروش"),
+            sale_unit=sale_unit,
+            units_per_order=units_per_order,
             stock_quantity=_strict_int(payload.get("stock_quantity", 0), "موجودی"),
             wholesale_enabled=payload.get("wholesale_enabled") is True,
             supports_custom_printing=payload.get("supports_custom_printing") is True,
@@ -784,7 +1002,7 @@ def vendor_product_update_api(request, listing_id):
         with transaction.atomic():
             listing = get_object_or_404(VendorProduct.objects.select_for_update(), pk=listing_id, vendor=vendor)
             allowed = {
-                "retail_price", "compare_at_price", "sale_unit", "units_per_order",
+                "retail_price", "compare_at_price", "sale_type", "sale_unit", "units_per_order",
                 "stock_quantity", "supports_custom_printing",
                 "weight_grams", "package_length_cm", "package_width_cm",
                 "package_height_cm", "handling_days",
@@ -792,9 +1010,24 @@ def vendor_product_update_api(request, listing_id):
             unknown = set(payload) - allowed
             if unknown:
                 return _error("فیلدهای غیرمجاز: " + ", ".join(sorted(unknown)))
+            if "sale_unit" in payload or "units_per_order" in payload:
+                candidate_unit = payload.get("sale_unit", listing.sale_unit)
+                candidate_count = payload.get("units_per_order", listing.units_per_order)
+                if str(candidate_unit).strip() != listing.sale_unit or str(candidate_count) != str(listing.units_per_order):
+                    try:
+                        payload["sale_unit"], payload["units_per_order"] = _validate_sale_pack(
+                            candidate_unit,
+                            candidate_count,
+                        )
+                    except ValidationError as exc:
+                        return _error(exc)
+                else:
+                    # Preserve unchanged legacy units so sellers can still update stock/price.
+                    payload["sale_unit"] = listing.sale_unit
+                    payload["units_per_order"] = listing.units_per_order
             review_required = False
             review_fields = {
-                "retail_price", "compare_at_price", "sale_unit", "units_per_order",
+                "retail_price", "compare_at_price", "sale_type", "sale_unit", "units_per_order",
                 "supports_custom_printing", "weight_grams",
                 "package_length_cm", "package_width_cm", "package_height_cm", "handling_days",
             }
@@ -802,6 +1035,14 @@ def vendor_product_update_api(request, listing_id):
                 value = payload[field]
                 if field in {"retail_price", "units_per_order", "stock_quantity", "weight_grams", "package_length_cm", "package_width_cm", "package_height_cm", "handling_days"}:
                     value = _strict_int(value, field)
+                elif field == "sale_type":
+                    value = str(value or "").strip()
+                    if value not in VendorProduct.SaleType.values:
+                        return _error("نوع فروش را از فهرست انتخاب کن.")
+                    if value in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and vendor.seller_type == Vendor.SellerType.RETAIL:
+                        return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
+                    if value in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and not listing.wholesale_tiers.exists():
+                        return _error("ابتدا حداقل یک پله قیمت عمده ثبت کن.")
                 elif field == "sale_unit":
                     value = str(value or "").strip()
                 elif field == "compare_at_price":
@@ -812,6 +1053,10 @@ def vendor_product_update_api(request, listing_id):
                 if field in review_fields and getattr(listing, field) != value:
                     review_required = True
                 setattr(listing, field, value)
+            if listing.sale_type == VendorProduct.SaleType.RETAIL:
+                listing.wholesale_enabled = False
+            elif listing.sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH}:
+                listing.wholesale_enabled = True
             if listing.status == VendorProduct.Status.ACTIVE and review_required:
                 listing.status = VendorProduct.Status.PENDING
             listing.full_clean()
@@ -888,17 +1133,22 @@ def vendor_wholesale_tier_api(request, listing_id):
             )
             if listing.status not in {VendorProduct.Status.ACTIVE, VendorProduct.Status.PENDING, VendorProduct.Status.DRAFT}:
                 return _error("وضعیت فعلی محصول اجازه تغییر قیمت عمده را نمی‌دهد.", 409)
+            minimum_quantity = _strict_int(payload.get("minimum_quantity", 0), "حداقل تعداد عمده")
+            if minimum_quantity not in SELLABLE_UNIT_COUNTS:
+                return _error("حداقل تعداد عمده را از فهرست انتخاب کن.")
             tier = WholesalePriceTier(
                 listing=listing,
-                minimum_quantity=_strict_int(payload.get("minimum_quantity", 0), "حداقل تعداد عمده"),
+                minimum_quantity=minimum_quantity,
                 unit_price=_strict_int(payload.get("unit_price", 0), "قیمت واحد عمده"),
             )
             tier.full_clean()
             tier.save()
             listing.wholesale_enabled = True
+            if listing.sale_type == VendorProduct.SaleType.RETAIL:
+                listing.sale_type = VendorProduct.SaleType.BOTH
             if listing.status == VendorProduct.Status.ACTIVE:
                 listing.status = VendorProduct.Status.PENDING
-            listing.save(update_fields=("wholesale_enabled", "status", "updated_at"))
+            listing.save(update_fields=("wholesale_enabled", "sale_type", "status", "updated_at"))
         return JsonResponse({"ok": True, "tier_id": tier.id, "minimum_quantity": tier.minimum_quantity, "unit_price": tier.unit_price}, status=201)
     except PermissionDenied as exc:
         return _error(exc, 403)
@@ -924,14 +1174,18 @@ def vendor_wholesale_tier_detail_api(request, tier_id):
                 tier.delete()
                 if not listing.wholesale_tiers.exists():
                     listing.wholesale_enabled = False
+                    listing.sale_type = VendorProduct.SaleType.RETAIL
                 listing.status = VendorProduct.Status.PENDING
-                listing.save(update_fields=("wholesale_enabled", "status", "updated_at"))
+                listing.save(update_fields=("wholesale_enabled", "sale_type", "status", "updated_at"))
                 return JsonResponse({"ok": True, "message": "پله عمده حذف شد و تغییرات برای بررسی ارسال شد."})
             payload = _json_body(request)
             if set(payload) - {"minimum_quantity", "unit_price"} or not payload:
                 return _error("فقط حداقل تعداد و قیمت واحد قابل ویرایش است.")
             if "minimum_quantity" in payload:
-                tier.minimum_quantity = _strict_int(payload["minimum_quantity"], "حداقل تعداد عمده")
+                minimum_quantity = _strict_int(payload["minimum_quantity"], "حداقل تعداد عمده")
+                if minimum_quantity not in SELLABLE_UNIT_COUNTS:
+                    return _error("حداقل تعداد عمده را از فهرست انتخاب کن.")
+                tier.minimum_quantity = minimum_quantity
             if "unit_price" in payload:
                 tier.unit_price = _strict_int(payload["unit_price"], "قیمت واحد عمده")
             tier.full_clean()
@@ -963,8 +1217,9 @@ def vendor_wholesale_tier_delete_api(request, tier_id):
             tier.delete()
             if not listing.wholesale_tiers.exists():
                 listing.wholesale_enabled = False
+                listing.sale_type = VendorProduct.SaleType.RETAIL
             listing.status = VendorProduct.Status.PENDING
-            listing.save(update_fields=("wholesale_enabled", "status", "updated_at"))
+            listing.save(update_fields=("wholesale_enabled", "sale_type", "status", "updated_at"))
         return JsonResponse({"ok": True, "deleted": True})
     except PermissionDenied as exc:
         return _error(exc, 403)
@@ -1524,8 +1779,24 @@ def carrier_invoice_payment_api(request):
 
 
 @staff_member_required
-@require_POST
+@require_http_methods(["GET", "POST"])
 def external_reconciliation_api(request):
+    if request.method == "GET":
+        records = FinancialReconciliation.objects.select_related("recorded_by").order_by("-created_at")[:100]
+        return JsonResponse({"ok": True, "results": [{
+            "uuid": str(record.uuid),
+            "source": record.source,
+            "source_label": record.get_source_display(),
+            "external_reference": record.external_reference,
+            "internal_reference": record.internal_reference,
+            "expected_amount": record.expected_amount,
+            "actual_amount": record.actual_amount,
+            "currency": record.currency,
+            "status": record.status,
+            "status_label": record.get_status_display(),
+            "delta": None if record.expected_amount is None or record.actual_amount is None else record.actual_amount - record.expected_amount,
+            "created_at": record.created_at.isoformat(),
+        } for record in records]})
     try:
         payload = _json_body(request)
         source = str(payload.get("source", ""))

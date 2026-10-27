@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% load static shop_tags %}
+{% block title %}بازار فروشندگان | BABAEI{% endblock %}
+{% block meta_description %}مقایسه قیمت و موجودی محصولات فروشندگان تأییدشده در بازار فروشندگان BABAEI.{% endblock %}
+{% block body_class %}shop-page{% endblock %}
+{% block common_page_css %}{% endblock %}
+{% block site_optional_css %}
+<link rel="stylesheet" href="{% static 'css/storefront.css' %}?v=10">
+<link rel="stylesheet" href="{% static 'css/pages/shop-reference.css' %}?v=9">
+<style>
+.marketplace-store{max-width:1320px;margin:0 auto;padding:34px 20px 60px;color:var(--text-primary,#f4efe8)}
+.marketplace-store__head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;flex-wrap:wrap;margin-bottom:20px}
+.marketplace-store__head h1{margin:0;font-size:clamp(25px,3vw,38px)}
+.marketplace-store__head p{max-width:680px;color:var(--text-secondary,#aaa39a);line-height:1.9;margin:8px 0 0}
+.marketplace-store__filters{display:grid;grid-template-columns:minmax(180px,2fr) repeat(3,minmax(140px,1fr)) auto;gap:9px;padding:14px;margin-bottom:20px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:#101010}
+.marketplace-store__filters input,.marketplace-store__filters select{width:100%;min-width:0;min-height:42px;padding:9px 11px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:#080808;color:#f4efe8;font:inherit}
+.marketplace-store__filters button{min-height:42px;padding:8px 16px;border:1px solid #d2ad5f;border-radius:8px;background:#d2ad5f;color:#17120b;font-weight:800;cursor:pointer}
+.marketplace-store__count{color:#918c84;font-size:12px;margin-bottom:12px}
+.marketplace-store__products{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.marketplace-store__card{min-width:0;overflow:hidden;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:#101010}
+.marketplace-store__image{display:block;aspect-ratio:4/5;overflow:hidden;background:#151515}
+.marketplace-store__image img{width:100%;height:100%;object-fit:cover;display:block}
+.marketplace-store__body{padding:13px}
+.marketplace-store__body h2{font-size:15px;margin:0 0 8px}
+.marketplace-store__seller{display:inline-block;color:#d2ad5f;font-size:11px;margin-bottom:10px}
+.marketplace-store__price{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin:5px 0 9px}
+.marketplace-store__price strong{font-size:19px;color:#f4efe8}
+.marketplace-store__price del{color:#918c84;font-size:12px}
+.marketplace-store__meta{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.marketplace-store__pill{padding:4px 7px;border:1px solid rgba(210,173,95,.22);border-radius:6px;color:#d2ad5f;background:rgba(210,173,95,.08);font-size:10px}
+.marketplace-store__tier{font-size:11px;color:#aaa39a;line-height:1.8}
+.marketplace-store__cta{display:flex;justify-content:center;align-items:center;min-height:38px;margin-top:12px;border:1px solid #d2ad5f;border-radius:8px;color:#d2ad5f;text-decoration:none;font-size:12px;font-weight:800}
+.marketplace-store__cta:hover{background:rgba(210,173,95,.1)}
+.marketplace-store__empty{grid-column:1/-1;padding:32px;border:1px dashed rgba(255,255,255,.16);border-radius:12px;color:#918c84;text-align:center}
+.marketplace-store__pagination{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:22px}
+.marketplace-store__pagination a,.marketplace-store__pagination span{padding:8px 12px;border:1px solid rgba(255,255,255,.12);border-radius:7px;color:#d2ad5f;text-decoration:none}
+@media(max-width:1000px){.marketplace-store__products{grid-template-columns:repeat(3,minmax(0,1fr))}.marketplace-store__filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.marketplace-store{padding:24px 12px 40px}.marketplace-store__products{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.marketplace-store__body{padding:10px}.marketplace-store__body h2{font-size:13px}.marketplace-store__price strong{font-size:16px}.marketplace-store__filters{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<main class="marketplace-store">
+    <header class="marketplace-store__head">
+        <div>
+            <span class="marketplace-store__seller">BABAEI / SELLER MARKETPLACE</span>
+            <h1>بازار فروشندگان</h1>
+            <p>اینجا پیشنهادهای فروشگاه‌های تأییدشده را جدا از کاتالوگ اصلی می‌بینی؛ قیمت، موجودی، نوع فروش و شرایط عمده برای هر فروشنده نمایش داده می‌شود.</p>
+        </div>
+        <span class="marketplace-store__count">{{ result_count|price }} پیشنهاد فعال</span>
+    </header>
+    <form class="marketplace-store__filters" method="get" action="{% url 'marketplace:storefront' %}">
+        <input type="search" name="q" value="{{ query }}" placeholder="جستجوی محصول یا فروشگاه…" aria-label="جستجوی محصول یا فروشگاه">
+        <select name="category" aria-label="دسته‌بندی">
+            <option value="">همه دسته‌بندی‌ها</option>
+            {% for category in categories %}<option value="{{ category.slug }}" {% if filter_category == category.slug %}selected{% endif %}>{{ category.name }}</option>{% endfor %}
+        </select>
+        <select name="sale_type" aria-label="نوع فروش">
+            <option value="">همه روش‌های فروش</option>
+            <option value="retail" {% if filter_sale_type == "retail" %}selected{% endif %}>فقط تکی</option>
+            <option value="wholesale" {% if filter_sale_type == "wholesale" %}selected{% endif %}>فقط عمده</option>
+            <option value="both" {% if filter_sale_type == "both" %}selected{% endif %}>تکی و عمده</option>
+        </select>
+        <select name="sort" aria-label="مرتب‌سازی">
+            <option value="newest" {% if filter_sort == "newest" %}selected{% endif %}>جدیدترین پیشنهادها</option>
+            <option value="price_asc" {% if filter_sort == "price_asc" %}selected{% endif %}>ارزان‌ترین قیمت</option>
+            <option value="price_desc" {% if filter_sort == "price_desc" %}selected{% endif %}>گران‌ترین قیمت</option>
+            <option value="store" {% if filter_sort == "store" %}selected{% endif %}>نام فروشگاه</option>
+        </select>
+        <button type="submit">اعمال فیلتر</button>
+    </form>
+    <div class="marketplace-store__products">
+        {% for listing in listings %}
+        <article class="marketplace-store__card">
+            <a class="marketplace-store__image" href="{% url 'shop:product' listing.product.slug %}" aria-label="{{ listing.product.name }}">
+                {% with image=listing.product.marketplace_images.0 %}
+                    {% if image %}<img src="{{ image.image.url }}" alt="{{ image.alt_text|default:listing.product.name }}" loading="lazy" decoding="async">
+                    {% else %}<img src="{% static 'images/cards/fallback.webp' %}" alt="{{ listing.product.name }}" loading="lazy" decoding="async">{% endif %}
+                {% endwith %}
+            </a>
+            <div class="marketplace-store__body">
+                <h2><a href="{% url 'shop:product' listing.product.slug %}">{{ listing.product.name }}</a></h2>
+                <span class="marketplace-store__seller">{{ listing.vendor.store_name }}</span>
+                <div class="marketplace-store__price">
+                    {% if listing.sale_type == "wholesale" and listing.wholesale_tiers.all %}
+                        <strong>{{ listing.wholesale_tiers.all.0.unit_price|price }}</strong><span>تومان / {{ listing.sale_unit }} · قیمت عمده</span>
+                    {% else %}
+                        <strong>{{ listing.retail_price|price }}</strong><span>تومان / {{ listing.sale_unit }}</span>{% if listing.compare_at_price %}<del>{{ listing.compare_at_price|price }}</del>{% endif %}
+                    {% endif %}
+                </div>
+                <div class="marketplace-store__meta">
+                    <span class="marketplace-store__pill">{{ listing.get_sale_type_display }}</span>
+                    <span class="marketplace-store__pill">موجودی: {{ listing.stock_quantity|price }} واحد</span>
+                    {% if listing.units_per_order > 1 %}<span class="marketplace-store__pill">هر واحد {{ listing.units_per_order|price }} عدد</span>{% endif %}
+                </div>
+                {% if listing.wholesale_enabled and listing.wholesale_tiers.all %}
+                    <div class="marketplace-store__tier">
+                        {% for tier in listing.wholesale_tiers.all %}از {{ tier.minimum_quantity|price }} واحد: {{ tier.unit_price|price }} تومان برای هر واحد{% if not forloop.last %}<br>{% endif %}{% endfor %}
+                    </div>
+                {% endif %}
+                <a class="marketplace-store__cta" href="{% url 'shop:product' listing.product.slug %}">مشاهده محصول و انتخاب فروشنده</a>
+            </div>
+        </article>
+        {% empty %}
+        <div class="marketplace-store__empty">هنوز پیشنهاد فعال فروشنده‌ای برای نمایش وجود ندارد. پس از تأیید محصول و فعال‌شدن موجودی، پیشنهاد در همین صفحه دیده می‌شود.</div>
+        {% endfor %}
+    </div>
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="marketplace-store__pagination" aria-label="صفحه‌بندی">
+        {% if page_obj.has_previous %}<a href="?q={{ query|urlencode }}&category={{ filter_category|urlencode }}&sale_type={{ filter_sale_type|urlencode }}&sort={{ filter_sort|urlencode }}&page={{ page_obj.previous_page_number }}">قبلی</a>{% endif %}
+        <span>صفحه {{ page_obj.number|price }} از {{ page_obj.paginator.num_pages|price }}</span>
+        {% if page_obj.has_next %}<a href="?q={{ query|urlencode }}&category={{ filter_category|urlencode }}&sale_type={{ filter_sale_type|urlencode }}&sort={{ filter_sort|urlencode }}&page={{ page_obj.next_page_number }}">بعدی</a>{% endif %}
+    </nav>
+    {% endif %}
+</main>
+{% endblock %}

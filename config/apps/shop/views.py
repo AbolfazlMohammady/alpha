@@ -614,10 +614,17 @@ class ProductDetailView(DetailView):
             .prefetch_related("wholesale_tiers")
             .order_by("retail_price", "id")
         )
+        for listing in vendor_listings:
+            tiers = list(listing.wholesale_tiers.all())
+            listing.minimum_wholesale_quantity = tiers[0].minimum_quantity if tiers else 1
+            listing.minimum_order_unavailable = (
+                listing.sale_type == VendorProduct.SaleType.WHOLESALE
+                and listing.stock_quantity < listing.minimum_wholesale_quantity
+            )
         context["vendor_listings"] = vendor_listings
         context["marketplace_unavailable"] = (
             self.object.marketplace_only
-            and not any(listing.stock_quantity > 0 for listing in vendor_listings)
+            and not any(listing.stock_quantity > 0 and not listing.minimum_order_unavailable for listing in vendor_listings)
         )
         cart_listing_data = {}
         listing_ids = [listing.id for listing in vendor_listings]

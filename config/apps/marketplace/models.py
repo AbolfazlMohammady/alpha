@@ -147,6 +147,10 @@ class VendorProduct(models.Model):
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
         if self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH} and self.vendor.seller_type == Vendor.SellerType.RETAIL:
             raise ValidationError({"sale_type": "این فروشگاه فقط مجوز خرده‌فروشی دارد."})
+        if self.sale_type == self.SaleType.RETAIL and self.wholesale_enabled:
+            raise ValidationError({"wholesale_enabled": "برای فروش تکی، فروش عمده باید غیرفعال باشد."})
+        if self.pk and self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH} and not self.wholesale_tiers.exists():
+            raise ValidationError({"sale_type": "برای فعال‌کردن فروش عمده، حداقل یک پله قیمت عمده لازم است."})
         if self.wholesale_enabled and self.vendor.seller_type == Vendor.SellerType.RETAIL:
             raise ValidationError({"wholesale_enabled": "فروشگاه شما برای فروش عمده تأیید نشده است."})
         if self.supports_custom_printing and not self.vendor.supports_custom_printing:
@@ -159,7 +163,7 @@ class VendorProduct(models.Model):
             raise ValidationError({
                 "wholesale_enabled": "برای فعال‌کردن فروش عمده، حداقل یک پله قیمت عمده ثبت کن."
             })
-        if self.pk and self.wholesale_tiers.filter(unit_price__gt=self.retail_price).exists():
+        if self.pk and self.wholesale_enabled and self.wholesale_tiers.filter(unit_price__gt=self.retail_price).exists():
             raise ValidationError({
                 "retail_price": "قیمت خرده‌فروشی نمی‌تواند کمتر از قیمت هیچ‌یک از پله‌های عمده باشد."
             })
@@ -170,7 +174,7 @@ class VendorProduct(models.Model):
 
 class WholesalePriceTier(models.Model):
     listing = models.ForeignKey(VendorProduct, on_delete=models.CASCADE, related_name="wholesale_tiers")
-    minimum_quantity = models.PositiveIntegerField(validators=[MinValueValidator(2)])
+    minimum_quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     unit_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -178,7 +182,7 @@ class WholesalePriceTier(models.Model):
         ordering = ("minimum_quantity",)
         constraints = [
             models.UniqueConstraint(fields=("listing", "minimum_quantity"), name="unique_wholesale_quantity_tier"),
-            models.CheckConstraint(check=Q(minimum_quantity__gte=2), name="wholesale_min_qty_gte_two"),
+            models.CheckConstraint(check=Q(minimum_quantity__gte=1), name="wholesale_min_qty_gte_one"),
             models.CheckConstraint(check=Q(unit_price__gt=0), name="wholesale_unit_price_gt_zero"),
         ]
 
@@ -673,7 +677,7 @@ class VendorProductSubmission(models.Model):
     sale_type = models.CharField(max_length=12, choices=SaleType.choices, default=SaleType.RETAIL)
     retail_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
     compare_at_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
-    wholesale_minimum_quantity = models.PositiveIntegerField(null=True, blank=True, validators=[MinValueValidator(2)])
+    wholesale_minimum_quantity = models.PositiveIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
     wholesale_unit_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
     sale_unit = models.CharField(max_length=40, default="عدد",)
     units_per_order = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)],)
@@ -726,8 +730,8 @@ class VendorProductSubmission(models.Model):
         if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
         if self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH}:
-            if not self.wholesale_minimum_quantity or self.wholesale_minimum_quantity < 2:
-                raise ValidationError({"wholesale_minimum_quantity": "حداقل تعداد عمده باید حداقل ۲ باشد."})
+            if self.wholesale_minimum_quantity is None or self.wholesale_minimum_quantity < 1:
+                raise ValidationError({"wholesale_minimum_quantity": "حداقل واحد فروش عمده باید حداقل ۱ باشد."})
             if not self.wholesale_unit_price or self.wholesale_unit_price > self.retail_price:
                 raise ValidationError({"wholesale_unit_price": "قیمت واحد عمده باید مثبت و از قیمت نهایی تکی بیشتر نباشد."})
         elif self.wholesale_minimum_quantity or self.wholesale_unit_price:

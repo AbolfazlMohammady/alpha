@@ -292,7 +292,9 @@ class PortalPlaceholderAccessTests(TestCase):
         user = get_user_model().objects.create_user(phone="+989121234576", role=RoleUser.STORE_MANAGER)
         self.client.force_login(user)
         response = self.client.get(reverse("marketplace:portal_section_page", args=["new-product"]))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("marketplace:vendor_dashboard_page"), response["Location"])
+        self.assertIn("#vd-new-product-section", response["Location"])
 
     def test_customer_cannot_open_seller_placeholder(self):
         user = get_user_model().objects.create_user(phone="+989121234577", role=RoleUser.CUSTOMER)

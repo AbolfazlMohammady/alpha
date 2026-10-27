@@ -77,6 +77,26 @@
       </div>
       {% endif %}
 
+      {% if request.user.is_superuser or request.user.is_staff %}
+      <div class="cc-section">مارکت‌پلیس و حسابداری</div>
+      <div class="cc-nav-group">
+        <a class="cc-nav-item" href="{% url 'marketplace:portal_section_page' 'accounting-overview' %}">
+          <span>₮</span><em>حسابداری مارکت‌پلیس</em>
+        </a>
+        <a class="cc-nav-item" href="{% url 'marketplace:portal_section_page' 'settlement-queue' %}">
+          <span>⇄</span><em>صف تسویه فروشندگان</em>
+        </a>
+      </div>
+      {% endif %}
+      {% if request.user.role == 'store_manager' %}
+      <div class="cc-section">پنل فروشنده</div>
+      <div class="cc-nav-group">
+        <a class="cc-nav-item" href="{% url 'marketplace:vendor_dashboard_page' %}">
+          <span>▣</span><em>داشبورد فروشنده</em>
+        </a>
+      </div>
+      {% endif %}
+
       {% if request.user.is_superuser %}
       <div class="cc-section">سیستم</div>
       <div class="cc-nav-group">

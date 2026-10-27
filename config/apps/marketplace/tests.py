@@ -1180,10 +1180,12 @@ class VendorPickupLocationSelectionTests(TestCase):
     def test_vendor_dashboard_uses_existing_province_and_city_lists(self):
         response = self.client.get("/marketplace/vendor/dashboard/")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'data-vd-picker="province"')
-        self.assertContains(response, 'data-vd-picker="city"')
+        self.assertContains(response, 'name="pickup_province_id"')
+        self.assertContains(response, 'name="pickup_city_id"')
+        self.assertContains(response, f'data-province="{self.province.id}"')
         self.assertContains(response, self.province.name)
         self.assertContains(response, self.city.name)
+        self.assertContains(response, "filterCities(false)")
 
 
 class VendorProductParcelDetailsWorkflowTests(TestCase):
@@ -1267,7 +1269,7 @@ class VendorSaleModeApiTests(TestCase):
                 "units_per_order": 1,
                 "stock_quantity": 20,
                 "wholesale_enabled": False,
-                "wholesale_minimum_quantity": 5,
+                "wholesale_minimum_quantity": 6,
                 "wholesale_unit_price": 800,
                 "supports_custom_printing": False,
                 "handling_days": 2,
@@ -1281,8 +1283,62 @@ class VendorSaleModeApiTests(TestCase):
         self.assertEqual(listing.compare_at_price, 1000)
         self.assertTrue(listing.wholesale_enabled)
         tier = listing.wholesale_tiers.get()
-        self.assertEqual(tier.minimum_quantity, 5)
+        self.assertEqual(tier.minimum_quantity, 6)
         self.assertEqual(tier.unit_price, 800)
+
+    def test_adding_a_wholesale_tier_promotes_retail_listing_to_both(self):
+        create_response = self.client.post(
+            "/marketplace/api/vendor/products/",
+            data={
+                "product_id": self.product.pk,
+                "sale_type": "retail",
+                "retail_price": 1000,
+                "sale_unit": "عدد",
+                "units_per_order": 1,
+                "stock_quantity": 20,
+                "supports_custom_printing": False,
+                "handling_days": 2,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(create_response.status_code, 201, create_response.content)
+        listing = VendorProduct.objects.get(vendor=self.vendor, product=self.product)
+        tier_response = self.client.post(
+            f"/marketplace/api/vendor/products/{listing.pk}/wholesale/",
+            data={"minimum_quantity": 6, "unit_price": 800},
+            content_type="application/json",
+        )
+        self.assertEqual(tier_response.status_code, 201, tier_response.content)
+        listing.refresh_from_db()
+        self.assertEqual(listing.sale_type, VendorProduct.SaleType.BOTH)
+        self.assertTrue(listing.wholesale_enabled)
+        self.assertEqual(listing.wholesale_tiers.get().minimum_quantity, 6)
+
+    def test_wholesale_listing_can_sell_one_dozen_pack(self):
+        response = self.client.post(
+            "/marketplace/api/vendor/products/",
+            data={
+                "product_id": self.product.pk,
+                "sale_type": "wholesale",
+                "retail_price": 12000,
+                "sale_unit": "جین",
+                "units_per_order": 12,
+                "stock_quantity": 10,
+                "wholesale_enabled": False,
+                "wholesale_minimum_quantity": 1,
+                "wholesale_unit_price": 10000,
+                "supports_custom_printing": False,
+                "handling_days": 2,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201, response.content)
+        listing = VendorProduct.objects.get(vendor=self.vendor, product=self.product)
+        self.assertEqual(listing.sale_unit, "جین")
+        self.assertEqual(listing.units_per_order, 12)
+        tier = listing.wholesale_tiers.get()
+        self.assertEqual(tier.minimum_quantity, 1)
+        self.assertEqual(tier.unit_price, 10000)
 
     def test_retail_only_vendor_cannot_create_wholesale_listing(self):
         self.vendor.seller_type = Vendor.SellerType.RETAIL
@@ -1306,3 +1362,95 @@ class VendorSaleModeApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
         self.assertFalse(VendorProduct.objects.filter(vendor=self.vendor, product=self.product).exists())
+
+
+class SellerPackChoiceValidationTests(TestCase):
+    def test_fixed_units_map_to_known_physical_quantities(self):
+        from .views import _validate_sale_pack
+
+        self.assertEqual(_validate_sale_pack("عدد", 1), ("عدد", 1))
+        self.assertEqual(_validate_sale_pack("جفت", 2), ("جفت", 2))
+        self.assertEqual(_validate_sale_pack("جین", 12), ("جین", 12))
+
+    def test_fixed_unit_rejects_inconsistent_quantity(self):
+        from .views import _validate_sale_pack
+
+        with self.assertRaises(ValidationError):
+            _validate_sale_pack("جین", 6)
+
+    def test_arbitrary_unit_and_pack_sizes_are_rejected(self):
+        from .views import _validate_sale_pack
+
+        with self.assertRaises(ValidationError):
+            _validate_sale_pack("هرچی", 1)
+        with self.assertRaises(ValidationError):
+            _validate_sale_pack("بسته", 7)
+
+    def test_one_sellable_unit_can_be_wholesale_minimum(self):
+        from .views import _validate_sale_pack
+
+        self.assertEqual(_validate_sale_pack("جین", 12), ("جین", 12))
+        self.assertTrue(any(getattr(validator, "limit_value", None) == 1 for validator in WholesalePriceTier._meta.get_field("minimum_quantity").validators))
+
+
+class MarketplaceOperationalPagesTests(TestCase):
+    def test_public_marketplace_page_is_available_without_login(self):
+        response = self.client.get("/marketplace/store/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "بازار فروشندگان")
+
+    def test_public_marketplace_displays_seller_price_and_wholesale_terms(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234573",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        vendor = Vendor.objects.create(
+            user=user,
+            store_name="فروشگاه بازار آزمایشی",
+            slug="marketplace-storefront-test-vendor",
+            status=Vendor.Status.ACTIVE,
+            seller_type=Vendor.SellerType.BOTH,
+        )
+        category = Category.objects.create(name="دسته بازار آزمایشی", slug="marketplace-storefront-test-category")
+        product = Product.objects.create(
+            category=category,
+            name="شلوار جین عمده",
+            slug="marketplace-storefront-test-product",
+            base_price=20000,
+            is_active=True,
+        )
+        listing = VendorProduct.objects.create(
+            vendor=vendor,
+            product=product,
+            status=VendorProduct.Status.ACTIVE,
+            sale_type=VendorProduct.SaleType.WHOLESALE,
+            retail_price=12000,
+            sale_unit="جین",
+            units_per_order=12,
+            stock_quantity=10,
+        )
+        tier = WholesalePriceTier(listing=listing, minimum_quantity=1, unit_price=10000)
+        tier.full_clean()
+        tier.save()
+        listing.wholesale_enabled = True
+        listing.save(update_fields=("wholesale_enabled", "updated_at"))
+        response = self.client.get("/marketplace/store/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "فروشگاه بازار آزمایشی")
+        self.assertContains(response, "شلوار جین عمده")
+        self.assertContains(response, "۱۰,۰۰۰")
+        self.assertContains(response, "قیمت عمده")
+
+    def test_admin_accounting_portal_is_not_a_placeholder(self):
+        user = get_user_model().objects.create_user(
+            phone="+989121234572",
+            password="test-password",
+            is_staff=True,
+        )
+        self.client.force_login(user)
+        response = self.client.get("/marketplace/portal/accounting-overview/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "marketplace/admin_accounting.html")
+        self.assertContains(response, "تراز آزمایشی دفترکل")
+        self.assertNotContains(response, "در حال تکمیل است")
