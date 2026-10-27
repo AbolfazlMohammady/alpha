@@ -55,6 +55,7 @@
         if (!option) {
             if (saleUnitEl) { saleUnitEl.textContent = ""; saleUnitEl.hidden = true; }
             if (quantityLabel) quantityLabel.textContent = "تعداد";
+            if (quantityInput) quantityInput.min = "1";
             return;
         }
         const saleUnit = option.dataset.saleUnit || "عدد";
@@ -103,7 +104,8 @@
     const updateQuantityUI = () => {
         if (!quantityInput) return;
         let value = Number.parseInt(quantityInput.value, 10) || 1;
-        value = Math.max(1, value);
+        const minimum = Math.max(1, Number.parseInt(quantityInput.min, 10) || 1);
+        value = Math.max(minimum, value);
         if (currentStock !== null) value = Math.min(value, currentStock);
         quantityInput.value = value;
         quantityInput.max = currentStock !== null ? String(currentStock) : "";
