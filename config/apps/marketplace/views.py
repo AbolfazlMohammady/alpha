@@ -704,6 +704,8 @@ def vendor_product_submissions_api(request):
             return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
         wholesale_minimum = int(request.POST.get("wholesale_minimum_quantity", 0) or 0)
         wholesale_price = int(request.POST.get("wholesale_unit_price", 0) or 0)
+        if sale_type in {VendorProductSubmission.SaleType.WHOLESALE, VendorProductSubmission.SaleType.BOTH} and wholesale_minimum not in SELLABLE_UNIT_COUNTS:
+            return _error("حداقل تعداد عمده را از فهرست انتخاب کن.")
         try:
             sale_unit, units_per_order = _validate_sale_pack(
                 request.POST.get("sale_unit", "عدد"),
@@ -829,6 +831,8 @@ def vendor_products_api(request):
             return _error("برای ثبت فروش عمده از فیلدهای نوع فروش و قیمت عمده استفاده کن.")
         wholesale_minimum = _strict_int(payload.get("wholesale_minimum_quantity", 0), "حداقل تعداد عمده") if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} else 0
         wholesale_price = _strict_int(payload.get("wholesale_unit_price", 0), "قیمت واحد عمده") if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} else 0
+        if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and wholesale_minimum not in SELLABLE_UNIT_COUNTS:
+            return _error("حداقل تعداد عمده را از فهرست انتخاب کن.")
         if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and (wholesale_minimum < 1 or wholesale_price < 1):
             return _error("برای فروش عمده، حداقل یک واحد فروش و قیمت واحد عمده را وارد کن.")
         try:
@@ -998,9 +1002,12 @@ def vendor_wholesale_tier_api(request, listing_id):
             )
             if listing.status not in {VendorProduct.Status.ACTIVE, VendorProduct.Status.PENDING, VendorProduct.Status.DRAFT}:
                 return _error("وضعیت فعلی محصول اجازه تغییر قیمت عمده را نمی‌دهد.", 409)
+            minimum_quantity = _strict_int(payload.get("minimum_quantity", 0), "حداقل تعداد عمده")
+            if minimum_quantity not in SELLABLE_UNIT_COUNTS:
+                return _error("حداقل تعداد عمده را از فهرست انتخاب کن.")
             tier = WholesalePriceTier(
                 listing=listing,
-                minimum_quantity=_strict_int(payload.get("minimum_quantity", 0), "حداقل تعداد عمده"),
+                minimum_quantity=minimum_quantity,
                 unit_price=_strict_int(payload.get("unit_price", 0), "قیمت واحد عمده"),
             )
             tier.full_clean()
@@ -1041,7 +1048,10 @@ def vendor_wholesale_tier_detail_api(request, tier_id):
             if set(payload) - {"minimum_quantity", "unit_price"} or not payload:
                 return _error("فقط حداقل تعداد و قیمت واحد قابل ویرایش است.")
             if "minimum_quantity" in payload:
-                tier.minimum_quantity = _strict_int(payload["minimum_quantity"], "حداقل تعداد عمده")
+                minimum_quantity = _strict_int(payload["minimum_quantity"], "حداقل تعداد عمده")
+                if minimum_quantity not in SELLABLE_UNIT_COUNTS:
+                    return _error("حداقل تعداد عمده را از فهرست انتخاب کن.")
+                tier.minimum_quantity = minimum_quantity
             if "unit_price" in payload:
                 tier.unit_price = _strict_int(payload["unit_price"], "قیمت واحد عمده")
             tier.full_clean()
