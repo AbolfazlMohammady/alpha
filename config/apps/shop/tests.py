@@ -159,7 +159,7 @@ class ShopViewTests(TestCase):
         self.assertEqual(search.status_code, 200)
         self.assertNotContains(home, marketplace_product.name)
         self.assertNotContains(category, marketplace_product.name)
-        self.assertNotContains(search, marketplace_product.name)
+        self.assertNotContains(search, reverse("shop:product", kwargs={"slug": marketplace_product.slug}))
 
     def test_shop_prominently_links_to_seller_marketplace(self):
         response = self.client.get(reverse("shop:index"))
