@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
         migrations.AddConstraint(
             model_name="wholesalepricetier",
             constraint=models.CheckConstraint(
-                condition=Q(minimum_quantity__gte=1),
+                check=Q(minimum_quantity__gte=1),
                 name="wholesale_min_qty_gte_one",
             ),
         ),
