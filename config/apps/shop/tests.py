@@ -166,6 +166,20 @@ class ShopViewTests(TestCase):
         self.assertContains(response, 'href="/marketplace/store/"')
         self.assertContains(response, "خرید از فروشندگان")
 
+    def test_marketplace_only_product_does_not_publish_fake_platform_stock_or_price(self):
+        product = Product.objects.create(
+            category=self.category,
+            name="محصول فقط بازار فروشندگان",
+            slug="marketplace-only-detail",
+            base_price=990000,
+            is_active=True,
+            marketplace_only=True,
+        )
+        response = self.client.get(reverse("shop:product", kwargs={"slug": product.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '"availability":"https://schema.org/OutOfStock"')
+        self.assertNotContains(response, '"availability":"https://schema.org/InStock","url"')
+
     def test_inactive_product_is_hidden_from_shop(self):
         self.product.is_active = False
         self.product.save(update_fields=["is_active"])
