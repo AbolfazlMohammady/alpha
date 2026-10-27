@@ -7,7 +7,7 @@ import re
 from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Avg, Case, CharField, Count, Exists, F, IntegerField, Max, Min, OuterRef, Prefetch, Q, Subquery, Sum, Value, When
-from django.db.models.functions import Concat
+from django.db.models.functions import Coalesce, Concat
 from django.http import HttpResponsePermanentRedirect
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
@@ -95,6 +95,66 @@ def schema_json(data):
 
 def toman_to_irr(value):
     return value * 10
+
+
+def marketplace_listing_annotations(*, min_price=None, max_price=None, include_without_variants=True):
+    """
+    Return correlated expressions for active seller listings.
+
+    Marketplace-only products have no ProductVariant rows by design, so they
+    must be discoverable from active VendorProduct offers rather than being
+    filtered out by the legacy variant-only catalog query.
+    """
+    from apps.marketplace.models import Vendor, VendorProduct
+
+    listings = VendorProduct.objects.filter(
+        product_id=OuterRef("pk"),
+        status=VendorProduct.Status.ACTIVE,
+        vendor__status=Vendor.Status.ACTIVE,
+        vendor__user__is_active=True,
+        stock_quantity__gt=0,
+    ).annotate(
+        minimum_wholesale_quantity=Min("wholesale_tiers__minimum_quantity"),
+    ).filter(
+        Q(sale_type__in=[VendorProduct.SaleType.RETAIL, VendorProduct.SaleType.BOTH])
+        | Q(
+            sale_type=VendorProduct.SaleType.WHOLESALE,
+            stock_quantity__gte=F("minimum_wholesale_quantity"),
+        )
+    )
+    if min_price is not None:
+        listings = listings.filter(retail_price__gte=min_price)
+    if max_price is not None:
+        listings = listings.filter(retail_price__lte=max_price)
+
+    exists = Exists(listings) if include_without_variants else Exists(VendorProduct.objects.none())
+    return (
+        exists,
+        Subquery(listings.order_by("retail_price", "id").values("retail_price")[:1], output_field=IntegerField()),
+        Subquery(listings.order_by("retail_price", "id").values("compare_at_price")[:1], output_field=IntegerField()),
+        Subquery(listings.order_by("-retail_price", "id").values("retail_price")[:1], output_field=IntegerField()),
+    )
+
+
+def catalog_price_expressions(variant_price, variant_compare_price, variant_max_price, seller_price, seller_compare, seller_max):
+    """Keep existing variant prices authoritative; use seller offer prices only for marketplace-only catalog rows."""
+    return (
+        Case(
+            When(marketplace_only=True, then=Coalesce(seller_price, variant_price)),
+            default=variant_price,
+            output_field=IntegerField(),
+        ),
+        Case(
+            When(marketplace_only=True, then=Coalesce(seller_compare, variant_compare_price)),
+            default=variant_compare_price,
+            output_field=IntegerField(),
+        ),
+        Case(
+            When(marketplace_only=True, then=Coalesce(seller_max, variant_max_price)),
+            default=variant_max_price,
+            output_field=IntegerField(),
+        ),
+    )
 
 
 def price_annotations():
