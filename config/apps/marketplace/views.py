@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import timedelta
 
 from PIL import Image, UnidentifiedImageError
@@ -13,6 +14,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import strip_tags
 from django.views.decorators.http import require_GET, require_POST, require_http_methods
@@ -256,18 +258,37 @@ def portal_section_page(request, section):
     if audience == "admin":
         if not (request.user.is_staff or request.user.is_superuser):
             return HttpResponseForbidden("دسترسی این بخش فقط برای مدیران مجاز است.")
-    else:
-        try:
-            _vendor_for_user(request.user)
-        except PermissionDenied as exc:
-            return HttpResponseForbidden(str(exc))
-    return render(request, "marketplace/portal_section.html", {
-        "section": section,
-        "section_title": title,
-        "section_description": description,
-        "is_admin_section": audience == "admin",
-        "is_placeholder": True,
-    })
+        providers = {}
+        for prefix, label in (("TIPAX", "تیپاکس"), ("POST", "شرکت ملی پست")):
+            providers[prefix.lower()] = {
+                "label": label,
+                "base_url": bool(os.environ.get(f"{prefix}_API_BASE_URL", "").strip()),
+                "token": bool(os.environ.get(f"{prefix}_API_TOKEN", "").strip()),
+                "quote_path": bool(os.environ.get(f"{prefix}_QUOTE_PATH", "").strip()),
+                "shipment_path": bool(os.environ.get(f"{prefix}_SHIPMENT_PATH", "").strip()),
+                "tracking_path": bool(os.environ.get(f"{prefix}_TRACKING_PATH", "").strip()),
+            }
+        return render(request, "marketplace/admin_accounting.html", {
+            "section": section,
+            "section_title": title,
+            "section_description": description,
+            "carrier_providers": providers,
+        })
+    try:
+        _vendor_for_user(request.user)
+    except PermissionDenied as exc:
+        return HttpResponseForbidden(str(exc))
+    seller_anchors = {
+        "seller-dashboard": "vd-overview",
+        "new-product": "vd-new-product-section",
+        "my-products": "vd-products-section",
+        "orders-shipping": "vd-orders-section",
+        "vendor-settlements": "vd-settlements-section",
+        "bank-profile": "vd-financial-section",
+        "shipping-profile": "vd-shipping-section",
+    }
+    anchor = seller_anchors.get(section, "vd-overview")
+    return redirect(f"{reverse('marketplace:vendor_dashboard_page')}#{anchor}")
 
 
 def _vendor_for_user(user):
@@ -1613,8 +1634,24 @@ def carrier_invoice_payment_api(request):
 
 
 @staff_member_required
-@require_POST
+@require_http_methods(["GET", "POST"])
 def external_reconciliation_api(request):
+    if request.method == "GET":
+        records = FinancialReconciliation.objects.select_related("recorded_by").order_by("-created_at")[:100]
+        return JsonResponse({"ok": True, "results": [{
+            "uuid": str(record.uuid),
+            "source": record.source,
+            "source_label": record.get_source_display(),
+            "external_reference": record.external_reference,
+            "internal_reference": record.internal_reference,
+            "expected_amount": record.expected_amount,
+            "actual_amount": record.actual_amount,
+            "currency": record.currency,
+            "status": record.status,
+            "status_label": record.get_status_display(),
+            "delta": None if record.expected_amount is None or record.actual_amount is None else record.actual_amount - record.expected_amount,
+            "created_at": record.created_at.isoformat(),
+        } for record in records]})
     try:
         payload = _json_body(request)
         source = str(payload.get("source", ""))
