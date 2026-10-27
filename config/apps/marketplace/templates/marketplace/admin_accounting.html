@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}حسابداری مارکت‌پلیس | BABAEI{% endblock %}
+{% block content %}
+<style>
+.market-admin{--cc-bg:#080808;--cc-surface:#101010;--cc-surface2:#151515;--cc-border:rgba(255,255,255,.09);--cc-text:#f4efe8;--cc-muted:#918c84;--cc-gold:#d2ad5f;--cc-gold-soft:rgba(210,173,95,.10);direction:rtl;max-width:1320px;margin:28px auto;padding:0 18px;color:var(--cc-text)}
+.market-admin *{box-sizing:border-box}
+.ma-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.ma-head h1{font-size:clamp(22px,3vw,32px);margin:0 0 6px}
+.ma-muted{color:var(--cc-muted);font-size:13px;line-height:1.9}
+.ma-nav{display:flex;gap:7px;overflow:auto;padding:9px;background:var(--cc-surface);border:1px solid var(--cc-border);border-radius:11px;margin-bottom:16px}
+.ma-nav a{white-space:nowrap;text-decoration:none;padding:8px 11px;border-radius:7px;background:var(--cc-surface2);color:var(--cc-muted);font-size:12px;font-weight:700}
+.ma-nav a:hover,.ma-nav a:focus-visible{background:var(--cc-gold-soft);color:var(--cc-gold);outline:1px solid var(--cc-gold)}
+.ma-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-bottom:14px}
+.ma-card{background:var(--cc-surface);border:1px solid var(--cc-border);border-radius:12px;padding:16px;min-width:0}
+.ma-card h2{font-size:17px;margin:0 0 12px}
+.ma-stat strong{display:block;font-size:24px;color:var(--cc-gold);margin-top:5px}
+.ma-section{margin:14px 0;scroll-margin-top:24px}
+.ma-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end}
+.ma-field{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--cc-muted)}
+.ma-field input,.ma-field select,.ma-field textarea{width:100%;min-height:40px;padding:9px 11px;border:1px solid var(--cc-border);border-radius:8px;background:#0b0b0b;color:var(--cc-text);font:inherit}
+.ma-field input:focus,.ma-field select:focus,.ma-field textarea:focus{outline:none;border-color:var(--cc-gold);box-shadow:0 0 0 2px var(--cc-gold-soft)}
+.ma-btn{min-height:39px;padding:8px 13px;border:1px solid var(--cc-border);border-radius:8px;background:var(--cc-surface2);color:var(--cc-text);font:inherit;font-weight:700;cursor:pointer}
+.ma-btn.primary{background:var(--cc-gold);border-color:var(--cc-gold);color:#17120b}
+.ma-btn:disabled{opacity:.55;cursor:wait}
+.ma-table-wrap{overflow:auto}
+.ma-table{width:100%;border-collapse:collapse;min-width:650px}
+.ma-table th,.ma-table td{text-align:right;padding:10px 12px;border-bottom:1px solid var(--cc-border);font-size:12px;white-space:nowrap}
+.ma-table th{color:var(--cc-muted);font-size:11px}
+.ma-table tr:last-child td{border-bottom:0}
+.ma-list{display:grid;gap:10px}
+.ma-row{border:1px solid var(--cc-border);background:var(--cc-surface2);border-radius:9px;padding:13px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.ma-status{display:inline-flex;padding:3px 8px;border-radius:6px;background:var(--cc-gold-soft);color:var(--cc-gold);font-size:11px}
+.ma-ok{color:#8bc69a}.ma-bad{color:#e68b82}
+.ma-note{border:1px solid rgba(210,173,95,.25);background:var(--cc-gold-soft);border-radius:9px;padding:12px;margin:12px 0}
+.ma-message{min-height:22px;margin:8px 0;font-size:12px}
+.ma-provider{display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center;padding:13px 0;border-bottom:1px solid var(--cc-border)}
+.ma-provider:last-child{border-bottom:0}
+@media(max-width:640px){.market-admin{padding:0 12px}.ma-card{padding:13px}.ma-nav{position:static}}
+</style>
+<div class="market-admin">
+    <form hidden>{% csrf_token %}</form>
+    <header class="ma-head">
+        <div><span class="ma-status">مرکز عملیات مالی</span><h1>حسابداری و کنترل مارکت‌پلیس</h1><p class="ma-muted">دفترکل، تسویه فروشندگان، مغایرت‌ها و وضعیت اتصال شرکت‌های حمل را از همین صفحه بررسی کن.</p></div>
+        <button type="button" class="ma-btn primary" id="ma-refresh">به‌روزرسانی گزارش‌ها</button>
+    </header>
+    <nav class="ma-nav" aria-label="بخش‌های حسابداری">
+        <a href="#ma-overview">نمای کلی</a><a href="#ma-trial-balance">تراز آزمایشی</a><a href="#ma-settlement-queue">صف تسویه فروشندگان</a><a href="#ma-gateway">تسویه درگاه</a><a href="#ma-carrier-payment">پرداخت حمل</a><a href="#ma-reconciliation">مغایرت‌گیری</a><a href="#ma-carriers">تنظیمات حمل</a>
+    </nav>
+    <p id="ma-message" class="ma-message" role="status"></p>
+    <section class="ma-grid" id="ma-overview">
+        <div class="ma-card ma-stat"><span class="ma-muted">جمع بدهکار دفترکل</span><strong id="ma-total-debit">—</strong><span class="ma-muted">تومان</span></div>
+        <div class="ma-card ma-stat"><span class="ma-muted">جمع بستانکار دفترکل</span><strong id="ma-total-credit">—</strong><span class="ma-muted">تومان</span></div>
+        <div class="ma-card ma-stat"><span class="ma-muted">تسویه‌های منتظر بررسی</span><strong id="ma-pending-count">—</strong></div>
+        <div class="ma-card ma-stat"><span class="ma-muted">مغایرت‌های باز</span><strong id="ma-mismatch-count">—</strong></div>
+    </section>
+    <section class="ma-card ma-section" id="ma-trial-balance">
+        <h2>تراز آزمایشی دفترکل</h2><p class="ma-muted">گزارش از سندهای قطعی دفترکل خوانده می‌شود؛ اگر بدهکار و بستانکار برابر نیستند، پرداخت و تطبیق را تا بررسی متوقف کن.</p>
+        <div id="ma-balance-status" class="ma-note">در حال خواندن دفترکل…</div>
+        <div class="ma-table-wrap"><table class="ma-table"><thead><tr><th>کد حساب</th><th>نام حساب</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr></thead><tbody id="ma-balance-rows"><tr><td colspan="5">در حال بارگذاری…</td></tr></tbody></table></div>
+    </section>
+    <section class="ma-card ma-section" id="ma-settlement-queue">
+        <h2>صف تسویه فروشندگان</h2><p class="ma-muted">تأیید هر ردیف باعث اجرای اعتبارسنجی مجدد می‌شود. تا وقتی پرداخت بانکی واقعی پیکربندی نشده، تأیید به‌معنای واریز وجه نیست.</p>
+        <div id="ma-settlement-list" class="ma-list">در حال بارگذاری…</div>
+    </section>
+    <section class="ma-card ma-section" id="ma-gateway">
+        <h2>ثبت تسویه درگاه پرداخت</h2><p class="ma-muted">مبالغ را از گزارش واقعی درگاه و صورت‌حساب بانکی وارد کن؛ ثبت این فرم به‌تنهایی درخواست واریز یا برداشت وجه نمی‌فرستد.</p>
+        <form id="ma-gateway-form" class="ma-form">
+            <label class="ma-field">شناسه تسویه درگاه<input name="settlement_reference" maxlength="180" required></label>
+            <label class="ma-field">مبلغ ناخالص (تومان)<input name="gross_amount" type="number" min="1" required></label>
+            <label class="ma-field">مبلغ خالص (تومان)<input name="net_amount" type="number" min="0" required></label>
+            <label class="ma-field">کارمزد (تومان)<input name="fee_amount" type="number" min="0" value="0" required></label>
+            <label class="ma-field">مبلغ واریزی واقعی بانک (اختیاری)<input name="actual_bank_amount" type="number" min="0"></label>
+            <button class="ma-btn primary" type="submit">ثبت تسویه درگاه</button>
+        </form>
+    </section>
+    <section class="ma-card ma-section" id="ma-carrier-payment">
+        <h2>ثبت پرداخت صورتحساب حمل</h2><p class="ma-muted">فقط پس از پرداخت واقعی صورتحساب شرکت حمل ثبت کن تا بدهی حمل با سند حسابداری تسویه شود.</p>
+        <form id="ma-carrier-payment-form" class="ma-form">
+            <label class="ma-field">شناسه صورتحساب<input name="invoice_reference" maxlength="180" required></label>
+            <label class="ma-field">مبلغ پرداخت‌شده (تومان)<input name="amount" type="number" min="1" required></label>
+            <label class="ma-field">شناسه مرجع بانک (اختیاری)<input name="provider_reference" maxlength="180"></label>
+            <button class="ma-btn primary" type="submit">ثبت پرداخت حمل</button>
+        </form>
+    </section>
+    <section class="ma-card ma-section" id="ma-reconciliation">
+        <h2>ثبت و بررسی مغایرت مالی</h2>
+        <form id="ma-reconciliation-form" class="ma-form" style="margin-bottom:16px">
+            <label class="ma-field">منبع تطبیق<select name="source" required><option value="payment_gateway">درگاه پرداخت</option><option value="bank_payout">واریز بانکی</option><option value="carrier_invoice">صورتحساب حمل</option><option value="bank_statement">گردش حساب بانکی</option><option value="manual">ثبت دستی</option></select></label>
+            <label class="ma-field">شناسه مرجع خارجی<input name="external_reference" maxlength="180" required></label>
+            <label class="ma-field">شناسه داخلی (اختیاری)<input name="internal_reference" maxlength="180"></label>
+            <label class="ma-field">مبلغ مورد انتظار (تومان)<input name="expected_amount" type="number" min="0"></label>
+            <label class="ma-field">مبلغ واقعی (تومان)<input name="actual_amount" type="number" min="0"></label>
+            <button class="ma-btn primary" type="submit">ثبت مغایرت / تطبیق</button>
+        </form>
+        <div id="ma-reconciliation-list" class="ma-list">در حال بارگذاری…</div>
+    </section>
+    <section class="ma-card ma-section" id="ma-carriers">
+        <h2>وضعیت تنظیمات اتصال حمل‌ونقل</h2>
+        <p class="ma-muted">توکن‌ها از متغیرهای محیطی Docker خوانده می‌شوند و عمداً در مرورگر یا دیتابیس نمایش داده نمی‌شوند. وضعیت زیر فقط نشان می‌دهد هر مقدار تنظیم شده است یا خیر.</p>
+        <div class="ma-note">مسیر پیشنهادی: فایل <code>.env</code> کنار <code>docker-compose.yml</code> روی سرور؛ نام متغیرها را دقیق وارد کن و سپس سرویس‌های Django و Celery را بازسازی/راه‌اندازی مجدد کن. فایل حاوی توکن را هرگز به Git push نکن.</div>
+        {% for key, provider in carrier_providers.items %}
+        <div class="ma-provider">
+            <div><strong>{{ provider.label }}</strong><div class="ma-muted">API: <code>{{ key|upper }}_API_BASE_URL</code> · Token: <code>{{ key|upper }}_API_TOKEN</code></div><div class="ma-muted">Endpointها: <code>{{ key|upper }}_QUOTE_PATH</code> / <code>{{ key|upper }}_SHIPMENT_PATH</code> / <code>{{ key|upper }}_TRACKING_PATH</code></div></div>
+            <span class="ma-status">{% if provider.base_url and provider.token and provider.quote_path %}حداقل تنظیمات استعلام موجود است{% else %}پیکربندی ناقص{% endif %}</span>
+            <div class="ma-muted">آدرس API</div><span class="{% if provider.base_url %}ma-ok{% else %}ma-bad{% endif %}">{% if provider.base_url %}تنظیم شده{% else %}تنظیم نشده{% endif %}</span>
+            <div class="ma-muted">توکن</div><span class="{% if provider.token %}ma-ok{% else %}ma-bad{% endif %}">{% if provider.token %}تنظیم شده (مخفی) {% else %}تنظیم نشده{% endif %}</span>
+            <div class="ma-muted">مسیر استعلام / ثبت مرسوله / رهگیری</div><span>{% if provider.quote_path %}استعلام ✓{% else %}استعلام ✕{% endif %} / {% if provider.shipment_path %}ثبت ✓{% else %}ثبت ✕{% endif %} / {% if provider.tracking_path %}رهگیری ✓{% else %}رهگیری ✕{% endif %}</span>
+        </div>
+        {% endfor %}
+    </section>
+</div>
+<script>
+(() => {
+    const root = document.querySelector(".market-admin");
+    if (!root) return;
+    const csrf = root.querySelector("input[name='csrfmiddlewaretoken']")?.value || "";
+    const money = (value) => new Intl.NumberFormat("fa-IR").format(Number(value || 0));
+    const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+    const message = (text, bad = false) => {
+        const el = document.getElementById("ma-message");
+        el.textContent = text;
+        el.className = "ma-message " + (bad ? "ma-bad" : "ma-ok");
+    };
+    const request = async (url, options = {}) => {
+        const headers = {"Accept":"application/json", ...(options.headers || {})};
+        if (options.body) { headers["Content-Type"] = "application/json"; headers["X-CSRFToken"] = csrf; }
+        const response = await fetch(url, {...options, headers, credentials:"same-origin"});
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.error || data.message || "درخواست ناموفق بود.");
+        return data;
+    };
+    const formPayload = (form) => Object.fromEntries(Array.from(new FormData(form).entries()).filter(([key, value]) => key !== "csrfmiddlewaretoken" && value !== ""));
+    async function loadBalance() {
+        const data = await request("/marketplace/api/admin/accounting/trial-balance/");
+        document.getElementById("ma-total-debit").textContent = money(data.total_debit);
+        document.getElementById("ma-total-credit").textContent = money(data.total_credit);
+        document.getElementById("ma-balance-status").innerHTML = data.balanced
+            ? '<span class="ma-ok">تراز است: جمع بدهکار و بستانکار برابر است.</span>'
+            : '<span class="ma-bad">هشدار: جمع بدهکار و بستانکار برابر نیست؛ قبل از ادامه عملیات بررسی کن.</span>';
+        document.getElementById("ma-balance-rows").innerHTML = data.rows.length ? data.rows.map(row =>
+            `<tr><td>${escapeHtml(row.account)}</td><td>${escapeHtml(row.name)}</td><td>${money(row.debit)}</td><td>${money(row.credit)}</td><td>${money(row.balance)}</td></tr>`
+        ).join("") : '<tr><td colspan="5">هنوز سند قطعی در دفترکل ثبت نشده است.</td></tr>';
+    }
+    async function loadSettlements() {
+        const data = await request("/marketplace/api/admin/settlements/");
+        document.getElementById("ma-pending-count").textContent = money(data.results.length);
+        document.getElementById("ma-settlement-list").innerHTML = data.results.length ? data.results.map(row =>
+            `<div class="ma-row"><div><strong>${escapeHtml(row.vendor)}</strong><div class="ma-muted">دوره: ${escapeHtml(row.period_start?.slice(0,10))} تا ${escapeHtml(row.period_end?.slice(0,10))}</div><div class="ma-muted">فروش: ${money(row.gross_amount)} · کمیسیون: ${money(row.commission_amount)} · قابل پرداخت: ${money(row.payable_amount)} تومان</div></div><button type="button" class="ma-btn primary" data-approve-settlement="${row.id}">بررسی و تأیید</button></div>`
+        ).join("") : '<p class="ma-muted">در حال حاضر تسویه‌ای در انتظار تأیید نیست.</p>';
+    }
+    async function loadReconciliations() {
+        const data = await request("/marketplace/api/admin/accounting/reconciliation/");
+        document.getElementById("ma-mismatch-count").textContent = money(data.results.filter(row => row.status !== "matched").length);
+        document.getElementById("ma-reconciliation-list").innerHTML = data.results.length ? data.results.map(row =>
+            `<div class="ma-row"><div><strong>${escapeHtml(row.source_label)}</strong><div class="ma-muted">${escapeHtml(row.external_reference)} ${row.internal_reference ? "· " + escapeHtml(row.internal_reference) : ""}</div><div class="ma-muted">مورد انتظار: ${row.expected_amount == null ? "—" : money(row.expected_amount)} · واقعی: ${row.actual_amount == null ? "—" : money(row.actual_amount)} · اختلاف: ${row.delta == null ? "—" : money(row.delta)} تومان</div></div><span class="ma-status">${escapeHtml(row.status_label)}</span></div>`
+        ).join("") : '<p class="ma-muted">هنوز رکورد مغایرت‌گیری ثبت نشده است.</p>';
+    }
+    async function refresh() {
+        try { await Promise.all([loadBalance(), loadSettlements(), loadReconciliations()]); }
+        catch (error) { message(error.message, true); }
+    }
+    document.getElementById("ma-refresh").addEventListener("click", refresh);
+    document.getElementById("ma-settlement-list").addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-approve-settlement]");
+        if (!button) return;
+        if (!confirm("تسویه را بررسی و برای تأیید ارسال کنیم؟ تأیید به‌تنهایی به معنی واریز بانکی نیست.")) return;
+        button.disabled = true;
+        try {
+            const data = await request(`/marketplace/api/admin/settlements/${button.dataset.approveSettlement}/approve/`, {method:"POST", body:"{}"});
+            message(data.payout_message || (data.payout_submitted ? "تسویه تأیید شد و درخواست پرداخت ارسال شد؛ نتیجه نهایی باید تأیید شود." : "تسویه تأیید شد."));
+            await refresh();
+        } catch (error) { message(error.message, true); button.disabled = false; }
+    });
+    const bindPost = (formId, url, success) => {
+        document.getElementById(formId).addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const button = form.querySelector("button[type=submit]");
+            button.disabled = true;
+            try {
+                await request(url, {method:"POST", body:JSON.stringify(formPayload(form))});
+                form.reset();
+                message(success);
+                await refresh();
+            } catch (error) { message(error.message, true); }
+            finally { button.disabled = false; }
+        });
+    };
+    bindPost("ma-gateway-form", "/marketplace/api/admin/accounting/gateway-settlement/", "تسویه درگاه ثبت شد.");
+    bindPost("ma-carrier-payment-form", "/marketplace/api/admin/accounting/carrier-payment/", "پرداخت صورتحساب حمل ثبت شد.");
+    bindPost("ma-reconciliation-form", "/marketplace/api/admin/accounting/reconciliation/", "رکورد تطبیق مالی ثبت شد.");
+    refresh();
+})();
+</script>
+{% endblock %}
