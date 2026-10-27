@@ -167,8 +167,8 @@
             {% csrf_token %}
             <label class="vd-field">نام محصول<input name="name" maxlength="200" required placeholder="مثلاً تیشرت پنبه‌ای"></label>
             <label class="vd-field">دسته‌بندی<select name="category_id" id="vd-submission-category" required><option value="">در حال بارگذاری…</option></select></label>
-            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد، جفت، بسته" required></label>
-            <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="1" required><small class="vd-muted">مثلاً برای یک بسته ۶تایی، عدد ۶ را وارد کن.</small></label>
+            <label class="vd-field">واحد فروش<select name="sale_unit" required><option value="عدد">عدد</option><option value="جفت">جفت</option><option value="بسته">بسته</option><option value="جین">جین (۱۲ عدد)</option><option value="کارتن">کارتن</option></select></label>
+            <label class="vd-field">تعداد اقلام در هر واحد فروش<select name="units_per_order" required><option value="1">۱ عدد</option><option value="2">۲ عدد</option><option value="3">۳ عدد</option><option value="4">۴ عدد</option><option value="6">۶ عدد</option><option value="12">۱۲ عدد (یک جین)</option><option value="24">۲۴ عدد (دو جین)</option><option value="36">۳۶ عدد</option><option value="48">۴۸ عدد</option><option value="72">۷۲ عدد</option><option value="144">۱۴۴ عدد</option></select><small class="vd-muted">مثلاً یک جین برابر ۱۲ عدد است.</small></label>
             <label class="vd-field">توضیح کوتاه<input name="short_description" maxlength="500"></label>
             <label class="vd-field">توضیحات کامل<textarea name="description" rows="3"></textarea></label>
             <label class="vd-field">تصویر اصلی محصول<input name="image" type="file" accept="image/*" required></label>
@@ -196,7 +196,7 @@
                 <h3>۳. قیمت عمده</h3>
                 <p class="vd-muted">این قیمت برای هر واحد فروش است و از قیمت نهایی تکی بیشتر نمی‌تواند باشد.</p>
                 <div class="vd-form">
-                    <label class="vd-field">حداقل تعداد سفارش عمده<input name="wholesale_minimum_quantity" type="number" min="2" value="3"></label>
+                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity"><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش (یک جین، اگر واحد فروش عدد باشد)</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select><small class="vd-muted">اگر واحد فروش «جین» باشد، ۱ واحد فروش یعنی ۱۲ عدد فیزیکی.</small></label>
                     <label class="vd-field">قیمت هر واحد در سفارش عمده (تومان)<input name="wholesale_unit_price" type="number" min="1"></label>
                 </div>
             </div>
@@ -408,8 +408,8 @@
                     <span>عمده: ${item.wholesale_enabled ? "فعال" : "غیرفعال"}</span>
                 </div>
                 <form class="vd-stock-form vd-form" data-listing-id="${item.id}" style="margin-top:12px">
-                    <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="${escapeHtml(item.sale_unit)}" required></label>
-                    <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="${item.units_per_order}" required></label>
+                    <label class="vd-field">واحد فروش<select name="sale_unit" required>${["عدد","جفت","بسته","جین","کارتن"].map(unit => `<option value="${unit}" ${item.sale_unit === unit ? "selected" : ""}>${unit === "جین" ? "جین (۱۲ عدد)" : unit}</option>`).join("")}${["عدد","جفت","بسته","جین","کارتن"].includes(item.sale_unit) ? "" : `<option value="${escapeHtml(item.sale_unit)}" selected>${escapeHtml(item.sale_unit)} (واحد قبلی)</option>`}</select></label>
+                    <label class="vd-field">تعداد اقلام در هر واحد فروش<select name="units_per_order" required>${[[1,"۱ عدد"],[2,"۲ عدد"],[3,"۳ عدد"],[4,"۴ عدد"],[6,"۶ عدد"],[12,"۱۲ عدد (یک جین)"],[24,"۲۴ عدد (دو جین)"],[36,"۳۶ عدد"],[48,"۴۸ عدد"],[72,"۷۲ عدد"],[144,"۱۴۴ عدد"]].map(([count,label]) => `<option value="${count}" ${Number(item.units_per_order) === count ? "selected" : ""}>${label}</option>`).join("")}</select></label>
                     <label class="vd-field">قیمت اصلی هر واحد (تومان)<input name="regular_price" type="number" min="1" value="${item.compare_at_price || item.retail_price}" required></label>
                     <label class="vd-field">درصد تخفیف<input name="discount_percent" type="number" min="0" max="99" value="${item.compare_at_price ? Math.round((item.compare_at_price-item.retail_price)*100/item.compare_at_price) : 0}" required></label>
                     <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="${item.stock_quantity}" required></label>
@@ -418,7 +418,7 @@
                     <button class="vd-btn vd-btn--soft" type="submit">ذخیره تغییرات محصول</button>
                 </form>
                 <form class="vd-tier-form vd-form" data-listing-id="${item.id}" style="margin-top:10px">
-                    <label class="vd-field">حداقل تعداد عمده<input name="minimum_quantity" type="number" min="2" value="3" required></label>
+                    <label class="vd-field">حداقل واحد فروش برای عمده<select name="minimum_quantity" required><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select></label>
                     <label class="vd-field">قیمت هر واحد عمده<input name="unit_price" type="number" min="1" required></label>
                     <button class="vd-btn vd-btn--soft" type="submit">افزودن پله عمده</button>
                 </form>
