@@ -148,7 +148,7 @@ class VendorProduct(models.Model):
         if self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH} and self.vendor.seller_type == Vendor.SellerType.RETAIL:
             raise ValidationError({"sale_type": "این فروشگاه فقط مجوز خرده‌فروشی دارد."})
         if self.sale_type == self.SaleType.RETAIL and self.wholesale_enabled:
-            raise ValidationError({"sale_type": "برای فروش تکی، فروش عمده باید غیرفعال باشد."})
+            raise ValidationError({"wholesale_enabled": "برای فروش تکی، فروش عمده باید غیرفعال باشد."})
         if self.pk and self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH} and not self.wholesale_tiers.exists():
             raise ValidationError({"sale_type": "برای فعال‌کردن فروش عمده، حداقل یک پله قیمت عمده لازم است."})
         if self.wholesale_enabled and self.vendor.seller_type == Vendor.SellerType.RETAIL:
