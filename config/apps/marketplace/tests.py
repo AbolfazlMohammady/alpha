@@ -1365,6 +1365,46 @@ class VendorSaleModeApiTests(TestCase):
         self.assertFalse(VendorProduct.objects.filter(vendor=self.vendor, product=self.product).exists())
 
 
+    def test_existing_listing_can_switch_to_both_and_save_primary_wholesale_tier_in_one_request(self):
+        create_response = self.client.post(
+            "/marketplace/api/vendor/products/",
+            data={
+                "product_id": self.product.pk,
+                "sale_type": "retail",
+                "retail_price": 1000,
+                "sale_unit": "جین",
+                "units_per_order": 12,
+                "stock_quantity": 20,
+                "supports_custom_printing": False,
+                "handling_days": 2,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(create_response.status_code, 201, create_response.content)
+        listing = VendorProduct.objects.get(vendor=self.vendor, product=self.product)
+
+        response = self.client.post(
+            f"/marketplace/api/vendor/products/{listing.pk}/",
+            data={
+                "sale_type": "both",
+                "retail_price": 900,
+                "compare_at_price": 1000,
+                "wholesale_minimum_quantity": 1,
+                "wholesale_unit_price": 800,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        listing.refresh_from_db()
+        self.assertEqual(listing.sale_type, VendorProduct.SaleType.BOTH)
+        self.assertEqual(listing.retail_price, 900)
+        self.assertEqual(listing.compare_at_price, 1000)
+        self.assertTrue(listing.wholesale_enabled)
+        tier = listing.wholesale_tiers.get()
+        self.assertEqual(tier.minimum_quantity, 1)
+        self.assertEqual(tier.unit_price, 800)
+
+
 class SellerPackChoiceValidationTests(TestCase):
     def test_fixed_units_map_to_known_physical_quantities(self):
         from .views import _validate_sale_pack

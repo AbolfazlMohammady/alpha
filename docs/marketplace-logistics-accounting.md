@@ -22,6 +22,40 @@ All monetary amounts use the repository's integer IRT convention. Keep one unit 
 9. Admin reviews and approves a batch only after the system revalidates every order, shipment, hold period, shipping charge and ledger total. The same checks run again immediately before payout. If a contracted payout API is configured, the system submits the transfer with an idempotency key. An API acknowledgement is not considered proof of payment; the batch becomes paid only after a terminal success status and an exact match between the provider-reported actual amount and the approved amount. Missing or mismatched amounts leave the batch locked for reconciliation.
 10. The ledger records vendor payouts and central carrier costs. Gateway-to-bank settlement and processing fees are recorded separately; carrier invoice payments reduce accrued carrier liabilities against the platform bank account. Quote-vs-final-cost and external-vs-internal mismatches are retained for review.
 
+## Where to configure carrier tokens
+
+In this Docker deployment, add provider settings to the private file `config/.env` on the server. The Compose services for Django and Celery load that file through `env_file`; do not put tokens in Python files, templates, screenshots, or Git commits. Keep the real `.env` out of version control.
+
+Example shape only (replace values with the carrier's official API documentation; do not copy placeholder URLs):
+
+```dotenv
+TIPAX_API_BASE_URL=
+TIPAX_API_TOKEN=
+TIPAX_QUOTE_PATH=
+TIPAX_QUOTE_AMOUNT_PATH=
+TIPAX_QUOTE_CURRENCY_PATH=
+TIPAX_AMOUNT_DIVISOR=
+TIPAX_SHIPMENT_PATH=
+TIPAX_TRACKING_PATH=
+
+POST_API_BASE_URL=
+POST_API_TOKEN=
+POST_QUOTE_PATH=
+POST_QUOTE_AMOUNT_PATH=
+POST_QUOTE_CURRENCY_PATH=
+POST_AMOUNT_DIVISOR=
+POST_SHIPMENT_PATH=
+POST_TRACKING_PATH=
+```
+
+After editing the file, recreate the services so Docker passes the new environment to the running containers:
+
+```bash
+docker compose up -d --force-recreate django celery celery_default celery-beat
+```
+
+Open **Control Center → حسابداری مارکت‌پلیس → تنظیمات حمل** to view which required settings are present. The page intentionally displays only configured/not-configured indicators; it never reveals token values. A green/complete configuration indicator does not prove the carrier integration works: the endpoint paths, authentication scheme, request body, currency and response fields must match the provider's official API and be tested in its sandbox first. Do not enter a carrier token into the seller's pickup profile; that profile is only for the seller's origin address and postal code.
+
 ## Carrier environment variables
 
 Configure separately for each provider. The adapter uses TIPAX and POST prefixes:

@@ -1042,6 +1042,7 @@ def vendor_product_update_api(request, listing_id):
             allowed = {
                 "retail_price", "compare_at_price", "sale_type", "sale_unit", "units_per_order",
                 "stock_quantity", "supports_custom_printing",
+                "wholesale_minimum_quantity", "wholesale_unit_price",
                 "weight_grams", "package_length_cm", "package_width_cm",
                 "package_height_cm", "handling_days",
             }
@@ -1063,13 +1064,24 @@ def vendor_product_update_api(request, listing_id):
                     # Preserve unchanged legacy units so sellers can still update stock/price.
                     payload["sale_unit"] = listing.sale_unit
                     payload["units_per_order"] = listing.units_per_order
+            wholesale_minimum = None
+            wholesale_price = None
+            if "wholesale_minimum_quantity" in payload:
+                wholesale_minimum = _strict_int(payload["wholesale_minimum_quantity"], "حداقل واحد فروش عمده")
+                if wholesale_minimum not in SELLABLE_UNIT_COUNTS:
+                    return _error("حداقل سفارش عمده را از فهرست انتخاب کن.")
+            if "wholesale_unit_price" in payload:
+                wholesale_price = _strict_int(payload["wholesale_unit_price"], "قیمت هر واحد عمده")
+                if wholesale_price < 1:
+                    return _error("قیمت عمده باید بیشتر از صفر باشد.")
+
             review_required = False
             review_fields = {
                 "retail_price", "compare_at_price", "sale_type", "sale_unit", "units_per_order",
                 "supports_custom_printing", "weight_grams",
                 "package_length_cm", "package_width_cm", "package_height_cm", "handling_days",
             }
-            for field in allowed.intersection(payload):
+            for field in allowed.intersection(payload) - {"wholesale_minimum_quantity", "wholesale_unit_price"}:
                 value = payload[field]
                 if field in {"retail_price", "units_per_order", "stock_quantity", "weight_grams", "package_length_cm", "package_width_cm", "package_height_cm", "handling_days"}:
                     value = _strict_int(value, field)
@@ -1079,8 +1091,6 @@ def vendor_product_update_api(request, listing_id):
                         return _error("نوع فروش را از فهرست انتخاب کن.")
                     if value in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and vendor.seller_type == Vendor.SellerType.RETAIL:
                         return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
-                    if value in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and not listing.wholesale_tiers.exists():
-                        return _error("ابتدا حداقل یک پله قیمت عمده ثبت کن.")
                 elif field == "sale_unit":
                     value = str(value or "").strip()
                 elif field == "compare_at_price":
@@ -1094,6 +1104,38 @@ def vendor_product_update_api(request, listing_id):
             if listing.sale_type == VendorProduct.SaleType.RETAIL:
                 listing.wholesale_enabled = False
             elif listing.sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH}:
+                if vendor.seller_type == Vendor.SellerType.RETAIL:
+                    return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
+                # The primary wholesale tier is edited in the same form as the
+                # sale mode. Additional quantity tiers remain independently editable.
+                tiers = list(listing.wholesale_tiers.select_for_update().order_by("minimum_quantity", "id"))
+                if wholesale_minimum is not None or wholesale_price is not None:
+                    if wholesale_minimum is None:
+                        wholesale_minimum = tiers[0].minimum_quantity if tiers else 3
+                    if wholesale_price is None:
+                        wholesale_price = tiers[0].unit_price if tiers else 0
+                    if wholesale_price < 1:
+                        return _error("برای فعال‌کردن فروش عمده، قیمت هر واحد عمده را وارد کن.")
+                    target_tier = next((tier for tier in tiers if tier.minimum_quantity == wholesale_minimum), None)
+                    primary_tier = tiers[0] if tiers else None
+                    if target_tier and primary_tier and target_tier.pk != primary_tier.pk:
+                        primary_tier.delete()
+                        primary_tier = target_tier
+                    if primary_tier is None:
+                        primary_tier = WholesalePriceTier(listing=listing)
+                    primary_tier.minimum_quantity = wholesale_minimum
+                    primary_tier.unit_price = wholesale_price
+                    if listing.sale_type == VendorProduct.SaleType.WHOLESALE:
+                        listing.retail_price = wholesale_price
+                        listing.compare_at_price = None
+                    elif wholesale_price > listing.retail_price:
+                        return _error("قیمت هر واحد عمده نباید از قیمت نهایی تکی بیشتر باشد.")
+                    primary_tier.full_clean()
+                    primary_tier.save()
+                    if listing.status == VendorProduct.Status.ACTIVE:
+                        review_required = True
+                elif not tiers:
+                    return _error("برای فعال‌کردن فروش عمده، حداقل قیمت عمده را وارد کن.")
                 listing.wholesale_enabled = True
             if listing.status == VendorProduct.Status.ACTIVE and review_required:
                 listing.status = VendorProduct.Status.PENDING
