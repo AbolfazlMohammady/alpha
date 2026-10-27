@@ -80,7 +80,13 @@
             <div class="marketplace-store__body">
                 <h2><a href="{% url 'shop:product' listing.product.slug %}">{{ listing.product.name }}</a></h2>
                 <span class="marketplace-store__seller">{{ listing.vendor.store_name }}</span>
-                <div class="marketplace-store__price"><strong>{{ listing.retail_price|price }}</strong><span>تومان / {{ listing.sale_unit }}</span>{% if listing.compare_at_price %}<del>{{ listing.compare_at_price|price }}</del>{% endif %}</div>
+                <div class="marketplace-store__price">
+                    {% if listing.sale_type == "wholesale" and listing.wholesale_tiers.all %}
+                        <strong>{{ listing.wholesale_tiers.all.0.unit_price|price }}</strong><span>تومان / {{ listing.sale_unit }} · قیمت عمده</span>
+                    {% else %}
+                        <strong>{{ listing.retail_price|price }}</strong><span>تومان / {{ listing.sale_unit }}</span>{% if listing.compare_at_price %}<del>{{ listing.compare_at_price|price }}</del>{% endif %}
+                    {% endif %}
+                </div>
                 <div class="marketplace-store__meta">
                     <span class="marketplace-store__pill">{{ listing.get_sale_type_display }}</span>
                     <span class="marketplace-store__pill">موجودی: {{ listing.stock_quantity|price }} واحد</span>
