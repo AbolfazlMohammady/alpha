@@ -160,48 +160,96 @@
     </section>
 
     <section class="vd-card vd-section" id="vd-new-product-section">
-        <h2>ثبت محصول جدید</h2>
-        <p class="vd-muted">این فرم فقط برای پیشنهاد کالایی است که هنوز در کاتالوگ مرکزی وجود ندارد. اگر کالا در کاتالوگ هست، از «افزودن از کاتالوگ» استفاده کن تا محصول تکراری نسازی. وزن و ابعاد زیر مربوط به بسته‌بندی آماده ارسال‌اند و برای محاسبه کرایه حمل استفاده می‌شوند، نه مشخصات کاتالوگ کالا.</p>
+        <h2>پیشنهاد کالای جدید</h2>
+        <p class="vd-muted">این بخش برای کالایی است که هنوز در کاتالوگ مرکزی سایت نیست. ابتدا اطلاعات پایه کالا و شیوه فروش را مشخص کن؛ بعد از بررسی مدیر، کالا به کاتالوگ اضافه می‌شود.</p>
         <form id="vd-product-submission" class="vd-form" enctype="multipart/form-data">
             {% csrf_token %}
-            <label class="vd-field">نام محصول<input name="name" maxlength="200" required></label>
-            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد یا جعبه ۱۲تایی" required></label>
-            <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="1" required></label>
+            <label class="vd-field">نام محصول<input name="name" maxlength="200" required placeholder="مثلاً تیشرت پنبه‌ای"></label>
             <label class="vd-field">دسته‌بندی<select name="category_id" id="vd-submission-category" required><option value="">در حال بارگذاری…</option></select></label>
+            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد، جفت، بسته" required></label>
+            <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="1" required><small class="vd-muted">مثلاً برای یک بسته ۶تایی، عدد ۶ را وارد کن.</small></label>
             <label class="vd-field">توضیح کوتاه<input name="short_description" maxlength="500"></label>
-            <label class="vd-field" style="grid-column:1/-1">توضیحات کامل<textarea name="description" rows="3"></textarea></label>
-            <label class="vd-field">تصویر اصلی<input name="image" type="file" accept="image/*" required></label>
-            <label class="vd-field">قیمت هر واحد فروش (تومان)<input name="retail_price" type="number" min="1" required></label>
-            <label class="vd-field">قیمت قبل از تخفیف<input name="compare_at_price" type="number" min="0"></label>
+            <label class="vd-field">توضیحات کامل<textarea name="description" rows="3"></textarea></label>
+            <label class="vd-field">تصویر اصلی محصول<input name="image" type="file" accept="image/*" required></label>
+            <div class="vd-product-step" style="grid-column:1/-1">
+                <h3>۱. روش فروش</h3>
+                <p class="vd-muted">مشخص کن مشتری می‌تواند تکی بخرد، عمده بخرد یا هر دو روش فعال باشد.</p>
+                <div class="vd-choice-cards">
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="retail" checked><span><strong>فقط تکی</strong><small>قیمت برای هر واحد فروش</small></span></label>
+                    {% if vendor.seller_type != "retail" %}
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="wholesale"><span><strong>فقط عمده</strong><small>خرید با حداقل تعداد مشخص</small></span></label>
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="both"><span><strong>تکی و عمده</strong><small>قیمت تکی و قیمت ویژه عمده</small></span></label>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="vd-product-step" style="grid-column:1/-1">
+                <h3>۲. قیمت و تخفیف</h3>
+                <p class="vd-muted">فقط قیمت اصلی و درصد تخفیف را وارد کن؛ قیمت نهایی را سیستم محاسبه می‌کند. برای نمونه، ۱۰ یعنی ۱۰٪ تخفیف.</p>
+                <div class="vd-form">
+                    <label class="vd-field">قیمت اصلی هر واحد (تومان)<input name="regular_price" type="number" min="1" required></label>
+                    <label class="vd-field">درصد تخفیف<input name="discount_percent" type="number" min="0" max="99" step="1" value="0" required><small class="vd-muted">عدد صحیح از ۰ تا ۹۹</small></label>
+                    <div class="vd-price-preview" data-price-preview>قیمت نهایی پس از تخفیف اینجا نمایش داده می‌شود.</div>
+                </div>
+            </div>
+            <div class="vd-product-step" data-wholesale-fields hidden style="grid-column:1/-1">
+                <h3>۳. قیمت عمده</h3>
+                <p class="vd-muted">این قیمت برای هر واحد فروش است و از قیمت نهایی تکی بیشتر نمی‌تواند باشد.</p>
+                <div class="vd-form">
+                    <label class="vd-field">حداقل تعداد سفارش عمده<input name="wholesale_minimum_quantity" type="number" min="2" value="3"></label>
+                    <label class="vd-field">قیمت هر واحد در سفارش عمده (تومان)<input name="wholesale_unit_price" type="number" min="1"></label>
+                </div>
+            </div>
             <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="0" required></label>
             <label class="vd-field">زمان آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="2" required></label>
-            <label class="vd-field"><span>قابلیت چاپ سفارشی</span><select name="supports_custom_printing"><option value="false">ندارد</option><option value="true">دارد</option></select></label>
-            <button class="vd-btn" type="submit">ارسال محصول برای بررسی</button>
+            <label class="vd-field">قابلیت چاپ سفارشی<select name="supports_custom_printing"><option value="false">ندارد</option><option value="true">دارد</option></select></label>
+            <button class="vd-btn" type="submit">ارسال کالا برای بررسی</button>
         </form>
         <div id="vd-product-submissions" class="vd-list" style="margin-top:14px"></div>
     </section>
 
     <section class="vd-card vd-section" id="vd-new-product-existing-section">
-        <h2>ثبت محصول برای فروش</h2>
-        <p class="vd-muted">برای کالایی که از قبل در کاتالوگ وجود دارد، آن را انتخاب کن. قیمت و پله‌های عمده برحسب واحد فروش محاسبه می‌شوند.</p>
-        <p class="vd-muted">محصول از کاتالوگ مرکزی انتخاب می‌شود. در این بخش فقط قیمت و موجودی فروشگاه را ثبت کن؛ اطلاعات وزن و ابعاد را هنگام ثبت مرسوله، از روی بسته واقعی وارد می‌کنی.</p>
-        <div class="vd-field" style="margin-bottom:12px">
-            <label for="vd-catalog-search">جستجوی محصول در کاتالوگ</label>
-            <input id="vd-catalog-search" autocomplete="off" placeholder="حداقل دو حرف از نام محصول را وارد کن">
+        <h2>افزودن کالای کاتالوگ به فروشگاه</h2>
+        <p class="vd-muted">اگر کالا در کاتالوگ سایت وجود دارد، از همین بخش انتخابش کن. اطلاعات کالا را دوباره وارد نکن؛ فقط شرایط فروش فروشگاهت را مشخص کن.</p>
+        <div class="vd-field" style="margin-bottom:16px">
+            <label for="vd-catalog-search">جستجو در کاتالوگ</label>
+            <input id="vd-catalog-search" autocomplete="off" placeholder="نام کالا را جستجو کن…">
             <div id="vd-catalog-results" class="vd-list" role="listbox"></div>
         </div>
         <form id="vd-product-create" class="vd-form">
             {% csrf_token %}
-            <label class="vd-field">شناسه محصول انتخاب‌شده<input name="product_id" id="vd-product-id" type="number" min="1" required readonly></label>
-            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد یا جعبه ۱۲تایی" required></label>
-            <label class="vd-field">تعداد اقلام در هر واحد فروش<input name="units_per_order" type="number" min="1" value="1" required></label>
-            <label class="vd-field">قیمت هر واحد فروش (تومان)<input name="retail_price" type="number" min="1" required></label>
-            <label class="vd-field">قیمت قبل از تخفیف (اختیاری)<input name="compare_at_price" type="number" min="0"></label>
-            <label class="vd-field">موجودی انبار<input name="stock_quantity" type="number" min="0" value="0" required></label>
+            <label class="vd-field" style="grid-column:1/-1">کالای انتخاب‌شده<input name="product_id" id="vd-product-id" type="number" min="1" required readonly placeholder="ابتدا کالا را از نتایج جستجو انتخاب کن"></label>
+            <label class="vd-field">واحد فروش<input name="sale_unit" maxlength="40" value="عدد" placeholder="عدد، جفت، بسته" required></label>
+            <label class="vd-field">تعداد اقلام در هر واحد<input name="units_per_order" type="number" min="1" value="1" required></label>
+            <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="0" required></label>
+            <div class="vd-product-step" style="grid-column:1/-1">
+                <h3>۱. روش فروش</h3>
+                <div class="vd-choice-cards">
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="retail" checked><span><strong>فقط تکی</strong><small>فروش با قیمت واحد</small></span></label>
+                    {% if vendor.seller_type != "retail" %}
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="wholesale"><span><strong>فقط عمده</strong><small>با حداقل تعداد</small></span></label>
+                    <label class="vd-choice-card"><input type="radio" name="sale_type" value="both"><span><strong>تکی و عمده</strong><small>دو روش خرید</small></span></label>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="vd-product-step" style="grid-column:1/-1">
+                <h3>۲. قیمت و تخفیف</h3>
+                <p class="vd-muted">قیمت اصلی و درصد تخفیف را وارد کن؛ قیمت نهایی خودکار محاسبه می‌شود. مثلاً ۱۰ یعنی ۱۰٪ تخفیف.</p>
+                <div class="vd-form">
+                    <label class="vd-field">قیمت اصلی هر واحد (تومان)<input name="regular_price" type="number" min="1" required></label>
+                    <label class="vd-field">درصد تخفیف<input name="discount_percent" type="number" min="0" max="99" step="1" value="0" required></label>
+                    <div class="vd-price-preview" data-price-preview>قیمت نهایی پس از تخفیف اینجا نمایش داده می‌شود.</div>
+                </div>
+            </div>
+            <div class="vd-product-step" data-wholesale-fields hidden style="grid-column:1/-1">
+                <h3>۳. قیمت عمده</h3>
+                <div class="vd-form">
+                    <label class="vd-field">حداقل تعداد عمده<input name="wholesale_minimum_quantity" type="number" min="2" value="3"></label>
+                    <label class="vd-field">قیمت هر واحد عمده (تومان)<input name="wholesale_unit_price" type="number" min="1"></label>
+                </div>
+            </div>
             <label class="vd-field">زمان آماده‌سازی (روز)<input name="handling_days" type="number" min="0" value="2" required></label>
-            <p class="vd-muted" style="grid-column:1/-1">برای فروش عمده، ابتدا محصول را ثبت کن؛ سپس از بخش «محصولات من» پله‌های قیمت عمده را اضافه کن.</p>
-            <label class="vd-field"><span>چاپ سفارشی</span><select name="supports_custom_printing"><option value="false">خیر</option><option value="true">بله</option></select></label>
-            <button class="vd-btn" type="submit">ثبت برای بررسی</button>
+            <label class="vd-field">قابلیت چاپ سفارشی<select name="supports_custom_printing"><option value="false">ندارد</option><option value="true">دارد</option></select></label>
+            <button class="vd-btn" type="submit">ثبت شرایط فروش</button>
         </form>
     </section>
 
