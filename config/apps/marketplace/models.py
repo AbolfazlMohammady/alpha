@@ -170,7 +170,7 @@ class VendorProduct(models.Model):
 
 class WholesalePriceTier(models.Model):
     listing = models.ForeignKey(VendorProduct, on_delete=models.CASCADE, related_name="wholesale_tiers")
-    minimum_quantity = models.PositiveIntegerField(validators=[MinValueValidator(2)])
+    minimum_quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
     unit_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -178,7 +178,7 @@ class WholesalePriceTier(models.Model):
         ordering = ("minimum_quantity",)
         constraints = [
             models.UniqueConstraint(fields=("listing", "minimum_quantity"), name="unique_wholesale_quantity_tier"),
-            models.CheckConstraint(check=Q(minimum_quantity__gte=2), name="wholesale_min_qty_gte_two"),
+            models.CheckConstraint(check=Q(minimum_quantity__gte=1), name="wholesale_min_qty_gte_one"),
             models.CheckConstraint(check=Q(unit_price__gt=0), name="wholesale_unit_price_gt_zero"),
         ]
 
@@ -673,7 +673,7 @@ class VendorProductSubmission(models.Model):
     sale_type = models.CharField(max_length=12, choices=SaleType.choices, default=SaleType.RETAIL)
     retail_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
     compare_at_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
-    wholesale_minimum_quantity = models.PositiveIntegerField(null=True, blank=True, validators=[MinValueValidator(2)])
+    wholesale_minimum_quantity = models.PositiveIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
     wholesale_unit_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(1)])
     sale_unit = models.CharField(max_length=40, default="عدد",)
     units_per_order = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)],)
