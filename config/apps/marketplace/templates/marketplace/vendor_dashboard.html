@@ -285,64 +285,6 @@
     const root = document.querySelector(".vendor-dashboard");
     if (!root) return;
     const csrf = root.querySelector("input[name='csrfmiddlewaretoken']")?.value || "";
-    const syncCustomSelect = (select) => {
-        const wrap = select?.closest(".vd-select-wrap");
-        if (!wrap) return;
-        const trigger = wrap.querySelector(".vd-select-trigger");
-        const menu = wrap.querySelector(".vd-select-menu");
-        if (!trigger || !menu) return;
-        trigger.textContent = select.options[select.selectedIndex]?.textContent?.trim() || "انتخاب کن";
-        menu.innerHTML = "";
-        Array.from(select.options).forEach((option) => {
-            const item = document.createElement("button");
-            item.type = "button";
-            item.className = "vd-select-option" + (option.value === select.value ? " is-selected" : "");
-            item.textContent = option.textContent;
-            item.disabled = option.disabled;
-            item.addEventListener("click", () => {
-                select.value = option.value;
-                select.dispatchEvent(new Event("change", {bubbles:true}));
-                syncCustomSelect(select);
-                menu.hidden = true;
-                trigger.setAttribute("aria-expanded", "false");
-            });
-            menu.appendChild(item);
-        });
-    };
-    const enhanceSelect = (select) => {
-        if (!select || select.dataset.vdEnhanced === "1") return;
-        select.dataset.vdEnhanced = "1";
-        const wrap = document.createElement("div");
-        wrap.className = "vd-select-wrap";
-        select.parentNode.insertBefore(wrap, select);
-        wrap.appendChild(select);
-        select.classList.add("vd-select-native");
-        const trigger = document.createElement("button");
-        trigger.type = "button";
-        trigger.className = "vd-select-trigger";
-        trigger.setAttribute("aria-haspopup", "listbox");
-        trigger.setAttribute("aria-expanded", "false");
-        const menu = document.createElement("div");
-        menu.className = "vd-select-menu";
-        menu.setAttribute("role", "listbox");
-        menu.hidden = true;
-        wrap.append(trigger, menu);
-        trigger.addEventListener("click", () => {
-            const willOpen = menu.hidden;
-            root.querySelectorAll(".vd-select-menu").forEach((item) => { item.hidden = true; });
-            root.querySelectorAll(".vd-select-trigger").forEach((item) => item.setAttribute("aria-expanded", "false"));
-            menu.hidden = !willOpen;
-            trigger.setAttribute("aria-expanded", String(willOpen));
-        });
-        select.addEventListener("change", () => syncCustomSelect(select));
-        syncCustomSelect(select);
-    };
-    document.addEventListener("click", (event) => {
-        if (root.contains(event.target) && !event.target.closest(".vd-select-wrap")) {
-            root.querySelectorAll(".vd-select-menu").forEach((menu) => { menu.hidden = true; });
-            root.querySelectorAll(".vd-select-trigger").forEach((trigger) => trigger.setAttribute("aria-expanded", "false"));
-        }
-    });
     const sectionNav = root.querySelector(".vd-nav");
     const overview = document.getElementById("vd-overview");
     const panels = Array.from(root.querySelectorAll(".vd-section[id]"));
