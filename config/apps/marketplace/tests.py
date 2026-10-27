@@ -1286,6 +1286,34 @@ class VendorSaleModeApiTests(TestCase):
         self.assertEqual(tier.minimum_quantity, 6)
         self.assertEqual(tier.unit_price, 800)
 
+    def test_adding_a_wholesale_tier_promotes_retail_listing_to_both(self):
+        create_response = self.client.post(
+            "/marketplace/api/vendor/products/",
+            data={
+                "product_id": self.product.pk,
+                "sale_type": "retail",
+                "retail_price": 1000,
+                "sale_unit": "عدد",
+                "units_per_order": 1,
+                "stock_quantity": 20,
+                "supports_custom_printing": False,
+                "handling_days": 2,
+            },
+            content_type="application/json",
+        )
+        self.assertEqual(create_response.status_code, 201, create_response.content)
+        listing = VendorProduct.objects.get(vendor=self.vendor, product=self.product)
+        tier_response = self.client.post(
+            f"/marketplace/api/vendor/products/{listing.pk}/wholesale/",
+            data={"minimum_quantity": 6, "unit_price": 800},
+            content_type="application/json",
+        )
+        self.assertEqual(tier_response.status_code, 201, tier_response.content)
+        listing.refresh_from_db()
+        self.assertEqual(listing.sale_type, VendorProduct.SaleType.BOTH)
+        self.assertTrue(listing.wholesale_enabled)
+        self.assertEqual(listing.wholesale_tiers.get().minimum_quantity, 6)
+
     def test_wholesale_listing_can_sell_one_dozen_pack(self):
         response = self.client.post(
             "/marketplace/api/vendor/products/",
