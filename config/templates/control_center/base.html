@@ -62,7 +62,7 @@
       </div>
       {% endif %}
 
-      {% if request.user.is_superuser or request.user.role in 'admin,store_manager,design_manager' %}
+      {% if request.user.is_superuser or request.user.role in 'admin,design_manager' %}
       <div class="cc-section">طراحی سه‌بعدی</div>
       <div class="cc-nav-group cc-nav-group-3d">
         <a class="cc-nav-item {% if request.resolver_match.url_name == '3d_dashboard' or request.resolver_match.url_name == '3d_pricing' or request.resolver_match.url_name == 'artwork_library' or request.resolver_match.url_name == 'artwork_create' or request.resolver_match.url_name == 'artwork_edit' or request.resolver_match.url_name == 'artwork_delete' or request.resolver_match.url_name == 'customer_artworks' or request.resolver_match.url_name == 'design_detail' %}active{% endif %}" href="{% url 'control:3d_dashboard' %}">
