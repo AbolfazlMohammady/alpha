@@ -37,7 +37,7 @@ js/storefront.js). Nothing on this page needs !important.
 {% endblock %}
 
 {% block content %}
-<div class="pd" data-marketplace-only="{{ product.marketplace_only|yesno:'true,false' }}">
+<div class="pd" data-marketplace-only="{{ product.marketplace_only|yesno:'true,false' }}" data-marketplace-unavailable="{{ marketplace_unavailable|yesno:'true,false' }}">
     <div class="pd-inner">
         <nav class="pd-crumbs" aria-label="مسیر صفحه">{% for item in breadcrumbs %}{% if not forloop.last %}<a href="{{ item.url }}">{{ item.name }}</a><span aria-hidden="true">/</span>{% else %}<span aria-current="page">{{ item.name }}</span>{% endif %}{% endfor %}</nav>
 
@@ -141,14 +141,14 @@ js/storefront.js). Nothing on this page needs !important.
                 {% endcomment %}
                 <div class="pd-price" aria-live="polite">
                     <div class="pd-price__row">
-                        <strong id="product-price" class="pd-price__value">{% if product.marketplace_only %}انتخاب فروشنده{% else %}{{ product.display_price|price }}{% endif %}</strong>
+                        <strong id="product-price" class="pd-price__value">{% if product.marketplace_only %}{% if marketplace_unavailable %}فعلاً ناموجود{% else %}انتخاب فروشنده{% endif %}{% else %}{{ product.display_price|price }}{% endif %}</strong>
                         <span id="product-price-currency" class="pd-price__unit"{% if product.marketplace_only %} hidden{% endif %}>تومان</span><span id="product-sale-unit" class="pd-price__unit" hidden></span>
                         <span id="product-old-price-row" class="pd-price__meta{% if product.marketplace_only or not product.has_discount %} is-hidden{% endif %}"><del id="product-old-price">{{ product.display_compare_price|price }}</del><span id="product-discount" class="pd-discount">{{ product.discount_percent|discount_percent }}</span></span>
                     </div>
                     {% if product.active_variants %}
                         <span id="variant-status" class="pd-status" aria-live="polite"></span>
                     {% elif product.marketplace_only %}
-                        <span id="variant-status" class="pd-status" aria-live="polite">برای مشاهده قیمت و موجودی، فروشنده را انتخاب کن.</span>
+                        <span id="variant-status" class="pd-status" aria-live="polite">{% if marketplace_unavailable %}فعلاً فروشنده‌ای با موجودی فعال برای این محصول نداریم.{% else %}برای مشاهده قیمت و موجودی، فروشنده را انتخاب کن.{% endif %}</span>
                     {% else %}
                         <span class="pd-status">موجود</span>
                     {% endif %}
