@@ -689,6 +689,7 @@ def vendor_products_api(request):
             "status_label": listing.get_status_display(),
             "retail_price": listing.retail_price,
             "compare_at_price": listing.compare_at_price,
+            "sale_type": listing.sale_type,
             "sale_unit": listing.sale_unit,
             "units_per_order": listing.units_per_order,
             "stock_quantity": listing.stock_quantity,
