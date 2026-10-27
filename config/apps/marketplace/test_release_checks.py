@@ -269,7 +269,7 @@ class VendorDashboardAccessTests(TestCase):
 
 
 class PortalPlaceholderAccessTests(TestCase):
-    def test_homepage_renders_seller_shortcuts_for_store_manager(self):
+    def test_homepage_links_to_public_marketplace_without_temporary_seller_cards(self):
         user = get_user_model().objects.create_user(
             phone="+989121234581",
             role=RoleUser.STORE_MANAGER,
@@ -277,10 +277,12 @@ class PortalPlaceholderAccessTests(TestCase):
         self.client.force_login(user)
         response = self.client.get(reverse("home:index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "پنل فروشنده")
-        self.assertContains(response, "new-product")
+        self.assertContains(response, "بازار فروشندگان")
+        self.assertContains(response, 'href="/marketplace/store/"')
+        self.assertNotContains(response, "صفحه موقت")
+        self.assertNotContains(response, "new-product")
 
-    def test_homepage_renders_admin_shortcuts_for_staff(self):
+    def test_homepage_does_not_show_temporary_admin_operations_cards(self):
         user = get_user_model().objects.create_user(
             phone="+989121234582",
             role=RoleUser.ADMIN,
@@ -289,8 +291,8 @@ class PortalPlaceholderAccessTests(TestCase):
         self.client.force_login(user)
         response = self.client.get(reverse("home:index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "مدیریت و حسابداری")
-        self.assertContains(response, "trial-balance")
+        self.assertNotContains(response, "مدیریت و حسابداری")
+        self.assertNotContains(response, "trial-balance")
 
     def test_store_manager_can_open_seller_placeholder(self):
         user = get_user_model().objects.create_user(phone="+989121234576", role=RoleUser.STORE_MANAGER)
