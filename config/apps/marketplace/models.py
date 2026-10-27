@@ -726,8 +726,8 @@ class VendorProductSubmission(models.Model):
         if self.compare_at_price is not None and self.compare_at_price < self.retail_price:
             raise ValidationError({"compare_at_price": "قیمت قبل از تخفیف باید از قیمت فروش بیشتر یا مساوی باشد."})
         if self.sale_type in {self.SaleType.WHOLESALE, self.SaleType.BOTH}:
-            if not self.wholesale_minimum_quantity or self.wholesale_minimum_quantity < 2:
-                raise ValidationError({"wholesale_minimum_quantity": "حداقل تعداد عمده باید حداقل ۲ باشد."})
+            if self.wholesale_minimum_quantity is None or self.wholesale_minimum_quantity < 1:
+                raise ValidationError({"wholesale_minimum_quantity": "حداقل واحد فروش عمده باید حداقل ۱ باشد."})
             if not self.wholesale_unit_price or self.wholesale_unit_price > self.retail_price:
                 raise ValidationError({"wholesale_unit_price": "قیمت واحد عمده باید مثبت و از قیمت نهایی تکی بیشتر نباشد."})
         elif self.wholesale_minimum_quantity or self.wholesale_unit_price:
