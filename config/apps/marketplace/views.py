@@ -997,7 +997,7 @@ def vendor_product_update_api(request, listing_id):
         with transaction.atomic():
             listing = get_object_or_404(VendorProduct.objects.select_for_update(), pk=listing_id, vendor=vendor)
             allowed = {
-                "retail_price", "compare_at_price", "sale_unit", "units_per_order",
+                "retail_price", "compare_at_price", "sale_type", "sale_unit", "units_per_order",
                 "stock_quantity", "supports_custom_printing",
                 "weight_grams", "package_length_cm", "package_width_cm",
                 "package_height_cm", "handling_days",
@@ -1022,7 +1022,7 @@ def vendor_product_update_api(request, listing_id):
                     payload["units_per_order"] = listing.units_per_order
             review_required = False
             review_fields = {
-                "retail_price", "compare_at_price", "sale_unit", "units_per_order",
+                "retail_price", "compare_at_price", "sale_type", "sale_unit", "units_per_order",
                 "supports_custom_printing", "weight_grams",
                 "package_length_cm", "package_width_cm", "package_height_cm", "handling_days",
             }
@@ -1030,6 +1030,14 @@ def vendor_product_update_api(request, listing_id):
                 value = payload[field]
                 if field in {"retail_price", "units_per_order", "stock_quantity", "weight_grams", "package_length_cm", "package_width_cm", "package_height_cm", "handling_days"}:
                     value = _strict_int(value, field)
+                elif field == "sale_type":
+                    value = str(value or "").strip()
+                    if value not in VendorProduct.SaleType.values:
+                        return _error("نوع فروش را از فهرست انتخاب کن.")
+                    if value in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and vendor.seller_type == Vendor.SellerType.RETAIL:
+                        return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
+                    if value in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and not listing.wholesale_tiers.exists():
+                        return _error("ابتدا حداقل یک پله قیمت عمده ثبت کن.")
                 elif field == "sale_unit":
                     value = str(value or "").strip()
                 elif field == "compare_at_price":
@@ -1040,6 +1048,10 @@ def vendor_product_update_api(request, listing_id):
                 if field in review_fields and getattr(listing, field) != value:
                     review_required = True
                 setattr(listing, field, value)
+            if listing.sale_type == VendorProduct.SaleType.RETAIL:
+                listing.wholesale_enabled = False
+            elif listing.sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH}:
+                listing.wholesale_enabled = True
             if listing.status == VendorProduct.Status.ACTIVE and review_required:
                 listing.status = VendorProduct.Status.PENDING
             listing.full_clean()
@@ -1127,9 +1139,11 @@ def vendor_wholesale_tier_api(request, listing_id):
             tier.full_clean()
             tier.save()
             listing.wholesale_enabled = True
+            if listing.sale_type == VendorProduct.SaleType.RETAIL:
+                listing.sale_type = VendorProduct.SaleType.BOTH
             if listing.status == VendorProduct.Status.ACTIVE:
                 listing.status = VendorProduct.Status.PENDING
-            listing.save(update_fields=("wholesale_enabled", "status", "updated_at"))
+            listing.save(update_fields=("wholesale_enabled", "sale_type", "status", "updated_at"))
         return JsonResponse({"ok": True, "tier_id": tier.id, "minimum_quantity": tier.minimum_quantity, "unit_price": tier.unit_price}, status=201)
     except PermissionDenied as exc:
         return _error(exc, 403)
@@ -1155,8 +1169,9 @@ def vendor_wholesale_tier_detail_api(request, tier_id):
                 tier.delete()
                 if not listing.wholesale_tiers.exists():
                     listing.wholesale_enabled = False
+                    listing.sale_type = VendorProduct.SaleType.RETAIL
                 listing.status = VendorProduct.Status.PENDING
-                listing.save(update_fields=("wholesale_enabled", "status", "updated_at"))
+                listing.save(update_fields=("wholesale_enabled", "sale_type", "status", "updated_at"))
                 return JsonResponse({"ok": True, "message": "پله عمده حذف شد و تغییرات برای بررسی ارسال شد."})
             payload = _json_body(request)
             if set(payload) - {"minimum_quantity", "unit_price"} or not payload:
@@ -1197,8 +1212,9 @@ def vendor_wholesale_tier_delete_api(request, tier_id):
             tier.delete()
             if not listing.wholesale_tiers.exists():
                 listing.wholesale_enabled = False
+                listing.sale_type = VendorProduct.SaleType.RETAIL
             listing.status = VendorProduct.Status.PENDING
-            listing.save(update_fields=("wholesale_enabled", "status", "updated_at"))
+            listing.save(update_fields=("wholesale_enabled", "sale_type", "status", "updated_at"))
         return JsonResponse({"ok": True, "deleted": True})
     except PermissionDenied as exc:
         return _error(exc, 403)
