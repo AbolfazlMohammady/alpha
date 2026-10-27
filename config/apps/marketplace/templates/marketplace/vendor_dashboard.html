@@ -1,72 +1,48 @@
-{% extends "base.html" %}
+{% extends "control_center/base.html" %}
 {% load static %}
 {% block title %}پنل فروشنده | BABAEI{% endblock %}
 {% block content %}
-<style>.vendor-dashboard{--cc-bg:#080808;--cc-surface:#101010;--cc-surface2:#151515;--cc-border:rgba(255,255,255,.09);--cc-text:#f4efe8;--cc-muted:#918c84;--cc-gold:#d2ad5f;--cc-gold-soft:rgba(210,173,95,.10);direction:rtl;max-width:1240px;margin:32px auto;padding:0 18px;color:var(--cc-text);font-family:inherit}
+<style>.vendor-dashboard{direction:rtl;max-width:1320px;margin:0 auto;padding:0 0 30px;color:var(--cc-text)}
 .vendor-dashboard *{box-sizing:border-box}
-.vd-card{background:var(--cc-surface)!important;border:1px solid var(--cc-border)!important;color:var(--cc-text);border-radius:13px}
-.vd-muted{color:var(--cc-muted)!important;line-height:1.9}
-.vd-nav{background:var(--cc-surface)!important;border:1px solid var(--cc-border)!important;box-shadow:none!important}
-.vd-nav a{background:var(--cc-surface2)!important;color:var(--cc-muted)!important;border:1px solid transparent}
-.vd-nav a:hover,.vd-nav a:focus-visible{background:var(--cc-gold-soft)!important;color:var(--cc-gold)!important;outline:1px solid var(--cc-gold)!important}
-.vd-nav a[aria-current="page"]{background:var(--cc-gold)!important;color:#17120b!important}
-.vd-field{color:var(--cc-text)}
-.vd-field input,.vd-field select,.vd-field textarea,.vd-location-search{background:#0d0d0d!important;color:var(--cc-text)!important;border:1px solid var(--cc-border)!important;border-radius:8px!important}
-.vd-field input:focus,.vd-field select:focus,.vd-field textarea:focus,.vd-location-search:focus{outline:none!important;border-color:var(--cc-gold)!important;box-shadow:0 0 0 2px var(--cc-gold-soft)!important}
-.vd-btn{background:var(--cc-gold)!important;color:#17120b!important;border:1px solid var(--cc-gold)!important;border-radius:8px!important}
-.vd-btn--soft{background:var(--cc-surface2)!important;color:var(--cc-gold)!important;border-color:var(--cc-border)!important}
-.vd-item{background:var(--cc-surface2)!important;border-color:var(--cc-border)!important}
-.vd-badge{background:var(--cc-gold-soft)!important;color:var(--cc-gold)!important}
-.vd-product-step{background:#0d0d0d!important;border-color:var(--cc-border)!important}
-.vd-product-step h3{color:var(--cc-gold)!important}
-.vd-price-preview{background:var(--cc-gold-soft)!important;color:var(--cc-gold)!important}
-.vd-choice-card{background:var(--cc-surface)!important;border-color:var(--cc-border)!important}
-.vd-choice-card:has(input:checked){border-color:var(--cc-gold)!important;background:var(--cc-gold-soft)!important;box-shadow:inset 0 0 0 1px var(--cc-gold)!important}
-.vd-choice-card strong{color:var(--cc-text)!important}.vd-choice-card small{color:var(--cc-muted)!important}
-.vd-location-trigger{background:#0d0d0d!important;color:var(--cc-text)!important;border-color:var(--cc-border)!important}
-.vd-location-menu{background:var(--cc-surface)!important;color:var(--cc-text)!important;border-color:var(--cc-border)!important}
-.vd-location-option{color:var(--cc-text)!important}
-.vd-location-option[aria-selected=true],.vd-location-option:hover{background:var(--cc-gold-soft)!important;color:var(--cc-gold)!important}
-.vd-location-picker.is-open .vd-location-trigger{border-color:var(--cc-gold)!important}
-.vd-error{color:#e68b82}.vd-success{color:#8bc69a}
-
-.vd-header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:24px}
-.vd-header h1{margin:0;font-size:clamp(24px,3vw,34px)}
-.vd-muted{color:var(--text-secondary,#6b7280);font-size:14px}
-.vd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px}
-.vd-card{background:var(--surface,#fff);border:1px solid var(--border,#e5e7eb);border-radius:16px;padding:18px;min-width:0}
-.vd-card h2{font-size:18px;margin:0 0 14px}
-.vd-number{font-size:25px;font-weight:800;display:block;margin-top:8px}
-.vd-section{margin:18px 0}
-.vd-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;align-items:end}
-.vd-field{display:flex;flex-direction:column;gap:6px;font-size:13px}
-.vd-field input,.vd-field select,.vd-field textarea{width:100%;min-width:0;border:1px solid var(--border,#d1d5db);border-radius:9px;padding:10px;background:var(--surface,#fff);color:inherit}
-.vd-field textarea{min-height:78px;resize:vertical}
-.vd-btn{border:0;border-radius:9px;padding:10px 14px;background:var(--primary,#1f2937);color:white;cursor:pointer;font-weight:700}
+.vd-header{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.vd-header h1{margin:0;font-size:clamp(22px,3vw,30px)}
+.vd-muted{color:var(--cc-muted);font-size:12px;line-height:1.85}
+.vd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:10px;margin-bottom:14px}
+.vd-card{background:var(--cc-surface)!important;border:1px solid var(--cc-border)!important;border-radius:12px;padding:15px;min-width:0;color:var(--cc-text)}
+.vd-card h2{font-size:16px;margin:0 0 12px}
+.vd-number{display:block;color:var(--cc-gold);font-size:24px;font-weight:800;margin-top:5px}
+.vd-section{margin:14px 0;scroll-margin-top:24px}
+.vd-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;align-items:end}
+.vd-field{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--cc-muted)}
+.vd-field input,.vd-field select,.vd-field textarea{width:100%;min-width:0;min-height:39px;padding:9px 10px;border:1px solid var(--cc-border);border-radius:8px;background:#0b0b0b;color:var(--cc-text);font:inherit}
+.vd-field textarea{min-height:76px;resize:vertical}
+.vd-field input:focus,.vd-field select:focus,.vd-field textarea:focus{outline:none;border-color:var(--cc-gold);box-shadow:0 0 0 2px var(--cc-gold-soft)}
+.vd-btn{min-height:37px;padding:8px 12px;border:1px solid var(--cc-border);border-radius:8px;background:var(--cc-gold);color:#17120b;font:inherit;font-weight:700;cursor:pointer}
+.vd-btn--soft{background:var(--cc-surface2);border-color:var(--cc-border);color:var(--cc-gold)}
 .vd-btn:disabled{opacity:.55;cursor:not-allowed}
-.vd-btn--soft{background:var(--surface-secondary,#f3f4f6);color:inherit;border:1px solid var(--border,#e5e7eb)}
-.vd-list{display:grid;gap:12px}
-.vd-item{border:1px solid var(--border,#e5e7eb);border-radius:12px;padding:14px}
-.vd-item-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
-.vd-item h3{margin:0;font-size:16px}
-.vd-badge{display:inline-block;border-radius:999px;padding:4px 9px;background:var(--surface-secondary,#f3f4f6);font-size:12px}
-.vd-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.vd-error{color:#b91c1c}.vd-success{color:#047857}
-.vd-message{min-height:22px;margin:8px 0;font-size:13px}
-.vd-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:12px;font-size:13px}
-.vd-order-items{padding-right:20px}
-.vd-nav{position:sticky;top:78px;z-index:5;display:flex;gap:8px;overflow-x:auto;padding:10px;margin:0 0 18px;background:rgba(255,255,255,.94);border:1px solid var(--border,#e5e7eb);border-radius:14px;backdrop-filter:blur(12px);scrollbar-width:thin}
-.vd-nav a{flex:0 0 auto;text-decoration:none;color:inherit;font-size:13px;font-weight:700;padding:9px 13px;border-radius:10px;background:var(--surface-secondary,#f3f4f6);white-space:nowrap}
-.vd-nav a:hover,.vd-nav a:focus-visible{outline:2px solid var(--primary,#1f2937);outline-offset:2px}
-.vd-section{scroll-margin-top:150px}
-.vd-location-picker{position:relative;min-width:0}.vd-location-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:42px;padding:10px 12px;border:1px solid var(--border,#d1d5db);border-radius:9px;background:var(--surface,#fff);color:inherit;text-align:right;cursor:pointer}.vd-location-trigger:disabled{opacity:.55;cursor:not-allowed}.vd-location-menu{position:absolute;z-index:30;top:calc(100% + 5px);right:0;left:0;min-width:220px;max-height:290px;overflow:auto;padding:8px;background:#fff;color:#1f2937;border:1px solid #dbe2e8;border-radius:12px;box-shadow:0 16px 40px rgba(0,0,0,.16)}.vd-location-menu[hidden]{display:none}.vd-location-search{width:100%;min-height:38px;padding:8px 10px;margin-bottom:6px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;color:#1f2937}.vd-location-options{display:grid;gap:3px}.vd-location-option{padding:8px 10px;border:0;border-radius:7px;background:transparent;color:#334155;text-align:right;cursor:pointer}.vd-location-option:hover,.vd-location-option[aria-selected=true]{background:#e8f2f0;color:#173f3e}.vd-location-option[hidden]{display:none}.vd-location-empty{margin:8px;color:#64748b;font-size:12px}.vd-location-picker.is-open .vd-location-trigger{border-color:#173f3e}
-
-.vd-nav a[aria-current="page"]{background:#173b3c;color:#fff}
-.vd-panel-title{margin:0 0 6px;font-size:22px}
-.vd-panel-subtitle{margin:0 0 18px;color:var(--text-secondary,#64748b);font-size:13px;line-height:1.9}
-.vd-section[hidden],#vd-overview[hidden]{display:none!important}
-.vendor-dashboard[data-seller-type="retail"] .vd-tier-form,.vendor-dashboard[data-seller-type="retail"] .vd-tier-update,.vendor-dashboard[data-seller-type="retail"] .vd-wholesale-tier-list{display:none!important}
-@media(max-width:600px){.vendor-dashboard{padding:0 12px}.vd-card{padding:14px}}
+.vd-list{display:grid;gap:10px}
+.vd-item{border:1px solid var(--cc-border);border-radius:10px;padding:13px;background:var(--cc-surface2)}
+.vd-item-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.vd-item h3{margin:0;font-size:14px}
+.vd-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.vd-badge{display:inline-block;border-radius:6px;padding:4px 8px;background:var(--cc-gold-soft);color:var(--cc-gold);font-size:11px}
+.vd-details{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-top:10px;font-size:12px;color:var(--cc-muted)}
+.vd-nav{position:sticky;top:12px;z-index:5;display:flex;gap:6px;overflow-x:auto;padding:8px;margin:0 0 14px;background:var(--cc-surface);border:1px solid var(--cc-border);border-radius:10px}
+.vd-nav a{flex:0 0 auto;text-decoration:none;color:var(--cc-muted);font-size:12px;font-weight:700;padding:8px 10px;border-radius:7px;background:var(--cc-surface2);white-space:nowrap}
+.vd-nav a:hover,.vd-nav a:focus-visible{outline:1px solid var(--cc-gold);color:var(--cc-gold)}
+.vd-nav a[aria-current=page]{background:var(--cc-gold);color:#17120b}
+.vd-section[hidden],#vd-overview[hidden],.vd-field[hidden],[hidden]{display:none!important}
+.vd-panel-title{margin:0 0 6px;font-size:20px}.vd-panel-subtitle{margin:0 0 14px;color:var(--cc-muted);font-size:12px;line-height:1.85}
+.vd-product-step{padding:14px;border:1px solid var(--cc-border);border-radius:10px;background:var(--cc-surface2);margin:12px 0}
+.vd-product-step h3{margin:0 0 6px;color:var(--cc-gold);font-size:14px}
+.vd-price-preview{grid-column:1/-1;padding:10px 12px;border-radius:8px;background:var(--cc-gold-soft);color:var(--cc-gold);font-size:12px;line-height:1.8}
+.vd-choice-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;grid-column:1/-1}
+.vd-choice-card{display:flex;align-items:flex-start;gap:8px;padding:11px;border:1px solid var(--cc-border);border-radius:9px;background:var(--cc-surface);cursor:pointer}
+.vd-choice-card:has(input:checked){border-color:var(--cc-gold);background:var(--cc-gold-soft)}
+.vd-choice-card input{width:auto;min-height:auto;margin-top:4px;accent-color:var(--cc-gold)}
+.vd-choice-card strong{display:block;color:var(--cc-text);font-size:12px}.vd-choice-card small{display:block;color:var(--cc-muted);font-size:11px;line-height:1.7;margin-top:4px}
+.vd-error{color:#e68b82}.vd-success{color:#8bc69a}.vd-message{min-height:22px;margin:8px 0;font-size:12px}
+@media(max-width:640px){.vendor-dashboard{padding:0}.vd-card{padding:12px}.vd-choice-cards{grid-template-columns:1fr}.vd-nav{position:static}}
 </style>
 
 <div class="vendor-dashboard" data-seller-type="{{ vendor.seller_type }}">
@@ -112,36 +88,8 @@
         <form id="vd-shipping-profile" class="vd-form">
             {% csrf_token %}
             <label class="vd-field">کد پستی مبدأ<input name="pickup_postal_code" value="{{ vendor.pickup_postal_code }}" inputmode="numeric" maxlength="10" required></label>
-            <label class="vd-field">استان
-                <div class="vd-location-picker" data-vd-picker="province">
-                    <input type="hidden" name="pickup_province_id" id="vd-province-value" value="{{ selected_province_id }}">
-                    <button type="button" class="vd-location-trigger" id="vd-province-trigger" aria-haspopup="listbox" aria-expanded="false">
-                        <span class="vd-location-value">{% if vendor.pickup_province %}{{ vendor.pickup_province }}{% else %}انتخاب استان{% endif %}</span><span aria-hidden="true">⌄</span>
-                    </button>
-                    <div class="vd-location-menu" role="listbox" aria-label="انتخاب استان" hidden>
-                        <input class="vd-location-search" type="search" placeholder="جستجوی استان..." autocomplete="off" aria-label="جستجوی استان">
-                        <div class="vd-location-options">
-                            {% for province in provinces %}<button type="button" class="vd-location-option" data-value="{{ province.id }}" data-label="{{ province.name }}" aria-selected="{% if selected_province_id == province.id %}true{% else %}false{% endif %}">{{ province.name }}</button>{% endfor %}
-                            <p class="vd-location-empty" hidden>استانی پیدا نشد.</p>
-                        </div>
-                    </div>
-                </div>
-            </label>
-            <label class="vd-field">شهر
-                <div class="vd-location-picker" data-vd-picker="city">
-                    <input type="hidden" name="pickup_city_id" id="vd-city-value" value="{{ selected_city_id }}">
-                    <button type="button" class="vd-location-trigger" id="vd-city-trigger" aria-haspopup="listbox" aria-expanded="false" {% if not selected_province_id %}disabled{% endif %}>
-                        <span class="vd-location-value">{% if vendor.pickup_city %}{{ vendor.pickup_city }}{% else %}ابتدا استان را انتخاب کن{% endif %}</span><span aria-hidden="true">⌄</span>
-                    </button>
-                    <div class="vd-location-menu" role="listbox" aria-label="انتخاب شهر" hidden>
-                        <input class="vd-location-search" type="search" placeholder="جستجوی شهر..." autocomplete="off" aria-label="جستجوی شهر">
-                        <div class="vd-location-options">
-                            {% for city in cities %}<button type="button" class="vd-location-option" data-value="{{ city.id }}" data-province="{{ city.province_id }}" data-label="{{ city.name }}" aria-selected="{% if selected_city_id == city.id %}true{% else %}false{% endif %}">{{ city.name }}</button>{% endfor %}
-                            <p class="vd-location-empty" hidden>شهری برای این استان پیدا نشد.</p>
-                        </div>
-                    </div>
-                </div>
-            </label>
+            <label class="vd-field">استان<select name="pickup_province_id" id="vd-province-value" required><option value="">انتخاب استان</option>{% for province in provinces %}<option value="{{ province.id }}" {% if selected_province_id == province.id %}selected{% endif %}>{{ province.name }}</option>{% endfor %}</select></label>
+            <label class="vd-field">شهر<select name="pickup_city_id" id="vd-city-value" required><option value="">ابتدا استان را انتخاب کن</option>{% for city in cities %}<option value="{{ city.id }}" data-province="{{ city.province_id }}" {% if selected_city_id == city.id %}selected{% endif %}>{{ city.name }}</option>{% endfor %}</select></label>
             <label class="vd-field">تلفن تماس<input name="contact_phone" value="{{ vendor.contact_phone }}"></label>
             <label class="vd-field" style="grid-column:1/-1">نشانی مبدأ<textarea name="pickup_address">{{ vendor.pickup_address }}</textarea></label>
             <button class="vd-btn" type="submit">ذخیره اطلاعات ارسال</button>
@@ -509,81 +457,27 @@
         `).join("");
     }
     (() => {
-        const provincePicker = root.querySelector('[data-vd-picker="province"]');
-        const cityPicker = root.querySelector('[data-vd-picker="city"]');
-        if (!provincePicker || !cityPicker) return;
-        const provinceValue = document.getElementById("vd-province-value");
-        const cityValue = document.getElementById("vd-city-value");
-        const cityTrigger = document.getElementById("vd-city-trigger");
-        const normalize = (value) => String(value || "").trim().toLocaleLowerCase("fa-IR").replace(/[يى]/g, "ی").replace(/ك/g, "ک");
-        const close = (picker) => {
-            [provincePicker, cityPicker].forEach((item) => {
-                if (picker && item === picker) return;
-                item.classList.remove("is-open");
-                item.querySelector(".vd-location-menu").hidden = true;
-                item.querySelector(".vd-location-trigger").setAttribute("aria-expanded", "false");
+        const province = document.getElementById("vd-province-value");
+        const city = document.getElementById("vd-city-value");
+        if (!province || !city) return;
+        const filterCities = (preserve = true) => {
+            const previous = city.value;
+            let available = 0;
+            Array.from(city.options).forEach((option, index) => {
+                if (index === 0) return;
+                const matches = option.dataset.province === province.value;
+                option.hidden = !matches;
+                option.disabled = !matches;
+                if (matches) available++;
             });
-        };
-        const filter = (picker, query) => {
-            const q = normalize(query);
-            let count = 0;
-            picker.querySelectorAll(".vd-location-option").forEach((option) => {
-                const provinceMatches = picker !== cityPicker || option.dataset.province === provinceValue.value;
-                const visible = provinceMatches && (!q || normalize(option.dataset.label).includes(q));
-                option.hidden = !visible;
-                if (visible) count++;
-            });
-            picker.querySelector(".vd-location-empty").hidden = count > 0;
-        };
-        const open = (picker) => {
-            const trigger = picker.querySelector(".vd-location-trigger");
-            if (trigger.disabled) return;
-            close(picker);
-            picker.classList.add("is-open");
-            picker.querySelector(".vd-location-menu").hidden = false;
-            trigger.setAttribute("aria-expanded", "true");
-            const search = picker.querySelector(".vd-location-search");
-            search.value = "";
-            filter(picker, "");
-            search.focus();
-        };
-        const select = (picker, option) => {
-            picker.querySelector('input[type="hidden"]').value = option.dataset.value;
-            picker.querySelector(".vd-location-value").textContent = option.dataset.label;
-            picker.querySelectorAll(".vd-location-option").forEach((item) => item.setAttribute("aria-selected", item === option ? "true" : "false"));
-            picker.classList.remove("is-open");
-            picker.querySelector(".vd-location-menu").hidden = true;
-            picker.querySelector(".vd-location-trigger").setAttribute("aria-expanded", "false");
-        };
-        provincePicker.querySelector(".vd-location-trigger").addEventListener("click", () => open(provincePicker));
-        cityTrigger.addEventListener("click", () => open(cityPicker));
-        provincePicker.querySelectorAll(".vd-location-option").forEach((option) => option.addEventListener("click", () => {
-            const changed = provinceValue.value !== option.dataset.value;
-            select(provincePicker, option);
-            if (changed) {
-                cityValue.value = "";
-                cityPicker.querySelector(".vd-location-value").textContent = "انتخاب شهر";
-                cityPicker.querySelectorAll(".vd-location-option").forEach((item) => item.setAttribute("aria-selected", "false"));
+            if (!preserve || !Array.from(city.options).some(option => option.value === previous && !option.disabled)) {
+                city.value = "";
+                city.options[0].textContent = available ? "انتخاب شهر" : "ابتدا استان را انتخاب کن";
             }
-            cityTrigger.disabled = false;
-            filter(cityPicker, "");
-        }));
-        cityPicker.querySelectorAll(".vd-location-option").forEach((option) => option.addEventListener("click", () => select(cityPicker, option)));
-        root.querySelectorAll(".vd-location-search").forEach((search) => {
-            search.addEventListener("input", () => filter(search.closest(".vd-location-picker"), search.value));
-            search.addEventListener("keydown", (event) => {
-                if (event.key === "Escape") close();
-                if (event.key === "Enter") {
-                    const first = search.closest(".vd-location-picker").querySelector(".vd-location-option:not([hidden])");
-                    if (first) { event.preventDefault(); first.click(); }
-                }
-            });
-        });
-        document.addEventListener("click", (event) => {
-            if (!event.target.closest(".vd-location-picker")) close();
-        });
-        document.addEventListener("keydown", (event) => { if (event.key === "Escape") close(); });
-        filter(cityPicker, "");
+            city.disabled = !province.value || available === 0;
+        };
+        province.addEventListener("change", () => filterCities(false));
+        filterCities(true);
     })();
     document.getElementById("vd-shipping-profile").addEventListener("submit", async (event) => {
         event.preventDefault();
