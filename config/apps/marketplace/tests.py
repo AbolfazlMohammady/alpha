@@ -1439,7 +1439,7 @@ class MarketplaceOperationalPagesTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "فروشگاه بازار آزمایشی")
         self.assertContains(response, "شلوار جین عمده")
-        self.assertContains(response, "۱۰٬۰۰۰")
+        self.assertContains(response, "۱۰,۰۰۰")
         self.assertContains(response, "قیمت عمده")
 
     def test_admin_accounting_portal_is_not_a_placeholder(self):
