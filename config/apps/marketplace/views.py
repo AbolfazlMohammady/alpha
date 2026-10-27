@@ -637,16 +637,26 @@ def vendor_dashboard_api(request):
         )
     paid = sum(batch.payable_amount for batch in vendor.settlements.filter(status=SettlementBatch.Status.PAID))
 
-    # Real seller sales reporting, derived from immutable paid-order snapshots.
-    sales_since = timezone.now() - timedelta(days=30)
+    # Reporting is derived from immutable seller-order snapshots; no duplicate
+    # sales table or extra migration is needed.
+    try:
+        period_days = int(request.GET.get("days", "30"))
+    except (TypeError, ValueError):
+        return _error("بازه گزارش معتبر نیست؛ ۷، ۳۰، ۹۰ یا ۳۶۵ روز را انتخاب کن.")
+    if period_days not in {7, 30, 90, 365}:
+        return _error("بازه گزارش معتبر نیست؛ ۷، ۳۰، ۹۰ یا ۳۶۵ روز را انتخاب کن.")
+    report_now = timezone.now()
+    sales_since = report_now - timedelta(days=period_days)
     recent_orders = list(
         orders.filter(created_at__gte=sales_since)
         .exclude(status=VendorOrder.Status.CANCELLED)
-        .only("subtotal", "items_snapshot", "status")
+        .only("subtotal", "commission_amount", "vendor_payable", "items_snapshot", "status")
     )
-    sales_30d = sum(int(row.subtotal or 0) for row in recent_orders)
-    sold_units_30d = 0
-    physical_units_30d = 0
+    sales_total = sum(int(row.subtotal or 0) for row in recent_orders)
+    commission_total = sum(int(row.commission_amount or 0) for row in recent_orders)
+    vendor_earnings_total = sum(int(row.vendor_payable or 0) for row in recent_orders)
+    sold_units = 0
+    physical_units = 0
     products = {}
     for row in recent_orders:
         snapshot = row.items_snapshot if isinstance(row.items_snapshot, list) else []
@@ -676,7 +686,11 @@ def vendor_dashboard_api(request):
             remaining_revenue -= allocated
             remaining_gross -= gross
             key = str(item.get("vendor_product_id") or item.get("product_id") or item.get("product_name") or "unknown")
+            listing_id = item.get("vendor_product_id")
+            product_id = item.get("product_id")
             entry = products.setdefault(key, {
+                "listing_id": int(listing_id) if str(listing_id or "").isdigit() else None,
+                "product_id": int(product_id) if str(product_id or "").isdigit() else None,
                 "name": str(item.get("product_name") or "محصول بدون نام"),
                 "sale_unit": str(item.get("sale_unit") or "واحد فروش"),
                 "units_per_order": units_per_order,
@@ -687,17 +701,25 @@ def vendor_dashboard_api(request):
             entry["quantity"] += quantity
             entry["physical_units"] += physical_units
             entry["revenue"] += allocated
-    top_products = sorted(products.values(), key=lambda item: (item["quantity"], item["revenue"]), reverse=True)[:5]
+    ranked_products = sorted(products.values(), key=lambda item: (item["quantity"], item["revenue"]), reverse=True)
+    top_products = ranked_products[:5]
+    low_products = sorted(ranked_products, key=lambda item: (item["quantity"], item["revenue"]))[:5]
 
     return JsonResponse({
         "ok": True,
         "vendor": {"id": vendor.id, "store_name": vendor.store_name, "status": vendor.status},
         "orders": {"pending_fulfilment": pending, "delivered": delivered, "total": orders.count()},
         "sales": {
-            "last_30_days": sales_30d,
-            "sold_units_last_30_days": sold_units_30d,
-            "physical_units_last_30_days": physical_units_30d,
+            "period_days": period_days,
+            "period_start": sales_since.isoformat(),
+            "period_end": report_now.isoformat(),
+            "total": sales_total,
+            "commission": commission_total,
+            "vendor_earnings": vendor_earnings_total,
+            "sold_units": sold_units,
+            "physical_units": physical_units,
             "top_products": top_products,
+            "low_products": low_products,
         },
         "settlement": {"pending_amount": payable, "paid_amount": paid, "currency": "IRT"},
     })
