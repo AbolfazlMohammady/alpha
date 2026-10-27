@@ -724,7 +724,37 @@ class ProductDetailView(DetailView):
             context["similar_products"] = []
         context["cart_variant_data"] = schema_json({str(variant.id): (variant.cart_quantity or 0) for variant in offers})
         context["variant_data"] = schema_json([{ "id": variant.id, "color_id": variant.color_id, "color": variant.color.name, "color_hex": variant.color.hex_code, "size_id": variant.size_id, "size": variant.size.name, "price": variant.effective_price, "compare_at_price": variant.effective_compare_at_price, "stock": variant.stock_quantity, "sku": variant.sku } for variant in offers])
-        if offers:
+        if self.object.marketplace_only:
+            available_listings = [
+                listing for listing in vendor_listings
+                if listing.stock_quantity > 0 and not listing.minimum_order_unavailable
+            ]
+            marketplace_prices = []
+            for listing in available_listings:
+                if listing.sale_type != VendorProduct.SaleType.WHOLESALE:
+                    marketplace_prices.append(int(listing.retail_price))
+                marketplace_prices.extend(
+                    int(tier.unit_price)
+                    for tier in listing.wholesale_tiers.all()
+                )
+            if marketplace_prices:
+                offer_data = {
+                    "@type": "AggregateOffer",
+                    "priceCurrency": "IRR",
+                    "lowPrice": toman_to_irr(min(marketplace_prices)),
+                    "highPrice": toman_to_irr(max(marketplace_prices)),
+                    "offerCount": len(available_listings),
+                    "availability": "https://schema.org/InStock",
+                }
+            else:
+                # A seller-only product has no platform-owned fallback price or stock.
+                offer_data = {
+                    "@type": "Offer",
+                    "priceCurrency": "IRR",
+                    "availability": "https://schema.org/OutOfStock",
+                    "url": canonical_url,
+                }
+        elif offers:
             offer_data = {"@type": "AggregateOffer", "priceCurrency": "IRR", "lowPrice": toman_to_irr(min(prices)), "highPrice": toman_to_irr(max(prices)), "offerCount": len(offers), "availability": "https://schema.org/InStock" if any(v.in_stock for v in offers) else "https://schema.org/OutOfStock"}
         else:
             offer_data = {"@type": "Offer", "priceCurrency": "IRR", "price": toman_to_irr(self.object.base_price), "availability": "https://schema.org/InStock", "url": canonical_url}
