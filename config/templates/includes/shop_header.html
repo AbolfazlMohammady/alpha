@@ -61,12 +61,12 @@
         <div class="sh-nav__actions">
             {% if request.user.is_authenticated and request.user.is_active %}
             {% if request.user.is_staff or request.user.is_superuser or request.user.role != 'customer' %}
-            <a class="sh-admin-entry" href="{% if request.user.role == 'store_manager' %}{% url 'marketplace:vendor_dashboard_page' %}{% else %}{% url 'control:dashboard' %}{% endif %}" aria-label="{% if request.user.role == 'store_manager' %}ورود به پنل فروشنده{% else %}ورود به پنل مدیریتی{% endif %}">
+            <a class="sh-admin-entry" href="{% if request.user.role == 'store_manager' or request.user.role == 'مدیر فروشگاه' %}{% url 'marketplace:vendor_dashboard_page' %}{% else %}{% url 'control:dashboard' %}{% endif %}" aria-label="{% if request.user.role == 'store_manager' or request.user.role == 'مدیر فروشگاه' %}ورود به پنل فروشنده{% else %}ورود به پنل مدیریتی{% endif %}">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Z"></path>
                     <path d="M8 7.5h8M8 11.5h8M8 15.5h5"></path>
                 </svg>
-                <span>{% if request.user.role == 'store_manager' %}پنل فروشنده{% else %}پنل مدیریتی{% endif %}</span>
+                <span>{% if request.user.role == 'store_manager' or request.user.role == 'مدیر فروشگاه' %}پنل فروشنده{% else %}پنل مدیریتی{% endif %}</span>
             </a>
             {% endif %}
             {% endif %}
