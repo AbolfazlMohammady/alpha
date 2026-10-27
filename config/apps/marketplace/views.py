@@ -646,6 +646,7 @@ def vendor_dashboard_api(request):
     )
     sales_30d = sum(int(row.subtotal or 0) for row in recent_orders)
     sold_units_30d = 0
+    physical_units_30d = 0
     products = {}
     for row in recent_orders:
         snapshot = row.items_snapshot if isinstance(row.items_snapshot, list) else []
@@ -663,6 +664,9 @@ def vendor_dashboard_api(request):
             quantity = max(0, int(item.get("quantity") or 0))
             gross = max(0, int(item.get("line_total") or 0))
             sold_units_30d += quantity
+            units_per_order = max(1, int(item.get("units_per_order") or 1))
+            physical_units = quantity * units_per_order
+            physical_units_30d += physical_units
             if remaining_gross <= 0:
                 allocated = 0
             elif index == len(snapshot) - 1:
@@ -674,10 +678,14 @@ def vendor_dashboard_api(request):
             key = str(item.get("vendor_product_id") or item.get("product_id") or item.get("product_name") or "unknown")
             entry = products.setdefault(key, {
                 "name": str(item.get("product_name") or "محصول بدون نام"),
+                "sale_unit": str(item.get("sale_unit") or "واحد فروش"),
+                "units_per_order": units_per_order,
                 "quantity": 0,
+                "physical_units": 0,
                 "revenue": 0,
             })
             entry["quantity"] += quantity
+            entry["physical_units"] += physical_units
             entry["revenue"] += allocated
     top_products = sorted(products.values(), key=lambda item: (item["quantity"], item["revenue"]), reverse=True)[:5]
 
@@ -685,7 +693,12 @@ def vendor_dashboard_api(request):
         "ok": True,
         "vendor": {"id": vendor.id, "store_name": vendor.store_name, "status": vendor.status},
         "orders": {"pending_fulfilment": pending, "delivered": delivered, "total": orders.count()},
-        "sales": {"last_30_days": sales_30d, "sold_units_last_30_days": sold_units_30d, "top_products": top_products},
+        "sales": {
+            "last_30_days": sales_30d,
+            "sold_units_last_30_days": sold_units_30d,
+            "physical_units_last_30_days": physical_units_30d,
+            "top_products": top_products,
+        },
         "settlement": {"pending_amount": payable, "paid_amount": paid, "currency": "IRT"},
     })
 
