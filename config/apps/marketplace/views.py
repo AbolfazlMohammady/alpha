@@ -24,7 +24,7 @@ from .carriers import CarrierError, CarrierNotConfigured, get_carrier, validate_
 from apps.orders.models import Cart, CartItem, Order
 from apps.users.models import Address, City, Province, RoleUser, User
 from apps.shop.models import Category, Product, ProductImage
-from .models import CategoryRequest, FinancialReconciliation, SettlementBatch, Shipment, Vendor, VendorApplication, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
+from .models import CategoryRequest, FinancialReconciliation, JournalEntry, SettlementBatch, Shipment, Vendor, VendorApplication, VendorOrder, VendorProduct, VendorProductSubmission, WholesalePriceTier
 from .services import _strict_int, approve_settlement, create_shipping_quote, mark_vendor_order_delivered, reconcile_shipment_actual_cost, record_carrier_invoice_payment, record_external_reconciliation, record_full_order_refund, record_gateway_settlement, record_payout_result, trial_balance
 from .payouts import PayoutError, PayoutNotConfigured, submit_settlement_payout
 
@@ -1693,6 +1693,47 @@ def shipment_update_status_api(request, shipment_uuid):
         return _error(exc, 403 if isinstance(exc, PermissionDenied) else 400)
     except (TypeError, ValueError) as exc:
         return _error(exc)
+
+
+@staff_member_required
+@require_GET
+def journal_entries_api(request):
+    """Return recent immutable accounting entries for the staff operations screen."""
+    try:
+        limit = int(request.GET.get("limit", "30"))
+    except (TypeError, ValueError):
+        limit = 30
+    limit = max(1, min(limit, 100))
+    entries = (
+        JournalEntry.objects.filter(status__in=[JournalEntry.Status.POSTED, JournalEntry.Status.REVERSED])
+        .select_related("order", "vendor_order", "vendor_order__vendor", "created_by")
+        .prefetch_related("lines__account")
+        .order_by("-posted_at", "-created_at")[:limit]
+    )
+    results = []
+    for entry in entries:
+        lines = list(entry.lines.all())
+        results.append({
+            "id": entry.id,
+            "uuid": str(entry.uuid),
+            "kind": entry.kind,
+            "description": entry.description,
+            "status": entry.status,
+            "status_label": entry.get_status_display(),
+            "posted_at": entry.posted_at.isoformat() if entry.posted_at else entry.created_at.isoformat(),
+            "order_reference": entry.order.number if entry.order_id else "",
+            "vendor": entry.vendor_order.vendor.store_name if entry.vendor_order_id else "",
+            "debit_total": sum(int(line.debit) for line in lines),
+            "credit_total": sum(int(line.credit) for line in lines),
+            "lines": [{
+                "account_code": line.account.code,
+                "account_name": line.account.name,
+                "debit": int(line.debit),
+                "credit": int(line.credit),
+                "memo": line.memo,
+            } for line in lines],
+        })
+    return JsonResponse({"ok": True, "results": results})
 
 
 @staff_member_required
