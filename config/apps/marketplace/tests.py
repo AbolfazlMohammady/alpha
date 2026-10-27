@@ -1320,13 +1320,12 @@ class VendorSaleModeApiTests(TestCase):
             data={
                 "product_id": self.product.pk,
                 "sale_type": "wholesale",
-                "retail_price": 12000,
                 "sale_unit": "جین",
                 "units_per_order": 12,
                 "stock_quantity": 10,
                 "wholesale_enabled": False,
                 "wholesale_minimum_quantity": 1,
-                "wholesale_unit_price": 10000,
+                "wholesale_unit_price": 15000,
                 "supports_custom_printing": False,
                 "handling_days": 2,
             },
@@ -1336,9 +1335,11 @@ class VendorSaleModeApiTests(TestCase):
         listing = VendorProduct.objects.get(vendor=self.vendor, product=self.product)
         self.assertEqual(listing.sale_unit, "جین")
         self.assertEqual(listing.units_per_order, 12)
+        self.assertEqual(listing.retail_price, 15000)
+        self.assertIsNone(listing.compare_at_price)
         tier = listing.wholesale_tiers.get()
         self.assertEqual(tier.minimum_quantity, 1)
-        self.assertEqual(tier.unit_price, 10000)
+        self.assertEqual(tier.unit_price, 15000)
 
     def test_retail_only_vendor_cannot_create_wholesale_listing(self):
         self.vendor.seller_type = Vendor.SellerType.RETAIL
