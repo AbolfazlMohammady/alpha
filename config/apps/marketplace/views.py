@@ -697,7 +697,8 @@ def vendor_products_api(request):
             return _error("فروشنده تا زمان تأیید و فعال‌شدن حساب نمی‌تواند محصول ثبت کند.", 403)
         allowed = {
             "product_id", "retail_price", "compare_at_price", "sale_unit", "units_per_order",
-            "stock_quantity", "wholesale_enabled", "supports_custom_printing", "weight_grams",
+            "stock_quantity", "wholesale_enabled", "sale_type", "wholesale_minimum_quantity",
+            "wholesale_unit_price", "supports_custom_printing", "weight_grams",
             "package_length_cm", "package_width_cm", "package_height_cm", "handling_days",
         }
         unknown = set(payload) - allowed
@@ -710,13 +711,28 @@ def vendor_products_api(request):
         for flag in ("wholesale_enabled", "supports_custom_printing"):
             if flag in payload and not isinstance(payload[flag], bool):
                 return _error(f"{flag} باید true یا false باشد.")
+        sale_type = str(payload.get("sale_type", "retail")).strip()
+        if sale_type not in VendorProduct.SaleType.values:
+            return _error("نوع فروش را از بین تکی، عمده یا تکی و عمده انتخاب کن.")
+        if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and vendor.seller_type == Vendor.SellerType.RETAIL:
+            return _error("این فروشگاه مجوز فروش عمده ندارد.", 403)
         if payload.get("wholesale_enabled") is True:
-            return _error("ابتدا محصول را بدون فروش عمده ثبت کن؛ پس از ذخیره، پله‌های قیمت عمده را اضافه کن.")
+            return _error("برای ثبت فروش عمده از فیلدهای نوع فروش و قیمت عمده استفاده کن.")
+        wholesale_minimum = _strict_int(payload.get("wholesale_minimum_quantity", 0), "حداقل تعداد عمده") if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} else 0
+        wholesale_price = _strict_int(payload.get("wholesale_unit_price", 0), "قیمت واحد عمده") if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} else 0
+        if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH} and (wholesale_minimum < 2 or wholesale_price < 1):
+            return _error("برای فروش عمده، حداقل تعداد (۲ یا بیشتر) و قیمت واحد عمده را وارد کن.")
+        retail_price = _strict_int(payload.get("retail_price", 0), "قیمت فروش")
+        if sale_type == VendorProduct.SaleType.WHOLESALE:
+            retail_price = max(retail_price, wholesale_price)
+        if wholesale_price and wholesale_price > retail_price:
+            return _error("قیمت واحد عمده نباید از قیمت تکی بیشتر باشد.")
         listing = VendorProduct(
             vendor=vendor,
             product=product,
             status=VendorProduct.Status.PENDING,
-            retail_price=_strict_int(payload.get("retail_price", 0), "قیمت فروش"),
+            sale_type=sale_type,
+            retail_price=retail_price,
             compare_at_price=None if payload.get("compare_at_price") in (None, "") else _strict_int(payload.get("compare_at_price"), "قیمت قبل از تخفیف"),
             sale_unit=str(payload.get("sale_unit", "عدد")).strip(),
             units_per_order=_strict_int(payload.get("units_per_order", 1), "تعداد اقلام در واحد فروش"),
@@ -730,8 +746,19 @@ def vendor_products_api(request):
             handling_days=_strict_int(payload.get("handling_days", 2), "زمان آماده‌سازی"),
         )
         listing.full_clean()
-        listing.save()
-        return JsonResponse({"ok": True, "listing_id": listing.id, "status": listing.status, "message": "محصول برای بررسی مدیر ثبت شد."}, status=201)
+        with transaction.atomic():
+            listing.save()
+            if sale_type in {VendorProduct.SaleType.WHOLESALE, VendorProduct.SaleType.BOTH}:
+                tier = WholesalePriceTier(
+                    listing=listing,
+                    minimum_quantity=wholesale_minimum,
+                    unit_price=wholesale_price,
+                )
+                tier.full_clean()
+                tier.save()
+                listing.wholesale_enabled = True
+                listing.save(update_fields=("wholesale_enabled", "updated_at"))
+        return JsonResponse({"ok": True, "listing_id": listing.id, "status": listing.status, "sale_type": listing.sale_type, "message": "محصول و شرایط فروش برای بررسی مدیر ثبت شد."}, status=201)
     except (ValidationError, TypeError, ValueError) as exc:
         return _error(exc)
 
