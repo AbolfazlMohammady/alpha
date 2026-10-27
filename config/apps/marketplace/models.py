@@ -163,7 +163,7 @@ class VendorProduct(models.Model):
             raise ValidationError({
                 "wholesale_enabled": "برای فعال‌کردن فروش عمده، حداقل یک پله قیمت عمده ثبت کن."
             })
-        if self.pk and self.wholesale_tiers.filter(unit_price__gt=self.retail_price).exists():
+        if self.pk and self.wholesale_enabled and self.wholesale_tiers.filter(unit_price__gt=self.retail_price).exists():
             raise ValidationError({
                 "retail_price": "قیمت خرده‌فروشی نمی‌تواند کمتر از قیمت هیچ‌یک از پله‌های عمده باشد."
             })
