@@ -1216,11 +1216,13 @@ def vendor_wholesale_tier_detail_api(request, tier_id):
                 tier.minimum_quantity = minimum_quantity
             if "unit_price" in payload:
                 tier.unit_price = _strict_int(payload["unit_price"], "قیمت واحد عمده")
+            if listing.sale_type == VendorProduct.SaleType.RETAIL:
+                listing.sale_type = VendorProduct.SaleType.BOTH
             tier.full_clean()
             tier.save()
             listing.wholesale_enabled = True
             listing.status = VendorProduct.Status.PENDING
-            listing.save(update_fields=("wholesale_enabled", "status", "updated_at"))
+            listing.save(update_fields=("wholesale_enabled", "sale_type", "status", "updated_at"))
         return JsonResponse({"ok": True, "message": "پله عمده به‌روزرسانی شد و برای بررسی ارسال شد."})
     except PermissionDenied as exc:
         return _error(exc, 403)
