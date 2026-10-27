@@ -1180,10 +1180,12 @@ class VendorPickupLocationSelectionTests(TestCase):
     def test_vendor_dashboard_uses_existing_province_and_city_lists(self):
         response = self.client.get("/marketplace/vendor/dashboard/")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'data-vd-picker="province"')
-        self.assertContains(response, 'data-vd-picker="city"')
+        self.assertContains(response, 'name="pickup_province_id"')
+        self.assertContains(response, 'name="pickup_city_id"')
+        self.assertContains(response, f'data-province="{self.province.id}"')
         self.assertContains(response, self.province.name)
         self.assertContains(response, self.city.name)
+        self.assertContains(response, "filterCities(false)")
 
 
 class VendorProductParcelDetailsWorkflowTests(TestCase):
@@ -1267,7 +1269,7 @@ class VendorSaleModeApiTests(TestCase):
                 "units_per_order": 1,
                 "stock_quantity": 20,
                 "wholesale_enabled": False,
-                "wholesale_minimum_quantity": 5,
+                "wholesale_minimum_quantity": 6,
                 "wholesale_unit_price": 800,
                 "supports_custom_printing": False,
                 "handling_days": 2,
@@ -1281,7 +1283,7 @@ class VendorSaleModeApiTests(TestCase):
         self.assertEqual(listing.compare_at_price, 1000)
         self.assertTrue(listing.wholesale_enabled)
         tier = listing.wholesale_tiers.get()
-        self.assertEqual(tier.minimum_quantity, 5)
+        self.assertEqual(tier.minimum_quantity, 6)
         self.assertEqual(tier.unit_price, 800)
 
     def test_wholesale_listing_can_sell_one_dozen_pack(self):
