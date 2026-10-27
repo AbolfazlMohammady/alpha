@@ -127,7 +127,7 @@
             <label class="vd-field">توضیحات کامل<textarea name="description" rows="3"></textarea></label>
             <label class="vd-field">تصویر اصلی محصول<input name="image" type="file" accept="image/*" required></label>
             <div class="vd-product-step" style="grid-column:1/-1">
-                <h3>۱. روش فروش</h3>
+                <h3>روش فروش</h3>
                 <p class="vd-muted">مشخص کن مشتری می‌تواند تکی بخرد، عمده بخرد یا هر دو روش فعال باشد.</p>
                 <div class="vd-choice-cards">
                     <label class="vd-choice-card"><input type="radio" name="sale_type" value="retail" checked><span><strong>فقط تکی</strong><small>قیمت برای هر واحد فروش</small></span></label>
@@ -137,9 +137,9 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="vd-product-step" style="grid-column:1/-1">
-                <h3>۲. قیمت و تخفیف</h3>
-                <p class="vd-muted">فقط قیمت اصلی و درصد تخفیف را وارد کن؛ قیمت نهایی را سیستم محاسبه می‌کند. برای نمونه، ۱۰ یعنی ۱۰٪ تخفیف.</p>
+            <div class="vd-product-step" data-retail-pricing style="grid-column:1/-1">
+                <h3>قیمت تکی و تخفیف</h3>
+                <p class="vd-muted">برای فروش تکی یا هر دو روش، قیمت اصلی و درصد تخفیف را وارد کن. قیمت نهایی خودکار محاسبه می‌شود؛ ۱۰ یعنی ۱۰٪ تخفیف.</p>
                 <div class="vd-form">
                     <label class="vd-field">قیمت اصلی هر واحد (تومان)<input name="regular_price" type="number" min="1" required></label>
                     <label class="vd-field">درصد تخفیف<input name="discount_percent" type="number" min="0" max="99" step="1" value="0" required><small class="vd-muted">عدد صحیح از ۰ تا ۹۹</small></label>
@@ -147,7 +147,7 @@
                 </div>
             </div>
             <div class="vd-product-step" data-wholesale-fields hidden style="grid-column:1/-1">
-                <h3>۳. قیمت عمده</h3>
+                <h3>قیمت عمده و حداقل سفارش</h3>
                 <p class="vd-muted">این قیمت برای هر واحد فروش است و از قیمت نهایی تکی بیشتر نمی‌تواند باشد.</p>
                 <div class="vd-form">
                     <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity"><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش (یک جین، اگر واحد فروش عدد باشد)</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select><small class="vd-muted">اگر واحد فروش «جین» باشد، ۱ واحد فروش یعنی ۱۲ عدد فیزیکی.</small></label>
@@ -177,7 +177,7 @@
             <label class="vd-field">تعداد اقلام در هر واحد فروش<select name="units_per_order" required><option value="1">۱ عدد</option><option value="2">۲ عدد</option><option value="3">۳ عدد</option><option value="4">۴ عدد</option><option value="6">۶ عدد</option><option value="12">۱۲ عدد (یک جین)</option><option value="24">۲۴ عدد (دو جین)</option><option value="36">۳۶ عدد</option><option value="48">۴۸ عدد</option><option value="72">۷۲ عدد</option><option value="144">۱۴۴ عدد</option></select></label>
             <label class="vd-field">موجودی (واحد فروش)<input name="stock_quantity" type="number" min="0" value="0" required></label>
             <div class="vd-product-step" style="grid-column:1/-1">
-                <h3>۱. روش فروش</h3>
+                <h3>روش فروش</h3>
                 <div class="vd-choice-cards">
                     <label class="vd-choice-card"><input type="radio" name="sale_type" value="retail" checked><span><strong>فقط تکی</strong><small>فروش با قیمت واحد</small></span></label>
                     {% if vendor.seller_type != "retail" %}
@@ -186,9 +186,9 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="vd-product-step" style="grid-column:1/-1">
-                <h3>۲. قیمت و تخفیف</h3>
-                <p class="vd-muted">قیمت اصلی و درصد تخفیف را وارد کن؛ قیمت نهایی خودکار محاسبه می‌شود. مثلاً ۱۰ یعنی ۱۰٪ تخفیف.</p>
+            <div class="vd-product-step" data-retail-pricing style="grid-column:1/-1">
+                <h3>قیمت تکی و تخفیف</h3>
+                <p class="vd-muted">برای فروش تکی یا هر دو روش، قیمت اصلی و درصد تخفیف را وارد کن؛ ۱۰ یعنی ۱۰٪ تخفیف.</p>
                 <div class="vd-form">
                     <label class="vd-field">قیمت اصلی هر واحد (تومان)<input name="regular_price" type="number" min="1" required></label>
                     <label class="vd-field">درصد تخفیف<input name="discount_percent" type="number" min="0" max="99" step="1" value="0" required></label>
@@ -196,7 +196,7 @@
                 </div>
             </div>
             <div class="vd-product-step" data-wholesale-fields hidden style="grid-column:1/-1">
-                <h3>۳. قیمت عمده</h3>
+                <h3>قیمت عمده و حداقل سفارش</h3>
                 <div class="vd-form">
                     <label class="vd-field">حداقل واحد فروش برای عمده<select name="wholesale_minimum_quantity"><option value="1">۱ واحد فروش</option><option value="2">۲ واحد فروش</option><option value="3" selected>۳ واحد فروش</option><option value="6">۶ واحد فروش</option><option value="12">۱۲ واحد فروش</option><option value="24">۲۴ واحد فروش</option><option value="36">۳۶ واحد فروش</option><option value="48">۴۸ واحد فروش</option><option value="72">۷۲ واحد فروش</option><option value="144">۱۴۴ واحد فروش</option></select><small class="vd-muted">اگر واحد فروش «جین» باشد، ۱ واحد فروش یعنی ۱۲ عدد.</small></label>
                     <label class="vd-field">قیمت هر واحد عمده (تومان)<input name="wholesale_unit_price" type="number" min="1"></label>
@@ -543,6 +543,7 @@
         if (!form) return;
         const radios = form.querySelectorAll('input[name="sale_type"]');
         const wholesale = form.querySelector("[data-wholesale-fields]");
+        const retailPricing = form.querySelector("[data-retail-pricing]");
         const regular = form.querySelector('input[name="regular_price"]');
         const discount = form.querySelector('input[name="discount_percent"]');
         const preview = form.querySelector("[data-price-preview]");
@@ -551,6 +552,9 @@
         const refresh = () => {
             const mode = form.querySelector('input[name="sale_type"]:checked')?.value || "retail";
             if (wholesale) wholesale.hidden = mode === "retail";
+            if (retailPricing) retailPricing.hidden = mode === "wholesale";
+            if (regular) { regular.required = mode !== "wholesale"; regular.disabled = mode === "wholesale"; }
+            if (discount) { discount.required = mode !== "wholesale"; discount.disabled = mode === "wholesale"; }
             if (minimum) { minimum.required = mode !== "retail"; minimum.disabled = mode === "retail"; }
             if (wholesalePrice) { wholesalePrice.required = mode !== "retail"; wholesalePrice.disabled = mode === "retail"; }
             const base = Number(regular?.value || 0);
@@ -578,11 +582,20 @@
             const selectedUnit = form.querySelector('select[name="sale_unit"]')?.value;
             const fixedCounts = {"عدد":1, "جفت":2, "جین":12};
             if (selectedUnit && fixedCounts[selectedUnit]) payload.units_per_order = fixedCounts[selectedUnit];
+            const mode = payload.sale_type || "retail";
             const regularPrice = Number(payload.regular_price || 0);
             const discountPercent = Number(payload.discount_percent || 0);
-            if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
-            payload.retail_price = Math.round(regularPrice * (100 - discountPercent) / 100);
-            payload.compare_at_price = discountPercent > 0 ? regularPrice : null;
+            const wholesalePriceValue = Number(payload.wholesale_unit_price || 0);
+            if (mode === "wholesale") {
+                if (wholesalePriceValue < 1) throw new Error("قیمت واحد عمده را وارد کن.");
+                payload.retail_price = wholesalePriceValue;
+                payload.compare_at_price = null;
+            } else {
+                if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
+                payload.retail_price = Math.round(regularPrice * (100 - discountPercent) / 100);
+                payload.compare_at_price = discountPercent > 0 ? regularPrice : null;
+                if (mode === "both" && wholesalePriceValue > payload.retail_price) throw new Error("قیمت عمده نباید از قیمت نهایی تکی بیشتر باشد.");
+            }
             delete payload.regular_price;
             delete payload.discount_percent;
             payload.wholesale_enabled = false;
@@ -622,14 +635,23 @@
                 const selectedUnit = form.querySelector('select[name="sale_unit"]')?.value;
                 const fixedCounts = {"عدد":"1", "جفت":"2", "جین":"12"};
                 if (selectedUnit && fixedCounts[selectedUnit]) formData.set("units_per_order", fixedCounts[selectedUnit]);
+                const mode = formData.get("sale_type") || "retail";
                 const regularPrice = Number(formData.get("regular_price") || 0);
                 const discountPercent = Number(formData.get("discount_percent") || 0);
-                if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
-                formData.set("retail_price", String(Math.round(regularPrice * (100 - discountPercent) / 100)));
-                formData.set("compare_at_price", discountPercent > 0 ? String(regularPrice) : "");
+                const wholesalePriceValue = Number(formData.get("wholesale_unit_price") || 0);
+                if (mode === "wholesale") {
+                    if (wholesalePriceValue < 1) throw new Error("قیمت واحد عمده را وارد کن.");
+                    formData.set("retail_price", String(wholesalePriceValue));
+                    formData.set("compare_at_price", "");
+                } else {
+                    if (!regularPrice || discountPercent < 0 || discountPercent > 99) throw new Error("قیمت اصلی و درصد تخفیف را درست وارد کن.");
+                    const finalPrice = Math.round(regularPrice * (100 - discountPercent) / 100);
+                    if (mode === "both" && wholesalePriceValue > finalPrice) throw new Error("قیمت عمده نباید از قیمت نهایی تکی بیشتر باشد.");
+                    formData.set("retail_price", String(finalPrice));
+                    formData.set("compare_at_price", discountPercent > 0 ? String(regularPrice) : "");
+                }
                 formData.delete("regular_price");
                 formData.delete("discount_percent");
-                const mode = formData.get("sale_type") || "retail";
                 if (mode === "retail") {
                     formData.delete("wholesale_minimum_quantity");
                     formData.delete("wholesale_unit_price");
