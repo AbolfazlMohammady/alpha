@@ -11,7 +11,7 @@
 <body>
 <header class="cc-topbar">
   <button class="cc-menu" type="button" data-sidebar-toggle aria-label="منو">☰</button>
-  <a class="cc-brand" href="{% url 'control:dashboard' %}"><span class="cc-mark">B</span><span><b>BABAEI</b><small>CONTROL CENTER</small></span></a>
+  <a class="cc-brand" href="{% if request.user.role == 'store_manager' %}{% url 'marketplace:vendor_dashboard_page' %}{% else %}{% url 'control:dashboard' %}{% endif %}"><span class="cc-mark">B</span><span><b>BABAEI</b><small>CONTROL CENTER</small></span></a>
   <div class="cc-top-actions">
     <a href="/" target="_blank" class="cc-top-link">مشاهده فروشگاه ↗</a>
     <span class="cc-role">{{ request.user.get_role_display }}</span>
@@ -24,8 +24,8 @@
     <div class="cc-sidebar-head"><div><span class="cc-mark cc-mark-sm">B</span><div><b>مرکز کنترل</b><small>BABAEI ADMIN</small></div></div><button class="cc-collapse" type="button" data-sidebar-collapse aria-label="جمع کردن منو">‹</button><button class="cc-close" data-sidebar-close>×</button></div>
     <nav class="cc-nav" aria-label="منوی مرکز کنترل">
       <div class="cc-nav-primary">
-        <a class="cc-nav-item {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'control:dashboard' %}">
-          <span>⌂</span><em>داشبورد</em>
+        <a class="cc-nav-item {% if request.resolver_match.url_name == 'vendor_dashboard_page' or request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% if request.user.role == 'store_manager' %}{% url 'marketplace:vendor_dashboard_page' %}{% else %}{% url 'control:dashboard' %}{% endif %}">
+          <span>⌂</span><em>{% if request.user.role == 'store_manager' %}داشبورد فروشنده{% else %}داشبورد{% endif %}</em>
         </a>
       </div>
 
@@ -38,7 +38,7 @@
       </div>
       {% endif %}
 
-      {% if request.user.is_superuser or request.user.role in 'admin,store_manager' %}
+      {% if request.user.is_superuser or request.user.role == 'admin' %}
       <div class="cc-section">فروشگاه</div>
       <div class="cc-nav-group">
         <a class="cc-nav-item {% if request.resolver_match.url_name == 'products' or request.resolver_match.url_name == 'product_create' or request.resolver_match.url_name == 'product_edit' %}active{% endif %}" href="{% url 'control:products' %}">
@@ -89,11 +89,14 @@
       </div>
       {% endif %}
       {% if request.user.role == 'store_manager' %}
-      <div class="cc-section">پنل فروشنده</div>
+      <div class="cc-section">عملیات فروشنده</div>
       <div class="cc-nav-group">
-        <a class="cc-nav-item" href="{% url 'marketplace:vendor_dashboard_page' %}">
-          <span>▣</span><em>داشبورد فروشنده</em>
-        </a>
+        <a class="cc-nav-item" href="{% url 'marketplace:vendor_dashboard_page' %}#vd-overview"><span>▣</span><em>نمای کلی و فروش</em></a>
+        <a class="cc-nav-item" href="{% url 'marketplace:vendor_dashboard_page' %}#vd-orders-section"><span>⌑</span><em>سفارش‌ها و ارسال</em></a>
+        <a class="cc-nav-item" href="{% url 'marketplace:vendor_dashboard_page' %}#vd-products-section"><span>◫</span><em>محصولات و قیمت‌ها</em></a>
+        <a class="cc-nav-item" href="{% url 'marketplace:vendor_dashboard_page' %}#vd-settlements-section"><span>⇄</span><em>حساب و تسویه</em></a>
+        <a class="cc-nav-item" href="{% url 'marketplace:vendor_dashboard_page' %}#vd-shipping-section"><span>⌖</span><em>مبدأ ارسال</em></a>
+        <a class="cc-nav-item" href="{% url 'marketplace:storefront' %}"><span>◇</span><em>مشاهده بازار فروشندگان</em></a>
       </div>
       {% endif %}
 
