@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .carriers import CarrierNotConfigured, TipaxClient, validate_quote_input
-from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication, VendorOrder, VendorProduct, WholesalePriceTier, Shipment
+from .models import JournalEntry, LedgerAccount, SettlementBatch, Vendor, VendorApplication, VendorOrder, VendorProduct, WholesalePriceTier, Shipment
 from apps.users.models import RoleUser
 from apps.shop.models import Category, Product
 from apps.orders.models import Order
