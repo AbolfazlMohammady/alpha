@@ -13,7 +13,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .carriers import CarrierNotConfigured, TipaxClient, validate_quote_input
-from .models import JournalEntry, LedgerAccount, Vendor, VendorApplication, VendorOrder, VendorProduct, WholesalePriceTier, Shipment
+from .models import JournalEntry, LedgerAccount, SettlementBatch, Vendor, VendorApplication, VendorOrder, VendorProduct, WholesalePriceTier, Shipment
 from apps.users.models import RoleUser
 from apps.shop.models import Category, Product
 from apps.orders.models import Order
@@ -162,6 +162,16 @@ class VendorDashboardAccessTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "پنل فروشنده")
+        self.assertContains(response, 'href="/marketplace/store/"')
+        self.assertContains(response, 'href="/marketplace/vendor/dashboard/#vd-orders-section"')
+        self.assertNotContains(response, 'href="/control/products/"')
+        self.assertNotContains(response, 'href="/control/"')
+        rendered = response.content.decode()
+        submission_start = rendered.index('id="vd-product-submission"')
+        submission_end = rendered.index('id="vd-product-submissions"', submission_start)
+        submission_form = rendered[submission_start:submission_end]
+        self.assertNotIn('select name="sale_type"', submission_form)
+        self.assertIn('type="radio" name="sale_type"', submission_form)
         vendor = Vendor.objects.get(user=user)
         self.assertEqual(vendor.status, Vendor.Status.ACTIVE)
         self.assertIsNotNone(vendor.approved_at)
@@ -265,7 +275,7 @@ class VendorDashboardAccessTests(TestCase):
 
 
 class PortalPlaceholderAccessTests(TestCase):
-    def test_homepage_renders_seller_shortcuts_for_store_manager(self):
+    def test_homepage_links_to_public_marketplace_without_temporary_seller_cards(self):
         user = get_user_model().objects.create_user(
             phone="+989121234581",
             role=RoleUser.STORE_MANAGER,
@@ -273,10 +283,12 @@ class PortalPlaceholderAccessTests(TestCase):
         self.client.force_login(user)
         response = self.client.get(reverse("home:index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "پنل فروشنده")
-        self.assertContains(response, "new-product")
+        self.assertContains(response, "بازار فروشندگان")
+        self.assertContains(response, 'href="/marketplace/store/"')
+        self.assertNotContains(response, "صفحه موقت")
+        self.assertNotContains(response, "new-product")
 
-    def test_homepage_renders_admin_shortcuts_for_staff(self):
+    def test_homepage_does_not_show_temporary_admin_operations_cards(self):
         user = get_user_model().objects.create_user(
             phone="+989121234582",
             role=RoleUser.ADMIN,
@@ -285,8 +297,8 @@ class PortalPlaceholderAccessTests(TestCase):
         self.client.force_login(user)
         response = self.client.get(reverse("home:index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "مدیریت و حسابداری")
-        self.assertContains(response, "trial-balance")
+        self.assertNotContains(response, "مدیریت و حسابداری")
+        self.assertNotContains(response, "trial-balance")
 
     def test_store_manager_can_open_seller_placeholder(self):
         user = get_user_model().objects.create_user(phone="+989121234576", role=RoleUser.STORE_MANAGER)
@@ -541,3 +553,158 @@ class VendorProductArchiveTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.listing.refresh_from_db()
         self.assertEqual(self.listing.status, VendorProduct.Status.ACTIVE)
+
+
+class AccountingJournalApiTests(TestCase):
+    def setUp(self):
+        self.cash = LedgerAccount.objects.create(
+            code="journal_api_test_cash",
+            name="وجه نقد تست API",
+            kind=LedgerAccount.Kind.ASSET,
+            currency="IRT",
+        )
+        self.revenue = LedgerAccount.objects.create(
+            code="journal_api_test_revenue",
+            name="درآمد تست API",
+            kind=LedgerAccount.Kind.REVENUE,
+            currency="IRT",
+        )
+
+    def test_staff_can_inspect_posted_journal_entries_and_lines(self):
+        post_journal(
+            idempotency_key="release-journal-inspection-001",
+            kind="release_smoke",
+            description="ثبت فروش آزمایشی",
+            lines=[
+                {"account": self.cash, "debit": 75000, "credit": 0},
+                {"account": self.revenue, "debit": 0, "credit": 75000},
+            ],
+        )
+        staff = get_user_model().objects.create_user(
+            phone="+989120000701",
+            password="test-password",
+            is_staff=True,
+        )
+        self.client.force_login(staff)
+        response = self.client.get("/marketplace/api/admin/accounting/journal-entries/")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        entry = next(row for row in payload["results"] if row["kind"] == "release_smoke")
+        self.assertEqual(entry["description"], "ثبت فروش آزمایشی")
+        self.assertEqual(entry["debit_total"], 75000)
+        self.assertEqual(entry["credit_total"], 75000)
+        self.assertEqual(len(entry["lines"]), 2)
+
+    def test_non_staff_cannot_inspect_journal_entries(self):
+        user = get_user_model().objects.create_user(
+            phone="+989120000702",
+            password="test-password",
+        )
+        self.client.force_login(user)
+        response = self.client.get("/marketplace/api/admin/accounting/journal-entries/")
+        self.assertEqual(response.status_code, 302)
+
+
+class SettlementHistoryApiTests(TestCase):
+    def test_staff_can_see_failed_and_paid_settlements_not_only_pending_approval(self):
+        vendor_user = get_user_model().objects.create_user(
+            phone="+989120000703",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        vendor = Vendor.objects.create(
+            user=vendor_user,
+            store_name="فروشگاه سابقه تسویه",
+            slug="settlement-history-api-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        now = timezone.now()
+        SettlementBatch.objects.create(
+            idempotency_key="settlement-history-failed-001",
+            vendor=vendor,
+            status=SettlementBatch.Status.FAILED,
+            period_start=now - timedelta(days=2),
+            period_end=now - timedelta(days=1),
+            gross_amount=100000,
+            commission_amount=10000,
+            payable_amount=90000,
+            failure_reason="خطای آزمایشی پرداخت",
+        )
+        SettlementBatch.objects.create(
+            idempotency_key="settlement-history-paid-001",
+            vendor=vendor,
+            status=SettlementBatch.Status.PAID,
+            period_start=now - timedelta(days=4),
+            period_end=now - timedelta(days=3),
+            gross_amount=200000,
+            commission_amount=20000,
+            payable_amount=180000,
+            paid_at=now,
+            payout_reference="bank-test-123",
+        )
+        staff = get_user_model().objects.create_user(
+            phone="+989120000704",
+            password="test-password",
+            is_staff=True,
+        )
+        self.client.force_login(staff)
+        response = self.client.get("/marketplace/api/admin/settlements/")
+        self.assertEqual(response.status_code, 200)
+        rows = response.json()["results"]
+        self.assertEqual({row["status"] for row in rows}, {"failed", "paid"})
+        failed = next(row for row in rows if row["status"] == "failed")
+        self.assertEqual(failed["failure_reason"], "خطای آزمایشی پرداخت")
+        paid = next(row for row in rows if row["status"] == "paid")
+        self.assertEqual(paid["payout_reference"], "bank-test-123")
+
+
+class VendorSalesAnalyticsTests(TestCase):
+    def test_sales_report_distinguishes_sellable_packs_from_physical_items(self):
+        user = get_user_model().objects.create_user(
+            phone="+989120000705",
+            password="test-password",
+            role=RoleUser.STORE_MANAGER,
+        )
+        vendor = Vendor.objects.create(
+            user=user,
+            store_name="فروشگاه تحلیل فروش",
+            slug="vendor-sales-analytics-test",
+            status=Vendor.Status.ACTIVE,
+        )
+        order = Order.objects.create(
+            user=user,
+            shipping_title="خانه",
+            shipping_recipient="گیرنده آزمایشی",
+            shipping_phone="+989120000705",
+            shipping_province="تهران",
+            shipping_city="تهران",
+            shipping_postal_code="1234567891",
+            shipping_address="نشانی آزمایشی",
+            subtotal=200000,
+            total_amount=200000,
+        )
+        VendorOrder.objects.create(
+            order=order,
+            vendor=vendor,
+            status=VendorOrder.Status.DELIVERED,
+            items_snapshot=[{
+                "vendor_product_id": 42,
+                "product_name": "شلوار جین",
+                "quantity": 2,
+                "sale_unit": "جین",
+                "units_per_order": 12,
+                "line_total": 200000,
+            }],
+            subtotal=200000,
+            commission_amount=20000,
+            vendor_payable=180000,
+        )
+        self.client.force_login(user)
+        response = self.client.get("/marketplace/api/vendor/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        sales = response.json()["sales"]
+        self.assertEqual(sales["sold_units_last_30_days"], 2)
+        self.assertEqual(sales["physical_units_last_30_days"], 24)
+        self.assertEqual(sales["top_products"][0]["sale_unit"], "جین")
+        self.assertEqual(sales["top_products"][0]["physical_units"], 24)

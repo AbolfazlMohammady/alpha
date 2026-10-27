@@ -163,9 +163,9 @@ class VendorProduct(models.Model):
             raise ValidationError({
                 "wholesale_enabled": "برای فعال‌کردن فروش عمده، حداقل یک پله قیمت عمده ثبت کن."
             })
-        if self.pk and self.wholesale_enabled and self.wholesale_tiers.filter(unit_price__gt=self.retail_price).exists():
+        if self.pk and self.sale_type == self.SaleType.BOTH and self.wholesale_enabled and self.wholesale_tiers.filter(unit_price__gt=self.retail_price).exists():
             raise ValidationError({
-                "retail_price": "قیمت خرده‌فروشی نمی‌تواند کمتر از قیمت هیچ‌یک از پله‌های عمده باشد."
+                "retail_price": "قیمت نهایی تکی نمی‌تواند کمتر از قیمت هیچ‌یک از پله‌های عمده باشد."
             })
 
     def __str__(self):
@@ -191,8 +191,8 @@ class WholesalePriceTier(models.Model):
         if self.listing_id:
             if self.listing.vendor.seller_type == Vendor.SellerType.RETAIL:
                 raise ValidationError({"listing": "فروش عمده برای این فروشگاه تأیید نشده است."})
-            if self.unit_price > self.listing.retail_price:
-                raise ValidationError({"unit_price": "قیمت عمده نباید از قیمت خرده‌فروشی بیشتر باشد."})
+            if self.listing.sale_type != VendorProduct.SaleType.WHOLESALE and self.unit_price > self.listing.retail_price:
+                raise ValidationError({"unit_price": "قیمت عمده نباید از قیمت نهایی تکی بیشتر باشد."})
             existing = type(self).objects.filter(listing_id=self.listing_id)
             if self.pk:
                 existing = existing.exclude(pk=self.pk)

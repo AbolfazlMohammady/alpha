@@ -31,6 +31,7 @@ urlpatterns = [
     path("api/vendor/orders/<int:order_id>/shipping/<uuid:shipment_uuid>/handed-over/", views.shipment_handed_over_api, name="shipment_handed_over_api"),
     path("api/admin/shipping/<uuid:shipment_uuid>/status/", views.shipment_update_status_api, name="shipment_update_status_api"),
     path("api/admin/orders/<uuid:order_uuid>/refund/", views.order_refund_api, name="order_refund_api"),
+    path("api/admin/accounting/journal-entries/", views.journal_entries_api, name="journal_entries_api"),
     path("api/admin/accounting/trial-balance/", views.trial_balance_api, name="trial_balance_api"),
     path("api/admin/accounting/reconciliation/", views.external_reconciliation_api, name="external_reconciliation_api"),
     path("api/admin/accounting/carrier-payment/", views.carrier_invoice_payment_api, name="carrier_invoice_payment_api"),

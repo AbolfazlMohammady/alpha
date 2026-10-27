@@ -46,7 +46,7 @@
         <button type="button" class="ma-btn primary" id="ma-refresh">به‌روزرسانی گزارش‌ها</button>
     </header>
     <nav class="ma-nav" aria-label="بخش‌های حسابداری">
-        <a href="#ma-overview">نمای کلی</a><a href="#ma-trial-balance">تراز آزمایشی</a><a href="#ma-settlement-queue">صف تسویه فروشندگان</a><a href="#ma-vendor-performance">عملکرد فروشندگان</a><a href="#ma-payout-config">تنظیمات پرداخت</a><a href="#ma-gateway">تسویه درگاه</a><a href="#ma-carrier-payment">پرداخت حمل</a><a href="#ma-reconciliation">مغایرت‌گیری</a><a href="#ma-carriers">تنظیمات حمل</a>
+        <a href="#ma-overview">نمای کلی</a><a href="#ma-trial-balance">تراز آزمایشی</a><a href="#ma-journal-entries">اسناد حسابداری</a><a href="#ma-settlement-queue">صف تسویه فروشندگان</a><a href="#ma-vendor-performance">عملکرد فروشندگان</a><a href="#ma-payout-config">تنظیمات پرداخت</a><a href="#ma-gateway">تسویه درگاه</a><a href="#ma-carrier-payment">پرداخت حمل</a><a href="#ma-reconciliation">مغایرت‌گیری</a><a href="#ma-carriers">تنظیمات حمل</a>
     </nav>
     <p id="ma-message" class="ma-message" role="status"></p>
     <section class="ma-grid" id="ma-overview">
@@ -60,8 +60,13 @@
         <div id="ma-balance-status" class="ma-note">در حال خواندن دفترکل…</div>
         <div class="ma-table-wrap"><table class="ma-table"><thead><tr><th>کد حساب</th><th>نام حساب</th><th>بدهکار</th><th>بستانکار</th><th>مانده</th></tr></thead><tbody id="ma-balance-rows"><tr><td colspan="5">در حال بارگذاری…</td></tr></tbody></table></div>
     </section>
+    <section class="ma-card ma-section" id="ma-journal-entries">
+        <h2>آخرین اسناد قطعی حسابداری</h2>
+        <p class="ma-muted">این فهرست نشان می‌دهد هر رویداد مالی چه سندی در دفترکل ساخته و کدام حساب‌ها بدهکار یا بستانکار شده‌اند. سندهای پیش‌نویس نمایش داده نمی‌شوند.</p>
+        <div id="ma-journal-list" class="ma-list"><p class="ma-muted">در حال خواندن اسناد حسابداری…</p></div>
+    </section>
     <section class="ma-card ma-section" id="ma-settlement-queue">
-        <h2>صف تسویه فروشندگان</h2><p class="ma-muted">تأیید هر ردیف باعث اجرای اعتبارسنجی مجدد می‌شود. تا وقتی پرداخت بانکی واقعی پیکربندی نشده، تأیید به‌معنای واریز وجه نیست.</p>
+        <h2>صف و سوابق تسویه فروشندگان</h2><p class="ma-muted">در اینجا تسویه‌های در انتظار تأیید، در حال پرداخت، ناموفق و پرداخت‌شده را می‌بینی. فقط ردیف‌های منتظر تأیید دکمه اقدام دارند؛ تأیید به‌تنهایی به معنی واریز وجه نیست.</p>
         <div id="ma-settlement-list" class="ma-list">در حال بارگذاری…</div>
     </section>
     <section class="ma-card ma-section" id="ma-gateway">
@@ -159,12 +164,26 @@
             `<tr><td>${escapeHtml(row.account)}</td><td>${escapeHtml(row.name)}</td><td>${money(row.debit)}</td><td>${money(row.credit)}</td><td>${money(row.balance)}</td></tr>`
         ).join("") : '<tr><td colspan="5">هنوز سند قطعی در دفترکل ثبت نشده است.</td></tr>';
     }
+    async function loadJournalEntries() {
+        const data = await request("/marketplace/api/admin/accounting/journal-entries/?limit=30");
+        const box = document.getElementById("ma-journal-list");
+        box.innerHTML = data.results.length ? data.results.map(entry => {
+            const lines = entry.lines.map(line =>
+                "<tr><td>" + escapeHtml(line.account_code) + "</td><td>" + escapeHtml(line.account_name) + "</td><td>" + money(line.debit) + "</td><td>" + money(line.credit) + "</td><td>" + escapeHtml(line.memo) + "</td></tr>"
+            ).join("");
+            return "<details class=\"ma-row\"><summary style=\"cursor:pointer;flex:1;min-width:240px;list-style-position:inside\">"
+                + "<strong>" + escapeHtml(entry.description || entry.kind) + "</strong>"
+                + "<div class=\"ma-muted\">" + escapeHtml((entry.posted_at || "").slice(0,19).replace("T"," ")) + " · " + escapeHtml(entry.kind) + " · " + escapeHtml(entry.status_label) + "</div>"
+                + "<div class=\"ma-muted\">" + (entry.vendor ? "فروشگاه: " + escapeHtml(entry.vendor) + " · " : "") + (entry.order_reference ? "سفارش: " + escapeHtml(entry.order_reference) + " · " : "") + "بدهکار: " + money(entry.debit_total) + " · بستانکار: " + money(entry.credit_total) + " تومان</div>"
+                + "</summary><div class=\"ma-table-wrap\" style=\"flex-basis:100%;margin-top:12px\"><table class=\"ma-table\"><thead><tr><th>کد حساب</th><th>حساب</th><th>بدهکار</th><th>بستانکار</th><th>شرح ردیف</th></tr></thead><tbody>" + lines + "</tbody></table></div></details>";
+        }).join("") : '<p class="ma-muted">هنوز سند قطعی حسابداری ثبت نشده است.</p>';
+    }
     async function loadSettlements() {
         const data = await request("/marketplace/api/admin/settlements/");
-        document.getElementById("ma-pending-count").textContent = money(data.results.length);
+        document.getElementById("ma-pending-count").textContent = money(data.results.filter(row => row.status === "pending_approval").length);
         document.getElementById("ma-settlement-list").innerHTML = data.results.length ? data.results.map(row =>
-            `<div class="ma-row"><div><strong>${escapeHtml(row.vendor)}</strong><div class="ma-muted">دوره: ${escapeHtml(row.period_start?.slice(0,10))} تا ${escapeHtml(row.period_end?.slice(0,10))}</div><div class="ma-muted">فروش: ${money(row.gross_amount)} · کمیسیون: ${money(row.commission_amount)} · قابل پرداخت: ${money(row.payable_amount)} تومان</div></div><button type="button" class="ma-btn primary" data-approve-settlement="${row.id}">بررسی و تأیید</button></div>`
-        ).join("") : '<p class="ma-muted">در حال حاضر تسویه‌ای در انتظار تأیید نیست.</p>';
+            `<div class="ma-row"><div><strong>${escapeHtml(row.vendor)}</strong> <span class="ma-status">${escapeHtml(row.status_label || row.status)}</span><div class="ma-muted">دوره: ${escapeHtml(row.period_start?.slice(0,10))} تا ${escapeHtml(row.period_end?.slice(0,10))}</div><div class="ma-muted">فروش: ${money(row.gross_amount)} · کمیسیون: ${money(row.commission_amount)} · قابل پرداخت: ${money(row.payable_amount)} تومان</div>${row.payout_reference ? `<div class="ma-muted">مرجع پرداخت: ${escapeHtml(row.payout_reference)}</div>` : ""}${row.paid_at ? `<div class="ma-muted">پرداخت در: ${escapeHtml(row.paid_at.slice(0,19).replace("T"," "))}</div>` : ""}${row.failure_reason ? `<div class="ma-bad">نیازمند بررسی: ${escapeHtml(row.failure_reason)}</div>` : ""}</div>${row.status === "pending_approval" ? `<button type="button" class="ma-btn primary" data-approve-settlement="${row.id}">بررسی و تأیید</button>` : ""}</div>`
+        ).join("") : '<p class="ma-muted">هنوز سابقه تسویه‌ای ثبت نشده است.</p>';
     }
     async function loadReconciliations() {
         const data = await request("/marketplace/api/admin/accounting/reconciliation/");
@@ -174,7 +193,7 @@
         ).join("") : '<p class="ma-muted">هنوز رکورد مغایرت‌گیری ثبت نشده است.</p>';
     }
     async function refresh() {
-        try { await Promise.all([loadBalance(), loadSettlements(), loadReconciliations()]); }
+        try { await Promise.all([loadBalance(), loadJournalEntries(), loadSettlements(), loadReconciliations()]); }
         catch (error) { message(error.message, true); }
     }
     document.getElementById("ma-refresh").addEventListener("click", refresh);
