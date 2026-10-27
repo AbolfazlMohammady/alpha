@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 import os
 from datetime import timedelta
+from functools import wraps
 
 from PIL import Image, UnidentifiedImageError
 
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.paginator import Paginator
@@ -87,6 +87,18 @@ def _json_body(request):
 
 def _error(message, status=400):
     return JsonResponse({"ok": False, "error": str(message)}, status=status)
+
+def marketplace_admin_required(view):
+    """Protect marketplace operations with the same admin role used by Control Center."""
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        user = request.user
+        if not user.is_authenticated:
+            return HttpResponseForbidden("برای دسترسی به عملیات مالی باید وارد حساب مدیریتی شوی.")
+        if not (user.is_staff or user.is_superuser or user.role == RoleUser.ADMIN):
+            return HttpResponseForbidden("این عملیات فقط برای مدیران مجاز است.")
+        return view(request, *args, **kwargs)
+    return wrapped
 
 
 @login_required
@@ -1675,7 +1687,7 @@ def shipment_handed_over_api(request, order_id, shipment_uuid):
         return _error(exc)
 
 
-@staff_member_required
+@marketplace_admin_required
 @require_POST
 def shipment_update_status_api(request, shipment_uuid):
     try:
@@ -1781,7 +1793,7 @@ def shipment_update_status_api(request, shipment_uuid):
         return _error(exc)
 
 
-@staff_member_required
+@marketplace_admin_required
 @require_GET
 def journal_entries_api(request):
     """Return recent immutable accounting entries for the staff operations screen."""
@@ -1822,7 +1834,7 @@ def journal_entries_api(request):
     return JsonResponse({"ok": True, "results": results})
 
 
-@staff_member_required
+@marketplace_admin_required
 @require_GET
 def trial_balance_api(request):
     currency = request.GET.get("currency", "IRT")
@@ -1832,7 +1844,7 @@ def trial_balance_api(request):
     return JsonResponse({"ok": True, **report})
 
 
-@staff_member_required
+@marketplace_admin_required
 @require_POST
 def order_refund_api(request, order_uuid):
     """Record a refund only after staff confirms the external refund actually succeeded."""
@@ -1859,7 +1871,7 @@ def order_refund_api(request, order_uuid):
         return _error(exc)
 
 
-@staff_member_required
+@marketplace_admin_required
 @require_POST
 def gateway_settlement_api(request):
     try:
@@ -1883,7 +1895,7 @@ def gateway_settlement_api(request):
         return _error(exc)
 
 
-@staff_member_required
+@marketplace_admin_required
 @require_POST
 def carrier_invoice_payment_api(request):
     try:
@@ -1905,7 +1917,7 @@ def carrier_invoice_payment_api(request):
         return _error(exc)
 
 
-@staff_member_required
+@marketplace_admin_required
 @require_http_methods(["GET", "POST"])
 def external_reconciliation_api(request):
     if request.method == "GET":
@@ -1954,7 +1966,7 @@ def external_reconciliation_api(request):
         return _error(exc)
 
 
-@staff_member_required
+@marketplace_admin_required
 @require_GET
 def settlement_queue_api(request):
     batches = SettlementBatch.objects.select_related("vendor", "approved_by").exclude(
@@ -1978,7 +1990,7 @@ def settlement_queue_api(request):
     } for batch in batches]})
 
 
-@staff_member_required
+@marketplace_admin_required
 @require_POST
 def settlement_approve_api(request, batch_id):
     try:
@@ -2010,7 +2022,7 @@ def settlement_approve_api(request, batch_id):
         return _error(exc, 403 if isinstance(exc, PermissionDenied) else 409)
 
 
-@staff_member_required
+@marketplace_admin_required
 @require_POST
 def settlement_record_payout_api(request, batch_id):
     """Internal reconciliation endpoint; call only after an external bank result is confirmed."""
