@@ -96,8 +96,8 @@
                 {% if product.has_discount %}<del>{{ product.display_compare_price|price }}</del>{% endif %}
             </div>
         </a>
-        {% if product.has_variants %}
-            <a class="shop-reference__cart" href="{% url 'shop:product' product.slug %}" aria-label="انتخاب رنگ و سایز {{ product.name }}">
+        {% if product.has_variants or product.marketplace_only %}
+            <a class="shop-reference__cart" href="{% url 'shop:product' product.slug %}" aria-label="{% if product.marketplace_only %}مشاهده فروشندگان {{ product.name }}{% else %}انتخاب رنگ و سایز {{ product.name }}{% endif %}">
         {% else %}
             <form method="post" action="{% url 'orders:cart_add' %}" class="shop-reference__cart-form">
                 {% csrf_token %}
@@ -106,6 +106,6 @@
                 <button type="submit" class="shop-reference__cart" aria-label="افزودن {{ product.name }} به سبد">
         {% endif %}
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2l1.5 9.2a2 2 0 0 0 2 1.8h7.2a2 2 0 0 0 1.9-1.5L20 9H7"></path><path d="M9 19.5h.01M18 19.5h.01"></path></svg>
-        {% if product.has_variants %}</a>{% else %}</button></form>{% endif %}
+        {% if product.has_variants or product.marketplace_only %}</a>{% else %}</button></form>{% endif %}
     </div>
 </article>
