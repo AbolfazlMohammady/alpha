@@ -95,6 +95,11 @@ class Vendor(models.Model):
 
 
 class VendorProduct(models.Model):
+    class SaleType(models.TextChoices):
+        RETAIL = "retail", "فقط تکی"
+        WHOLESALE = "wholesale", "فقط عمده"
+        BOTH = "both", "تکی و عمده"
+
     class Status(models.TextChoices):
         DRAFT = "draft", "پیش‌نویس"
         PENDING = "pending", "در انتظار تأیید"
@@ -105,6 +110,7 @@ class VendorProduct(models.Model):
     vendor = models.ForeignKey(Vendor, on_delete=models.PROTECT, related_name="listings")
     product = models.ForeignKey("shop.Product", on_delete=models.PROTECT, related_name="vendor_listings")
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT, db_index=True)
+    sale_type = models.CharField(max_length=12, choices=SaleType.choices, default=SaleType.RETAIL)
     retail_price = models.PositiveBigIntegerField(validators=[MinValueValidator(1)])
     compare_at_price = models.PositiveBigIntegerField(null=True, blank=True, validators=[MinValueValidator(0)])
     sale_unit = models.CharField(max_length=40, default="عدد", help_text="واحد قابل سفارش؛ مثل عدد یا جعبه ۱۲تایی.")
