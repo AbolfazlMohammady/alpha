@@ -412,3 +412,100 @@ body.customizer-page {
         right:7px!important;
     }
 }
+
+
+/* =========================================================
+   FINAL EDITOR COMPOSITION
+   - hide the temporary product title / price header only
+   - let the canvas use the space it occupied
+   - keep the layer/scene panel narrower and flush to the top/right
+   ========================================================= */
+body.customizer-page .customizer-header--studio {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+@media (min-width: 821px) {
+    body.customizer-page .customizer-shell--premium {
+        padding-top: 0 !important;
+    }
+
+    body.customizer-page .customizer-workspace--premium {
+        position: absolute !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+    }
+
+    body.customizer-page .customizer-workspace--premium > .studio-layers-panel {
+        top: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 290px !important;
+        max-width: 290px !important;
+        border-radius: 0 !important;
+        border-top: 0 !important;
+        border-right: 0 !important;
+        border-bottom: 0 !important;
+        box-shadow: -10px 0 30px rgba(0,0,0,.12) !important;
+        z-index: 130 !important;
+    }
+
+    body.customizer-page .customizer-workspace--premium > .customizer-stage-wrap--premium {
+        position: absolute !important;
+        top: 0 !important;
+        right: 290px !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: calc(100% - 290px) !important;
+        max-width: calc(100% - 290px) !important;
+        height: 100% !important;
+        margin: 0 !important;
+    }
+
+    body.customizer-page .customizer-workspace--premium .studio-bottom-toolbar {
+        left: calc((100% - 290px) / 2) !important;
+        bottom: 16px !important;
+    }
+
+    body.customizer-page .customizer-workspace--premium > #desktop-tool-popover:not([hidden]) {
+        left: calc((100% - 290px) / 2) !important;
+        right: auto !important;
+    }
+}
+
+@media (max-width: 1100px) and (min-width: 821px) {
+    body.customizer-page .customizer-workspace--premium > .studio-layers-panel {
+        width: 270px !important;
+        max-width: 270px !important;
+    }
+
+    body.customizer-page .customizer-workspace--premium > .customizer-stage-wrap--premium {
+        right: 270px !important;
+        width: calc(100% - 270px) !important;
+        max-width: calc(100% - 270px) !important;
+    }
+
+    body.customizer-page .customizer-workspace--premium .studio-bottom-toolbar,
+    body.customizer-page .customizer-workspace--premium > #desktop-tool-popover:not([hidden]) {
+        left: calc((100% - 270px) / 2) !important;
+    }
+}
+
+/* Larger, high-contrast manipulation grips on touch devices. */
+@media (hover: none), (pointer: coarse) {
+    body.customizer-page #designer-3d-canvas {
+        touch-action: pan-x pan-y;
+    }
+
+    body.customizer-page .studio-layer-row__actions button {
+        min-width: 34px;
+        min-height: 36px;
+    }
+}
+
