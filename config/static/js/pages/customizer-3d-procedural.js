@@ -2668,6 +2668,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(Number(item.layer.rotation || 0) * Math.PI / 180);
+            ctx.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
             if (item.artwork?.is_text) {
                 const style = normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {});
                 ctx.fillStyle = item.layer.color || "#ffffff";
@@ -2679,7 +2680,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 try {
                     const artworkImage = await imageFromSource(item.artwork.image);
                     ctx.globalAlpha = Number(item.layer.opacity ?? 1);
-                    ctx.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
                     ctx.drawImage(artworkImage, -width / 2, -height / 2, width, height);
                 } catch (error) {
                     console.warn("2D artwork preview failed", error);
