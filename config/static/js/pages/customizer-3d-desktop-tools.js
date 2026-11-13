@@ -562,46 +562,70 @@
             currentTool = "garment";
             log("ACTION: garment type");
 
+            const modelSources = Array.from(
+                document.querySelectorAll("#garment-model-registry [data-garment-type][data-model-url]")
+            );
+            if (!modelSources.length) {
+                warn("GARMENT SELECTOR: model registry is empty");
+                return;
+            }
+
             const wrapper = document.createElement("div");
             wrapper.className = "garment-type-popover";
-
-            const options = [
-                {
-                    key: "tshirt",
-                    title: "تیشرت",
-                    subtitle: "آستین کوتاه",
-                    icon: "👕",
-                },
-            ];
+            wrapper.setAttribute("role", "group");
+            wrapper.setAttribute("aria-label", "انتخاب مدل محصول");
 
             const current = window.BabaeiCustomizer3D?.getGarmentType?.() || "tshirt";
-            wrapper.innerHTML = options.map(option => `
-                <button type="button" class="garment-type-card${option.key === current ? " is-active" : ""}" data-garment-type="${option.key}">
-                    <span class="garment-type-card__icon" aria-hidden="true">${option.icon}</span>
-                    <span class="garment-type-card__copy">
-                        <strong>${option.title}</strong>
-                        <small>${option.subtitle}</small>
-                    </span>
-                    <span class="garment-type-card__check" aria-hidden="true">✓</span>
-                </button>
-            `).join("");
+            wrapper.innerHTML = modelSources.map(source => {
+                const key = source.dataset.garmentType || "";
+                const title = source.dataset.garmentLabel || key;
+                const subtitle = source.dataset.garmentSubtitle || "";
+                const icon = source.dataset.garmentIcon || "□";
+                const active = key === current;
 
-            wrapper.querySelectorAll("[data-garment-type]").forEach(button => {
+                return `
+                    <button type="button"
+                        class="garment-type-card${active ? " is-active" : ""}"
+                        data-garment-type="${key}"
+                        aria-pressed="${active ? "true" : "false"}">
+                        <span class="garment-type-card__icon" aria-hidden="true">${icon}</span>
+                        <span class="garment-type-card__copy">
+                            <strong>${title}</strong>
+                            <small>${subtitle}</small>
+                        </span>
+                        <span class="garment-type-card__check" aria-hidden="true">✓</span>
+                    </button>
+                `;
+            }).join("");
+
+            const cards = Array.from(wrapper.querySelectorAll("[data-garment-type]"));
+            cards.forEach(button => {
                 button.addEventListener("click", async event => {
                     event.preventDefault();
                     event.stopPropagation();
 
                     const type = button.dataset.garmentType;
-                    const changed = await window.BabaeiCustomizer3D?.setGarmentType?.(type);
-                    if (!changed) return;
+                    cards.forEach(card => { card.disabled = true; });
 
-                    wrapper.querySelectorAll("[data-garment-type]").forEach(item => {
-                        item.classList.toggle("is-active", item === button);
-                    });
+                    try {
+                        const changed = await window.BabaeiCustomizer3D?.setGarmentType?.(type);
+                        if (!changed) return;
+
+                        const activeType = window.BabaeiCustomizer3D?.getGarmentType?.() || type;
+                        cards.forEach(card => {
+                            const active = card.dataset.garmentType === activeType;
+                            card.classList.toggle("is-active", active);
+                            card.setAttribute("aria-pressed", String(active));
+                        });
+                    } catch (err) {
+                        error("GARMENT SWITCH FAILED", { type, error: err });
+                    } finally {
+                        cards.forEach(card => { card.disabled = false; });
+                    }
                 });
             });
 
-            open("نوع لباس", wrapper);
+            open("نوع محصول", wrapper);
         };
 
         const openShirtColors = () => {
