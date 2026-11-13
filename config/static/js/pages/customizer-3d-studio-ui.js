@@ -458,6 +458,70 @@
         return { source, node };
     }
 
+    function openMobileGarmentTool() {
+        const modelSources = Array.from(
+            document.querySelectorAll("#garment-model-registry [data-garment-type][data-model-url]")
+        );
+        if (!modelSources.length) return;
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "garment-type-popover";
+        wrapper.setAttribute("role", "group");
+        wrapper.setAttribute("aria-label", "انتخاب مدل محصول");
+
+        const current = window.BabaeiCustomizer3D?.getGarmentType?.() || "tshirt";
+        wrapper.innerHTML = modelSources.map(source => {
+            const key = source.dataset.garmentType || "";
+            const title = source.dataset.garmentLabel || key;
+            const subtitle = source.dataset.garmentSubtitle || "";
+            const icon = source.dataset.garmentIcon || "□";
+            const active = key === current;
+
+            return `
+                <button type="button"
+                    class="garment-type-card${active ? " is-active" : ""}"
+                    data-garment-type="${key}"
+                    aria-pressed="${active ? "true" : "false"}">
+                    <span class="garment-type-card__icon" aria-hidden="true">${icon}</span>
+                    <span class="garment-type-card__copy">
+                        <strong>${title}</strong>
+                        <small>${subtitle}</small>
+                    </span>
+                    <span class="garment-type-card__check" aria-hidden="true">✓</span>
+                </button>
+            `;
+        }).join("");
+
+        const cards = Array.from(wrapper.querySelectorAll("[data-garment-type]"));
+        cards.forEach(button => {
+            button.addEventListener("click", async event => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                const type = button.dataset.garmentType;
+                cards.forEach(card => { card.disabled = true; });
+
+                try {
+                    const changed = await window.BabaeiCustomizer3D?.setGarmentType?.(type);
+                    if (!changed) return;
+
+                    const activeType = window.BabaeiCustomizer3D?.getGarmentType?.() || type;
+                    cards.forEach(card => {
+                        const active = card.dataset.garmentType === activeType;
+                        card.classList.toggle("is-active", active);
+                        card.setAttribute("aria-pressed", String(active));
+                    });
+                } catch (error) {
+                    console.error("Mobile garment switch failed", error);
+                } finally {
+                    cards.forEach(card => { card.disabled = false; });
+                }
+            });
+        });
+
+        openMobileToolSheet("انتخاب مدل محصول", wrapper);
+    }
+
     function openMobileLabelTool() {
         const sourcePanel = document.querySelector("#label-library-panel");
         if (!sourcePanel) return;
