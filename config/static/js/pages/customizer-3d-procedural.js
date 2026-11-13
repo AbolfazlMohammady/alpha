@@ -1915,11 +1915,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const item = layers.get(id);
         if (!item) return;
 
-        if (selectedId === id) selectedId = null;
-        if (drag && selectedId === id) {
+        const wasActiveDrag = Boolean(drag && selectedId === id);
+        if (wasActiveDrag) {
             drag = null;
+            pendingDragEvent = null;
+            if (dragFrameId) {
+                cancelAnimationFrame(dragFrameId);
+                dragFrameId = 0;
+            }
             controls.enabled = true;
         }
+        if (selectedId === id) selectedId = null;
         disposeLayer(item);
         layers.delete(id);
         compactLayerOrder();
