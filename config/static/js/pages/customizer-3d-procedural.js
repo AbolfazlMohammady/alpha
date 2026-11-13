@@ -2587,8 +2587,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                     ctx.fillStyle = "#ffffff";
                     ctx.strokeStyle = "#8874ff";
                     ctx.lineWidth = 1.2;
-                    ctx.fillRect(x - 4, y - 4, 8, 8);
-                    ctx.strokeRect(x - 4, y - 4, 8, 8);
+                    ctx.fillRect(x - 6, y - 6, 12, 12);
+                    ctx.strokeRect(x - 6, y - 6, 12, 12);
                 });
 
                 ctx.beginPath();
@@ -2598,7 +2598,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 ctx.stroke();
 
                 ctx.beginPath();
-                ctx.arc(0, -drawHeight / 2 - 20, 7, 0, Math.PI * 2);
+                ctx.arc(0, -drawHeight / 2 - 20, 9, 0, Math.PI * 2);
                 ctx.fillStyle = "#8874ff";
                 ctx.fill();
                 ctx.fillStyle = "#ffffff";
