@@ -109,6 +109,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const pointer = new THREE.Vector2();
     const layers = new Map();
     const textures = new Map();
+    const selectedPreviewImages = new Map();
     const frontAxis = new THREE.Vector3(0, 0, 1);
     const garmentModelOptions = Array.from(
         document.querySelectorAll("[data-garment-type][data-model-url]")
@@ -253,6 +254,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         stage.style.backgroundPosition = "";
         stage.style.backgroundSize = "";
         stage.style.backgroundRepeat = "";
+        // Re-apply the selected Scene tab backdrop after the temporary model preview clears.
+        applySceneBackdrop();
     }
 
     function setLoading(text, visible = true) {
@@ -1479,6 +1482,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             const cropped = cropTextureToVisiblePixels(sourceTexture);
             const texture = cropped.texture;
+            texture.center.set(0.5, 0.5);
+            texture.repeat.set(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
+            texture.offset.set(item.layer.flip_x ? 1 : 0, item.layer.flip_y ? 1 : 0);
+            texture.needsUpdate = true;
             item.visibleTexture = texture;
             item.visibleArtworkWidth = cropped.visibleWidth || texture.image?.width || 0;
             item.visibleArtworkHeight = cropped.visibleHeight || texture.image?.height || 0;
@@ -1553,7 +1560,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             geometry.applyMatrix4(target.matrixWorld.clone().invert());
 
             const mesh = new THREE.Mesh(geometry, material);
-            mesh.renderOrder = 30 + Number(item.layer.z_index || 0);
+            mesh.renderOrder = 30 + (Number(item.layer.z_index) || 0);
+            mesh.visible = item.layer.visible !== false;
             mesh.userData.customizerLayerId = item.id;
             target.add(mesh);
 
@@ -1580,6 +1588,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             frame.quaternion.copy(targetWorldQuaternion.clone().invert().multiply(worldQuaternion));
             frame.userData.customizerLayerId = item.id;
             frame.renderOrder = 80;
+            frame.visible = item.id === selectedId && item.layer.visible !== false;
             target.add(frame);
 
             // Four compact handles make the selected artwork feel like a real
@@ -1589,29 +1598,73 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             handleGroup.quaternion.copy(targetWorldQuaternion.clone().invert().multiply(worldQuaternion));
             handleGroup.userData.customizerLayerId = item.id;
             handleGroup.renderOrder = 81;
+            handleGroup.visible = item.id === selectedId && item.layer.visible !== false && !item.layer.locked;
 
-            const handleSize = Math.max(0.026, Math.min(size.x, size.y) * 0.045);
-            const handleGeometry = new THREE.SphereGeometry(handleSize, 12, 8);
+            const isTouchEditor = compactMedia.matches || (navigator.maxTouchPoints || 0) > 0;
+            const handleSize = Math.max(
+                isTouchEditor ? 0.038 : 0.026,
+                Math.min(size.x, size.y) * (isTouchEditor ? 0.065 : 0.05)
+            );
+            const handleGeometry = new THREE.SphereGeometry(handleSize, 16, 12);
             const handleMaterial = new THREE.MeshBasicMaterial({
-                color: 0xf4f0e7,
+                color: 0xf8f8ff,
                 transparent: true,
-                opacity: 0.98,
+                opacity: 1,
+                depthTest: false,
+                depthWrite: false,
+            });
+            const rotationMaterial = new THREE.MeshBasicMaterial({
+                color: 0x8b72ff,
+                transparent: true,
+                opacity: 1,
                 depthTest: false,
                 depthWrite: false,
             });
 
-            [
-                [-size.x / 2, -size.y / 2],
-                [ size.x / 2, -size.y / 2],
-                [ size.x / 2,  size.y / 2],
-                [-size.x / 2,  size.y / 2],
-            ].forEach(([x, y]) => {
+            const resizeHandles = [
+                { type: "nw", x: -size.x / 2, y: size.y / 2 },
+                { type: "n",  x: 0,             y: size.y / 2 },
+                { type: "ne", x: size.x / 2,  y: size.y / 2 },
+                { type: "e",  x: size.x / 2,  y: 0 },
+                { type: "se", x: size.x / 2,  y: -size.y / 2 },
+                { type: "s",  x: 0,             y: -size.y / 2 },
+                { type: "sw", x: -size.x / 2, y: -size.y / 2 },
+                { type: "w",  x: -size.x / 2, y: 0 },
+            ];
+
+            resizeHandles.forEach(({ type, x, y }) => {
                 const handle = new THREE.Mesh(handleGeometry.clone(), handleMaterial.clone());
-                handle.position.set(x, y, 0);
+                handle.position.set(x, y, handleSize * 0.18);
                 handle.renderOrder = 82;
                 handle.userData.customizerLayerId = item.id;
+                handle.userData.customizerHandleType = type;
                 handleGroup.add(handle);
             });
+
+            const rotationStemStart = new THREE.Vector3(0, size.y / 2, handleSize * 0.15);
+            const rotationStemEnd = new THREE.Vector3(
+                0,
+                size.y / 2 + handleSize * 3.2,
+                handleSize * 0.15
+            );
+            const rotationStem = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([rotationStemStart, rotationStemEnd]),
+                new THREE.LineBasicMaterial({
+                    color: 0x8b72ff,
+                    depthTest: false,
+                    depthWrite: false,
+                })
+            );
+            rotationStem.renderOrder = 82;
+            handleGroup.add(rotationStem);
+
+            const rotationHandle = new THREE.Mesh(handleGeometry.clone(), rotationMaterial);
+            rotationHandle.position.copy(rotationStemEnd);
+            rotationHandle.renderOrder = 83;
+            rotationHandle.userData.customizerLayerId = item.id;
+            rotationHandle.userData.customizerHandleType = "rotate";
+            handleGroup.add(rotationHandle);
+
             target.add(handleGroup);
 
             const previousMesh = item.mesh;
@@ -1621,6 +1674,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             item.mesh = mesh;
             item.frame = frame;
             item.handles = handleGroup;
+            mesh.visible = item.layer.visible !== false;
+            frame.visible = item.id === selectedId && item.layer.visible !== false;
+            handleGroup.visible = item.id === selectedId && item.layer.visible !== false && !item.layer.locked;
 
             if (previousMesh) {
                 previousMesh.geometry?.dispose();
@@ -1795,7 +1851,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             rotation: 0,
             color: "#ffffff",
             opacity: 1,
-            z_index: layers.size,
+            visible: true,
+            locked: false,
+            flip_x: false,
+            flip_y: false,
+            z_index: layers.size
+                ? Math.max(...Array.from(layers.values()).map(existing => Number(existing.layer.z_index) || 0)) + 1
+                : 0,
             text: artwork.is_text ? String(artwork.name || "TEXT") : null,
             text_style: artwork.is_text ? normalizeTextStyle(artwork.text_style || {}) : null,
             side,
@@ -1818,6 +1880,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         layers.set(item.id, item);
         selectedId = item.id;
+        openSelectedPanel();
         project(item, item.surfacePoint, item.surfaceNormal);
         sync();
         showMobileDragHint();
@@ -1825,29 +1888,158 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         return true;
     }
 
-    function moveSelected(event) {
-        const item = layers.get(selectedId);
-        if (!item) return;
-
-        const area = areaById(item.layer.area_id, layerSide(item));
+    function pointerOnLayerPlane(event, plane) {
         pointerOf(event);
         raycaster.setFromCamera(pointer, camera);
-        const hit = raycaster.intersectObjects(garmentMeshes, false)[0];
-        if (!isValidPrintSurface(hit, area)) {
-            status("لیبل فقط روی بدنه جلو یا پشت تیشرت قابل جابه‌جایی است.");
+        return raycaster.ray.intersectPlane(plane, new THREE.Vector3());
+    }
+
+    function layerPlaneAxes(item, rotation = item.layer.rotation) {
+        const quaternion = new THREE.Quaternion().setFromEuler(
+            orientation(item.surfaceNormal || item.normal, rotation)
+        );
+        return {
+            right: new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion).normalize(),
+            up: new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion).normalize(),
+        };
+    }
+
+    function layerPlaneCoordinates(point, center, axes) {
+        const offset = point.clone().sub(center);
+        return {
+            x: offset.dot(axes.right),
+            y: offset.dot(axes.up),
+        };
+    }
+
+    function beginLayerTransform(event, item, mode, handleType = null) {
+        if (!item || item.layer.locked || item.layer.visible === false ||
+            !item.surfacePoint || !item.surfaceNormal) {
+            return null;
+        }
+
+        const normal = item.surfaceNormal.clone().normalize();
+        const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, item.surfacePoint);
+        const point = pointerOnLayerPlane(event, plane);
+        if (!point) return null;
+
+        const axes = layerPlaneAxes(item);
+        const start = layerPlaneCoordinates(point, item.surfacePoint, axes);
+        return {
+            pointerId: event.pointerId,
+            mode,
+            layerId: item.id,
+            handleType,
+            plane,
+            axes,
+            startX: start.x,
+            startY: start.y,
+            startWidth: Number(item.layer.width) || 0.35,
+            startHeight: Number(item.layer.height) || 0.25,
+            startRotation: Number(item.layer.rotation) || 0,
+            startAngle: Math.atan2(start.y, start.x),
+        };
+    }
+
+    function applyLayerTransform(event) {
+        const activeDrag = drag;
+        if (!activeDrag || activeDrag.mode === "move") {
+            moveSelected(event);
             return;
         }
 
-        // A label belongs to the side where it was created. When the user
-        // rotates the shirt to the opposite side, dragging must not re-anchor
-        // that front label onto the back surface (or vice versa).
-        const hitSide = surfaceSide(hitNormal(hit));
-        if (hitSide !== layerSide(item)) {
+        const item = layers.get(activeDrag.layerId);
+        if (!item || item.layer.locked || item.layer.visible === false) return;
+
+        const point = pointerOnLayerPlane(event, activeDrag.plane);
+        if (!point) return;
+
+        if (activeDrag.mode === "rotate") {
+            const current = layerPlaneCoordinates(point, item.surfacePoint, activeDrag.axes);
+            const currentAngle = Math.atan2(current.y, current.x);
+            let angleDelta = currentAngle - activeDrag.startAngle;
+            if (angleDelta > Math.PI) angleDelta -= Math.PI * 2;
+            if (angleDelta < -Math.PI) angleDelta += Math.PI * 2;
+
+            const nextRotation = THREE.MathUtils.clamp(
+                activeDrag.startRotation + THREE.MathUtils.radToDeg(angleDelta),
+                -180,
+                180
+            );
+            const previousRotation = item.layer.rotation;
+            item.layer.rotation = nextRotation;
+            const validation = validateLayerPlacement(item, placementForLayer(item));
+            if (!validation.ok) {
+                item.layer.rotation = previousRotation;
+                return;
+            }
+            project(item, item.surfacePoint, item.surfaceNormal);
             return;
         }
+
+        if (activeDrag.mode === "resize") {
+            const current = layerPlaneCoordinates(point, item.surfacePoint, activeDrag.axes);
+            const type = activeDrag.handleType || "";
+            const affectsX = type.includes("e") || type.includes("w");
+            const affectsY = type.includes("n") || type.includes("s");
+            const ratios = [];
+
+            if (affectsX && Math.abs(activeDrag.startX) > 0.001) {
+                ratios.push(Math.abs(current.x / activeDrag.startX));
+            }
+            if (affectsY && Math.abs(activeDrag.startY) > 0.001) {
+                ratios.push(Math.abs(current.y / activeDrag.startY));
+            }
+            if (!ratios.length) return;
+
+            const factor = ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length;
+            const nextWidth = THREE.MathUtils.clamp(activeDrag.startWidth * factor, 0.06, 0.98);
+            const nextHeight = THREE.MathUtils.clamp(activeDrag.startHeight * factor, 0.04, 0.78);
+            const previousWidth = item.layer.width;
+            const previousHeight = item.layer.height;
+
+            item.layer.width = nextWidth;
+            item.layer.height = nextHeight;
+            const validation = validateLayerPlacement(item, placementForLayer(item));
+            if (!validation.ok) {
+                item.layer.width = previousWidth;
+                item.layer.height = previousHeight;
+                return;
+            }
+            project(item, item.surfacePoint, item.surfaceNormal);
+        }
+    }
+
+    function moveSelected(event) {
+        const item = layers.get(selectedId);
+        if (!item || item.layer.locked || item.layer.visible === false) return;
+
+        const currentArea = areaById(item.layer.area_id, layerSide(item));
+        pointerOf(event);
+        raycaster.setFromCamera(pointer, camera);
+
+        // Choose the nearest visible printable surface. When the garment is
+        // rotated, this can be its front or back; the label follows the side
+        // that the pointer is actually touching rather than staying pinned
+        // to the side where it was first created.
+        const hits = raycaster.intersectObjects(garmentMeshes, false);
+        const hit = hits.find(candidate => {
+            const candidateSide = surfaceSide(hitNormal(candidate));
+            const candidateArea = areaForSurfaceSide(candidateSide, currentArea);
+            return Boolean(candidateArea && isValidPrintSurface(candidate, candidateArea));
+        });
+
+        if (!hit) {
+            status("لیبل فقط روی سطح قابل چاپ جلو یا پشت بدنه قابل جابه‌جایی است.");
+            return;
+        }
+
+        const hitSide = surfaceSide(hitNormal(hit));
+        const targetArea = areaForSurfaceSide(hitSide, currentArea);
+        if (!targetArea) return;
 
         const placement = placementFromPoint(
-            area,
+            targetArea,
             hit.point,
             item.layer.width,
             item.layer.height,
@@ -1859,13 +2051,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             return;
         }
 
+        item.layer.area_id = targetArea.id;
+        item.layer.side = hitSide;
         item.target = hit.object;
+        item.normal = hitNormal(hit);
         project(item, hit.point, hitNormal(hit));
     }
 
     function moveSelectedBy(dx, dy) {
         const item = layers.get(selectedId);
-        if (!item?.target || !item.surfacePoint || !item.surfaceNormal) return;
+        if (!item || item.layer.locked || item.layer.visible === false) return;
+        if (!item.target || !item.surfacePoint || !item.surfaceNormal) return;
 
         const area = areaById(item.layer.area_id, layerSide(item));
         const normal = item.surfaceNormal.clone().normalize();
@@ -1933,6 +2129,465 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         });
     }
 
+    function compactLayerOrder() {
+        const ordered = Array.from(layers.values())
+            .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0));
+        ordered.forEach((item, index) => {
+            item.layer.z_index = index;
+            if (item.mesh) item.mesh.renderOrder = 30 + index;
+        });
+    }
+
+    function reorderLayers(topFirstIds) {
+        const requested = topFirstIds
+            .map(id => layers.get(Number(id)))
+            .filter(Boolean);
+        const included = new Set(requested.map(item => item.id));
+        const missing = Array.from(layers.values())
+            .filter(item => !included.has(item.id))
+            .sort((a, b) => (Number(b.layer.z_index) || 0) - (Number(a.layer.z_index) || 0));
+        const orderedTopFirst = [...requested, ...missing];
+
+        orderedTopFirst.forEach((item, index) => {
+            item.layer.z_index = orderedTopFirst.length - index - 1;
+            if (item.mesh) item.mesh.renderOrder = 30 + item.layer.z_index;
+        });
+
+        sync();
+        render();
+    }
+
+    function cancelLayerDrag() {
+        if (!drag) return;
+        drag = null;
+        pendingDragEvent = null;
+        if (dragFrameId) {
+            cancelAnimationFrame(dragFrameId);
+            dragFrameId = 0;
+        }
+        if (controls) controls.enabled = true;
+    }
+
+    function removeLayerById(layerId) {
+        const id = Number(layerId);
+        const item = layers.get(id);
+        if (!item) return;
+
+        if (drag && selectedId === id) cancelLayerDrag();
+        if (selectedId === id) selectedId = null;
+        disposeLayer(item);
+        layers.delete(id);
+        compactLayerOrder();
+        sync();
+        render();
+    }
+
+    function setLayerVisibility(layerId, visible) {
+        const item = layers.get(Number(layerId));
+        if (!item) return;
+
+        item.layer.visible = Boolean(visible);
+        if (item.mesh) item.mesh.visible = item.layer.visible;
+        if (item.frame) item.frame.visible = item.layer.visible && item.id === selectedId;
+        if (item.handles) item.handles.visible = item.layer.visible && item.id === selectedId;
+        if (!item.layer.visible && selectedId === item.id) {
+            cancelLayerDrag();
+            selectedId = null;
+        }
+        sync();
+        render();
+    }
+
+    function setLayerLocked(layerId, locked) {
+        const item = layers.get(Number(layerId));
+        if (!item) return;
+
+        item.layer.locked = Boolean(locked);
+        if (item.layer.locked && selectedId === item.id) {
+            cancelLayerDrag();
+        }
+        sync();
+    }
+
+    function selectLayer(layerId) {
+        const item = layers.get(Number(layerId));
+        if (!item) return;
+        selectedId = item.id;
+        openSelectedPanel();
+        sync();
+        render();
+    }
+
+    function layerActionButton(action, title, pressed, iconMarkup) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `studio-layer-action studio-layer-action--${action}`;
+        button.dataset.layerAction = action;
+        button.title = title;
+        button.setAttribute("aria-label", title);
+        if (action !== "delete") {
+            button.setAttribute("aria-pressed", String(Boolean(pressed)));
+        }
+        button.innerHTML = iconMarkup;
+        return button;
+    }
+
+    function renderLayersPanel() {
+        const list = document.getElementById("studio-layers-list");
+        const count = document.getElementById("studio-layers-count");
+        if (!list) return;
+
+        const ordered = Array.from(layers.values())
+            .sort((a, b) => (Number(b.layer.z_index) || 0) - (Number(a.layer.z_index) || 0));
+        if (count) count.textContent = `${ordered.length.toLocaleString("fa-IR")} لایه`;
+
+        list.replaceChildren();
+        if (!ordered.length) {
+            const empty = document.createElement("div");
+            empty.className = "studio-layers-panel__empty";
+            empty.textContent = "هنوز طرحی اضافه نکرده‌ای.";
+            list.append(empty);
+            return;
+        }
+
+        const eyeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.4-6.2 9.5-6.2 9.5 6.2 9.5 6.2-3.4 6.2-9.5 6.2S2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>';
+        const hiddenIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6a9.8 9.8 0 0 1 1.4-.1c6.1 0 9.5 6.1 9.5 6.1a15.8 15.8 0 0 1-3 3.6M6.2 6.5C3.8 8.1 2.5 12 2.5 12s3.4 6.2 9.5 6.2c1 0 1.9-.2 2.7-.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.8 9.8a3.1 3.1 0 0 0 4.4 4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+        const lockIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10" width="15" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+        const unlockIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10" width="15" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 0 1 7.6-1.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+        const deleteIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m4 4v5m4-5v5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+        ordered.forEach((item, index) => {
+            const visible = item.layer.visible !== false;
+            const locked = Boolean(item.layer.locked);
+            const row = document.createElement("div");
+            row.className = "studio-layer-row";
+            row.dataset.layerId = String(item.id);
+            row.setAttribute("role", "listitem");
+            row.tabIndex = 0;
+            row.draggable = false;
+            if (item.id === selectedId) row.classList.add("is-selected");
+            if (!visible) row.classList.add("is-hidden-layer");
+            if (locked) row.classList.add("is-locked-layer");
+
+            const handle = document.createElement("span");
+            handle.className = "studio-layer-drag";
+            handle.textContent = "⠿";
+            handle.title = "برای تغییر ترتیب بکش";
+            handle.setAttribute("role", "button");
+            handle.setAttribute("aria-label", `تغییر ترتیب لایه ${index + 1}`);
+            handle.tabIndex = 0;
+            handle.draggable = true;
+
+            const thumbnail = document.createElement("span");
+            thumbnail.className = "studio-layer-row__thumbnail";
+            const image = document.createElement("img");
+            image.alt = "";
+            image.loading = "lazy";
+            if (item.artwork?.image) {
+                image.src = item.artwork.image;
+            } else {
+                image.hidden = true;
+                thumbnail.classList.add("is-empty");
+            }
+            image.addEventListener("error", () => {
+                image.hidden = true;
+                thumbnail.classList.add("is-empty");
+            }, { once: true });
+            thumbnail.append(image);
+
+            const copy = document.createElement("span");
+            copy.className = "studio-layer-row__copy";
+            const name = document.createElement("strong");
+            name.textContent = String(item.layer.text || item.artwork?.name || "لیبل");
+            const type = document.createElement("small");
+            type.textContent = item.artwork?.is_text ? "متن" : "تصویر";
+            copy.append(name, type);
+
+            const actions = document.createElement("span");
+            actions.className = "studio-layer-row__actions";
+            actions.append(
+                layerActionButton(
+                    "visibility",
+                    visible ? "مخفی کردن لایه" : "نمایش لایه",
+                    visible,
+                    visible ? eyeIcon : hiddenIcon
+                ),
+                layerActionButton(
+                    "lock",
+                    locked ? "باز کردن قفل لایه" : "قفل کردن لایه",
+                    locked,
+                    locked ? lockIcon : unlockIcon
+                ),
+                layerActionButton("delete", "حذف لایه", false, deleteIcon)
+            );
+
+            row.append(handle, thumbnail, copy, actions);
+            list.append(row);
+        });
+    }
+
+    let selectedPreviewRevision = 0;
+
+    async function selectedPreviewImage(src) {
+        if (!src) return null;
+        if (!selectedPreviewImages.has(src)) {
+            selectedPreviewImages.set(src, imageFromSource(src).catch(() => null));
+        }
+        return selectedPreviewImages.get(src);
+    }
+
+    async function renderSelectedPreview() {
+        const canvas = document.getElementById("studio-selected-preview");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width < 2 || rect.height < 2) return;
+
+        const token = ++selectedPreviewRevision;
+        const ratio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.max(1, Math.round(rect.width * ratio));
+        canvas.height = Math.max(1, Math.round(rect.height * ratio));
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, rect.width, rect.height);
+
+        // Subtle alignment guides keep the preview readable without adding a garment mockup.
+        ctx.save();
+        ctx.strokeStyle = "rgba(30,30,35,.055)";
+        ctx.lineWidth = 1;
+        for (let x = 18; x < rect.width; x += 24) {
+            ctx.beginPath();
+            ctx.moveTo(x, 10);
+            ctx.lineTo(x, rect.height - 10);
+            ctx.stroke();
+        }
+        for (let y = 18; y < rect.height; y += 24) {
+            ctx.beginPath();
+            ctx.moveTo(10, y);
+            ctx.lineTo(rect.width - 10, y);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        const selected = layers.get(selectedId);
+        const side = selected ? layerSide(selected) : active2DSide;
+        const visibleItems = Array.from(layers.values())
+            .filter(item => layerSide(item) === side && item.layer.visible !== false)
+            .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0));
+
+        const padding = 18;
+        const usableWidth = Math.max(1, rect.width - padding * 2);
+        const usableHeight = Math.max(1, rect.height - padding * 2);
+
+        for (const item of visibleItems) {
+            const normalized = normalizedGarmentPoint(item.surfacePoint || item.position) || {
+                x: Number(item.layer.x ?? 0.5),
+                y: Number(item.layer.y ?? 0.5),
+            };
+            const centerX = padding + THREE.MathUtils.clamp(normalized.x, 0, 1) * usableWidth;
+            const centerY = padding + THREE.MathUtils.clamp(normalized.y, 0, 1) * usableHeight;
+            const image = await selectedPreviewImage(item.artwork?.image || "");
+            if (token !== selectedPreviewRevision) return;
+
+            const aspect = Math.max(
+                0.15,
+                image
+                    ? (image.naturalWidth || image.width) / Math.max(1, image.naturalHeight || image.height)
+                    : 2.2
+            );
+            const drawWidth = Math.max(16, Math.min(
+                usableWidth * 0.56,
+                usableWidth * Number(item.layer.width || 0.35) * 0.88
+            ));
+            const drawHeight = Math.min(usableHeight * 0.58, drawWidth / aspect);
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(THREE.MathUtils.degToRad(Number(item.layer.rotation) || 0));
+            ctx.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
+            if (image) {
+                ctx.globalAlpha = Number(item.layer.opacity ?? 1);
+                ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+            } else {
+                ctx.fillStyle = item.layer.color || "#252525";
+                ctx.font = "700 15px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(String(item.layer.text || item.artwork?.name || "TEXT"), 0, 0, drawWidth);
+            }
+            ctx.restore();
+
+            if (item.id !== selectedId) continue;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(THREE.MathUtils.degToRad(Number(item.layer.rotation) || 0));
+            ctx.strokeStyle = item.layer.locked ? "#9ca3af" : "#8874ff";
+            ctx.lineWidth = 1.4;
+            ctx.strokeRect(-drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+
+            if (!item.layer.locked) {
+                const grips = [
+                    [-drawWidth / 2, -drawHeight / 2],
+                    [0, -drawHeight / 2],
+                    [drawWidth / 2, -drawHeight / 2],
+                    [drawWidth / 2, 0],
+                    [drawWidth / 2, drawHeight / 2],
+                    [0, drawHeight / 2],
+                    [-drawWidth / 2, drawHeight / 2],
+                    [-drawWidth / 2, 0],
+                ];
+                grips.forEach(([x, y]) => {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.strokeStyle = "#8874ff";
+                    ctx.lineWidth = 1.2;
+                    ctx.fillRect(x - 4, y - 4, 8, 8);
+                    ctx.strokeRect(x - 4, y - 4, 8, 8);
+                });
+
+                ctx.beginPath();
+                ctx.moveTo(0, -drawHeight / 2);
+                ctx.lineTo(0, -drawHeight / 2 - 17);
+                ctx.strokeStyle = "#8874ff";
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(0, -drawHeight / 2 - 20, 7, 0, Math.PI * 2);
+                ctx.fillStyle = "#8874ff";
+                ctx.fill();
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "10px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("↻", 0, -drawHeight / 2 - 20);
+            }
+            ctx.restore();
+        }
+
+        const empty = document.getElementById("studio-selected-preview-empty");
+        if (empty) empty.hidden = Boolean(selected);
+        const sideLabel = document.getElementById("studio-selected-side");
+        if (sideLabel) sideLabel.textContent = side === "back" ? "نمای پشت" : "نمای جلو";
+
+        const name = document.getElementById("studio-selected-layer-name");
+        const meta = document.getElementById("studio-selected-layer-meta");
+        if (name) name.textContent = selected
+            ? String(selected.layer.text || selected.artwork?.name || "لیبل")
+            : "لایه‌ای انتخاب نشده";
+        if (meta) {
+            if (!selected) {
+                meta.textContent = "از فهرست بالا یک طرح انتخاب کن.";
+            } else {
+                const state = selected.layer.locked ? "قفل‌شده" : "قابل ویرایش";
+                const layerSideLabel = layerSide(selected) === "back" ? "پشت لباس" : "جلوی لباس";
+                meta.textContent = `${layerSideLabel} · ${state} · ${Math.round(Number(selected.layer.width || 0.35) * 100)}٪`;
+            }
+        }
+
+        document.querySelectorAll("#studio-selected-actions [data-selected-action]").forEach(button => {
+            const action = button.dataset.selectedAction;
+            const requiresEditable = ["flip-x", "flip-y"].includes(action);
+            button.disabled = !selected || (requiresEditable && Boolean(selected.layer.locked));
+        });
+    }
+
+    function bindLayersPanel() {
+        const list = document.getElementById("studio-layers-list");
+        if (!list || list.dataset.bound === "1") return;
+        list.dataset.bound = "1";
+
+        list.addEventListener("click", event => {
+            const actionButton = event.target.closest("[data-layer-action]");
+            const row = event.target.closest("[data-layer-id]");
+            if (!row || !list.contains(row)) return;
+
+            const id = Number(row.dataset.layerId);
+            if (actionButton) {
+                event.preventDefault();
+                event.stopPropagation();
+                const item = layers.get(id);
+                if (!item) return;
+                const action = actionButton.dataset.layerAction;
+                if (action === "visibility") {
+                    setLayerVisibility(id, item.layer.visible === false);
+                } else if (action === "lock") {
+                    setLayerLocked(id, !item.layer.locked);
+                } else if (action === "delete") {
+                    removeLayerById(id);
+                }
+                return;
+            }
+
+            selectLayer(id);
+        });
+
+        list.addEventListener("keydown", event => {
+            const row = event.target.closest("[data-layer-id]");
+            if (!row) return;
+            if ((event.key === "Enter" || event.key === " ") && event.target === row) {
+                event.preventDefault();
+                selectLayer(Number(row.dataset.layerId));
+                return;
+            }
+            if (!event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+
+            const rows = Array.from(list.querySelectorAll("[data-layer-id]"));
+            const currentIndex = rows.indexOf(row);
+            const nextIndex = currentIndex + (event.key === "ArrowUp" ? -1 : 1);
+            if (nextIndex < 0 || nextIndex >= rows.length) return;
+            event.preventDefault();
+            const moving = rows[currentIndex];
+            const target = rows[nextIndex];
+            list.insertBefore(moving, event.key === "ArrowUp" ? target : target.nextSibling);
+            reorderLayers(Array.from(list.querySelectorAll("[data-layer-id]")).map(node => Number(node.dataset.layerId)));
+            row.focus();
+        });
+
+        let draggedId = null;
+        list.addEventListener("dragstart", event => {
+            const handle = event.target.closest(".studio-layer-drag");
+            const row = handle?.closest("[data-layer-id]");
+            if (!handle || !row) {
+                event.preventDefault();
+                return;
+            }
+            draggedId = Number(row.dataset.layerId);
+            row.classList.add("is-dragging");
+            if (event.dataTransfer) {
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", String(draggedId));
+            }
+        });
+
+        list.addEventListener("dragover", event => {
+            if (draggedId === null || !event.target.closest("[data-layer-id]")) return;
+            event.preventDefault();
+            if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+        });
+
+        list.addEventListener("drop", event => {
+            const targetRow = event.target.closest("[data-layer-id]");
+            if (draggedId === null || !targetRow) return;
+            event.preventDefault();
+            const movingRow = list.querySelector(`[data-layer-id="${draggedId}"]`);
+            if (!movingRow || movingRow === targetRow) return;
+
+            const bounds = targetRow.getBoundingClientRect();
+            const insertAfter = event.clientY > bounds.top + bounds.height / 2;
+            list.insertBefore(movingRow, insertAfter ? targetRow.nextSibling : targetRow);
+            reorderLayers(Array.from(list.querySelectorAll("[data-layer-id]")).map(node => Number(node.dataset.layerId)));
+        });
+
+        list.addEventListener("dragend", () => {
+            list.querySelectorAll(".is-dragging").forEach(row => row.classList.remove("is-dragging"));
+            draggedId = null;
+        });
+    }
+
     function sync() {
         const selected = layers.get(selectedId);
         document.dispatchEvent(new CustomEvent("babaei:selection-changed", {
@@ -1947,6 +2602,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                     ? normalizeTextStyle(selected.layer.text_style || selected.artwork.text_style || {})
                     : null,
                 color: selected?.layer?.color || null,
+                locked: Boolean(selected?.layer?.locked),
+                visible: selected ? selected.layer.visible !== false : false,
+                zIndex: selected ? Number(selected.layer.z_index) || 0 : null,
             }
         }));
         const card = document.getElementById("selected-card");
@@ -1963,9 +2621,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         if (controls) controls.hidden = !selected;
         layers.forEach(item => {
-            const visible = item.id === selectedId;
-            if (item.frame) item.frame.visible = visible;
-            if (item.handles) item.handles.visible = visible;
+            const layerVisible = item.layer.visible !== false;
+            const selectedVisible = item.id === selectedId && layerVisible;
+            if (item.mesh) item.mesh.visible = layerVisible;
+            if (item.frame) item.frame.visible = selectedVisible;
+            if (item.handles) item.handles.visible = selectedVisible && !item.layer.locked;
         });
         if (scaleInput) {
             scaleInput.disabled = !selected;
@@ -2001,6 +2661,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (totalEl) totalEl.textContent = money(total);
 
         renderAreas();
+        renderLayersPanel();
+        renderSelectedPreview();
         if (!document.getElementById("designer-2d-stage")?.classList.contains("is-hidden")) {
             render2DPreview();
         }
@@ -2040,7 +2702,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         const viewAreas = view.areas || [];
         const areaByIdLocal = id => viewAreas.find(area => Number(area.id) === Number(id));
-        const sideLayers = Array.from(layers.values()).filter(item => layerSide(item) === side);
+        const sideLayers = Array.from(layers.values())
+            .filter(item => layerSide(item) === side && item.layer.visible !== false)
+            .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0));
 
         for (const item of sideLayers) {
             const area = areaByIdLocal(item.layer.area_id);
@@ -2061,6 +2725,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             ctx.save();
             ctx.translate(x, y);
             ctx.rotate(Number(item.layer.rotation || 0) * Math.PI / 180);
+            ctx.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
             if (item.artwork?.is_text) {
                 const style = normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {});
                 ctx.fillStyle = item.layer.color || "#ffffff";
@@ -2146,6 +2811,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         shell.classList.toggle("stage-shell--split", view === "split");
         twoD.classList.toggle("is-hidden", view === "3d");
         threeD.classList.toggle("is-hidden", view === "2d");
+        bindLayersPanel();
+
         document.querySelectorAll("[data-studio-view]").forEach(button => {
             const active = button.dataset.studioView === view;
             button.classList.toggle("is-active", active);
@@ -2266,39 +2933,455 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     function saveLayers() {
-        return Array.from(layers.values()).map(item => {
-            const bodyPlacement = placementForLayer(item);
-            const side = layerSide(item);
-            return {
-                ...item.layer,
-                type: item.artwork?.is_text ? "text" : "artwork",
-                side,
-                x: bodyPlacement?.x ?? item.layer.x,
-                y: bodyPlacement?.y ?? item.layer.y,
-                color: item.layer.color || "#ffffff",
-                opacity: Number(item.layer.opacity ?? 1),
-                text: item.artwork?.is_text ? String(item.layer.text || item.artwork.name || "") : null,
-                text_style: item.artwork?.is_text ? normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {}) : null,
-                three_d: {
-                    position: item.position?.toArray().map(value => Number(value.toFixed(6))) || null,
-                    normal: item.normal?.toArray().map(value => Number(value.toFixed(6))) || null,
-                    mesh: item.target?.name || null,
-                    size: item.size?.toArray().map(value => Number(value.toFixed(6))) || null,
+        return Array.from(layers.values())
+            .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0))
+            .map(item => {
+                const bodyPlacement = placementForLayer(item);
+                const side = layerSide(item);
+
+                return {
+                    ...item.layer,
+                    type: item.artwork?.is_text ? "text" : "artwork",
                     side,
-                    mode: "glb_surface_decal",
-                    template: garmentModels[garmentType]?.template || "babaei_tshirt_glb_v1",
-                    model: garmentModels[garmentType]?.model || "Glb/whit_t_shirt.glb",
-                    coordinate_space: "garment_body",
-                    label: {
-                        id: item.artwork?.id ?? null,
-                        code: item.artwork?.code || null,
-                        name: item.artwork?.name || "",
-                        image: item.artwork?.image || null,
-                        background_removed: item.artwork?.background_removed !== false,
+                    x: bodyPlacement?.x ?? item.layer.x,
+                    y: bodyPlacement?.y ?? item.layer.y,
+                    color: item.layer.color || "#ffffff",
+                    opacity: Number(item.layer.opacity ?? 1),
+                    visible: item.layer.visible !== false,
+                    locked: Boolean(item.layer.locked),
+                    flip_x: Boolean(item.layer.flip_x),
+                    flip_y: Boolean(item.layer.flip_y),
+                    z_index: Number(item.layer.z_index) || 0,
+                    text: item.artwork?.is_text
+                        ? String(item.layer.text || item.artwork.name || "")
+                        : null,
+                    text_style: item.artwork?.is_text
+                        ? normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {})
+                        : null,
+                    three_d: {
+                        position: item.position?.toArray().map(value => Number(value.toFixed(6))) || null,
+                        normal: item.normal?.toArray().map(value => Number(value.toFixed(6))) || null,
+                        mesh: item.target?.name || null,
+                        size: item.size?.toArray().map(value => Number(value.toFixed(6))) || null,
+                        side,
+                        mode: "glb_surface_decal",
+                        template: garmentModels[garmentType]?.template || "babaei_tshirt_glb_v1",
+                        model: garmentModels[garmentType]?.model || "Glb/whit_t_shirt.glb",
+                        coordinate_space: "garment_body",
+                        label: {
+                            id: item.artwork?.id ?? null,
+                            code: item.artwork?.code || null,
+                            name: item.artwork?.name || "",
+                            image: item.artwork?.image || null,
+                            background_removed: item.artwork?.background_removed !== false,
+                        },
                     },
-                },
-            };
+                };
+            });
+    }
+
+
+    // Scene backdrops are intentionally client-only. They are applied to the stage
+    // element (behind the transparent WebGL canvas), never added to the design
+    // payload and never uploaded to the server or database.
+    let sceneBackdropMode = "color";
+    let sceneBackdropColor = "#2b2b2e";
+    let sceneBackdropObjectUrl = null;
+    let sceneBackdropFileName = "";
+    let sceneBackdropLoadToken = 0;
+    const SCENE_BACKDROP_MAX_BYTES = 15 * 1024 * 1024;
+
+    function applySceneBackdrop() {
+        if (!stage) return;
+
+        let background = "#f2f3f5";
+        if (sceneBackdropMode === "color") {
+            background = sceneBackdropColor;
+        } else if (sceneBackdropMode === "image" && sceneBackdropObjectUrl) {
+            background = `#f2f3f5 url("${sceneBackdropObjectUrl}") center / cover no-repeat`;
+        }
+
+        // The renderer uses alpha:true. Keeping this background on the DOM stage
+        // means it is visible in the editor but remains outside saved design data.
+        stage.style.setProperty("background", background, "important");
+    }
+
+    function syncSceneBackdropPanel() {
+        const workspace = root.closest(".customizer-workspace--premium") || root;
+        const heading = document.getElementById("studio-layers-heading");
+        const count = document.getElementById("studio-layers-count");
+        const layers = document.getElementById("studio-layers-list");
+        const footer = document.querySelector(".studio-layers-panel__footer");
+        const selectedPanel = document.getElementById("studio-selected-panel");
+        const scenePanel = document.getElementById("studio-scene-panel");
+        const colorControls = document.getElementById("studio-scene-color-controls");
+        const imageControls = document.getElementById("studio-scene-image-controls");
+        const imageName = document.getElementById("studio-scene-image-name");
+        const removeImage = document.getElementById("studio-scene-image-remove");
+        const colorInput = document.getElementById("studio-scene-color-input");
+        const uploadDropzone = document.getElementById("studio-scene-upload-dropzone");
+
+        const activeTab = workspace.dataset.studioPanelTab || "selected";
+        const sceneActive = activeTab === "scene";
+
+        // The layer stack is shared by both tabs and remains visible at the top.
+        if (heading) heading.textContent = "لایه‌ها";
+        if (count) count.hidden = false;
+        if (layers) layers.hidden = false;
+        if (footer) footer.hidden = false;
+        if (selectedPanel) selectedPanel.hidden = sceneActive;
+        if (scenePanel) scenePanel.hidden = !sceneActive;
+
+        document.querySelectorAll("[data-studio-panel-tab]").forEach(button => {
+            const active = button.dataset.studioPanelTab === activeTab;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-selected", String(active));
+            button.tabIndex = active ? 0 : -1;
         });
+
+        document.querySelectorAll("[data-scene-backdrop-mode]").forEach(button => {
+            const active = button.dataset.sceneBackdropMode === sceneBackdropMode;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+
+        if (colorControls) colorControls.hidden = sceneBackdropMode !== "color";
+        if (imageControls) imageControls.hidden = sceneBackdropMode !== "image";
+
+        document.querySelectorAll("[data-scene-color]").forEach(button => {
+            const active = button.dataset.sceneColor?.toLowerCase() === sceneBackdropColor.toLowerCase();
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+
+        if (colorInput && colorInput.value.toLowerCase() !== sceneBackdropColor.toLowerCase()) {
+            colorInput.value = sceneBackdropColor;
+        }
+
+        if (imageName) {
+            imageName.textContent = sceneBackdropFileName || "تصویری انتخاب نشده است";
+        }
+        if (removeImage) removeImage.hidden = !sceneBackdropObjectUrl;
+        if (uploadDropzone) {
+            uploadDropzone.classList.remove("is-dragover");
+            const subtitle = uploadDropzone.querySelector("small");
+            if (subtitle) {
+                subtitle.textContent = sceneBackdropFileName
+                    ? "برای جایگزینی تصویر، فایل دیگری انتخاب کن یا اینجا رها کن."
+                    : "تصویر PNG، JPG یا WEBP را انتخاب کن یا اینجا رها کن.";
+            }
+        }
+
+        if (!sceneActive) renderSelectedPreview();
+    }
+
+    function setSceneBackdropMode(mode) {
+        if (!["color", "image", "none"].includes(mode)) return;
+        sceneBackdropMode = mode;
+        applySceneBackdrop();
+        syncSceneBackdropPanel();
+
+        const statusNode = document.getElementById("studio-scene-status");
+        if (!statusNode) return;
+
+        if (mode === "color") {
+            statusNode.textContent = "رنگ پس‌زمینه فوراً اعمال می‌شود؛ هیچ درخواستی به سرور ارسال نمی‌شود.";
+        } else if (mode === "image") {
+            statusNode.textContent = sceneBackdropObjectUrl
+                ? "تصویر فقط به‌صورت محلی در همین صفحه نمایش داده می‌شود."
+                : "یک تصویر انتخاب کن؛ فایل از دستگاهت خارج یا در دیتابیس ذخیره نمی‌شود.";
+        } else {
+            statusNode.textContent = "پس‌زمینه‌ای نمایش داده نمی‌شود؛ خروجی خود Canvas همچنان شفاف باقی می‌ماند.";
+        }
+    }
+
+    async function loadSceneBackdropFile(file) {
+        if (!file) return;
+
+        const allowedType = /^image\/(png|jpeg|webp)$/i.test(file.type)
+            || /\.(png|jpe?g|webp)$/i.test(file.name || "");
+        const statusNode = document.getElementById("studio-scene-status");
+
+        if (!allowedType) {
+            if (statusNode) statusNode.textContent = "فرمت فایل باید PNG، JPG یا WEBP باشد.";
+            return;
+        }
+        if (file.size > SCENE_BACKDROP_MAX_BYTES) {
+            if (statusNode) statusNode.textContent = "حجم تصویر باید کمتر از ۱۵ مگابایت باشد.";
+            return;
+        }
+
+        const token = ++sceneBackdropLoadToken;
+        let nextUrl = URL.createObjectURL(file);
+
+        try {
+            // Decode locally before swapping the current backdrop to avoid flicker.
+            const probe = new Image();
+            await new Promise((resolve, reject) => {
+                probe.onload = resolve;
+                probe.onerror = () => reject(new Error("بارگذاری تصویر ممکن نشد."));
+                probe.src = nextUrl;
+            });
+
+            // Large phone photos can decode to hundreds of megabytes. Downscale
+            // them locally so the editor keeps a predictable memory footprint.
+            const sourceWidth = probe.naturalWidth || probe.width;
+            const sourceHeight = probe.naturalHeight || probe.height;
+            const longestEdge = Math.max(sourceWidth, sourceHeight);
+            const scale = longestEdge > 2560 ? 2560 / longestEdge : 1;
+
+            if (scale < 1) {
+                const resized = document.createElement("canvas");
+                resized.width = Math.max(1, Math.round(sourceWidth * scale));
+                resized.height = Math.max(1, Math.round(sourceHeight * scale));
+                const context = resized.getContext("2d");
+                if (!context) throw new Error("آماده‌سازی تصویر در مرورگر ممکن نشد.");
+
+                context.drawImage(probe, 0, 0, resized.width, resized.height);
+                const outputType = file.type === "image/png" ? "image/png" : "image/webp";
+                const optimizedBlob = await new Promise((resolve, reject) => {
+                    resized.toBlob(
+                        blob => blob ? resolve(blob) : reject(new Error("فشرده‌سازی تصویر انجام نشد.")),
+                        outputType,
+                        0.88
+                    );
+                });
+
+                const optimizedUrl = URL.createObjectURL(optimizedBlob);
+                URL.revokeObjectURL(nextUrl);
+                nextUrl = optimizedUrl;
+            }
+
+            if (token !== sceneBackdropLoadToken) {
+                URL.revokeObjectURL(nextUrl);
+                return;
+            }
+
+            if (sceneBackdropObjectUrl) URL.revokeObjectURL(sceneBackdropObjectUrl);
+            sceneBackdropObjectUrl = nextUrl;
+            sceneBackdropFileName = file.name || "backdrop-image";
+            setSceneBackdropMode("image");
+        } catch (error) {
+            URL.revokeObjectURL(nextUrl);
+            if (statusNode) statusNode.textContent = error.message || "خواندن تصویر انجام نشد.";
+        }
+    }
+
+    function openSelectedPanel() {
+        const workspace = root.closest(".customizer-workspace--premium") || root;
+        workspace.dataset.studioPanelTab = "selected";
+        syncSceneBackdropPanel();
+    }
+
+    function selectedLayerOrderTopFirst() {
+        return Array.from(layers.values())
+            .sort((a, b) => (Number(b.layer.z_index) || 0) - (Number(a.layer.z_index) || 0))
+            .map(item => item.id);
+    }
+
+    function duplicateSelectedLayer() {
+        const source = layers.get(selectedId);
+        if (!source || source.layer.visible === false || source.layer.locked) return false;
+
+        const base = normalizedGarmentPoint(source.surfacePoint || source.position) || {
+            x: Number(source.layer.x ?? 0.5),
+            y: Number(source.layer.y ?? 0.5),
+        };
+        const side = layerSide(source);
+        const area = areaForSurfaceSide(side, areaById(source.layer.area_id, side));
+        const offsets = [[0.055, 0.035], [-0.055, 0.035], [0, 0.07], [0, -0.07]];
+        let hit = null;
+        let nextX = base.x;
+        let nextY = base.y;
+
+        for (const [dx, dy] of offsets) {
+            const candidateX = THREE.MathUtils.clamp(base.x + dx, 0.02, 0.98);
+            const candidateY = THREE.MathUtils.clamp(base.y + dy, 0.02, 0.98);
+            const candidateHit = garmentSurfaceHitAtPlacement(candidateX, candidateY, side);
+            if (candidateHit && isValidPrintSurface(candidateHit, area)) {
+                hit = candidateHit;
+                nextX = candidateX;
+                nextY = candidateY;
+                break;
+            }
+        }
+
+        if (!hit || !area) {
+            status("فضای مناسبی برای تکثیر این لیبل پیدا نشد.");
+            return false;
+        }
+
+        const newId = nextId++;
+        const nextZ = layers.size
+            ? Math.max(...Array.from(layers.values()).map(item => Number(item.layer.z_index) || 0)) + 1
+            : 0;
+        const layer = {
+            ...source.layer,
+            id: newId,
+            x: nextX,
+            y: nextY,
+            area_id: area.id,
+            z_index: nextZ,
+            visible: true,
+            locked: false,
+        };
+        const item = {
+            id: newId,
+            layer,
+            artwork: { ...source.artwork },
+            target: hit.object,
+            position: hit.point.clone(),
+            normal: hitNormal(hit),
+            surfacePoint: hit.point.clone(),
+            surfaceNormal: hitNormal(hit),
+            projectRevision: 0,
+            mesh: null,
+            frame: null,
+            handles: null,
+            size: null,
+        };
+
+        layers.set(newId, item);
+        selectedId = newId;
+        openSelectedPanel();
+        project(item, item.surfacePoint, item.surfaceNormal);
+        sync();
+        render();
+        return true;
+    }
+
+    function moveLayerInStack(layerId, direction) {
+        const ordered = selectedLayerOrderTopFirst();
+        const index = ordered.indexOf(Number(layerId));
+        if (index < 0) return;
+
+        const nextIndex = index + (direction === "forward" ? -1 : 1);
+        if (nextIndex < 0 || nextIndex >= ordered.length) return;
+
+        [ordered[index], ordered[nextIndex]] = [ordered[nextIndex], ordered[index]];
+        reorderLayers(ordered);
+    }
+
+    function bindSelectedPanelActions() {
+        const actions = document.getElementById("studio-selected-actions");
+        if (!actions || actions.dataset.bound === "1") return;
+        actions.dataset.bound = "1";
+
+        actions.addEventListener("click", event => {
+            const button = event.target.closest("[data-selected-action]");
+            if (!button || button.disabled) return;
+
+            const item = layers.get(selectedId);
+            if (!item) return;
+            const action = button.dataset.selectedAction;
+
+            if (action === "duplicate") {
+                duplicateSelectedLayer();
+                return;
+            }
+            if (action === "delete") {
+                removeLayerById(selectedId);
+                return;
+            }
+            if (action === "bring-forward" || action === "send-back") {
+                moveLayerInStack(selectedId, action === "bring-forward" ? "forward" : "back");
+                return;
+            }
+            if (item.layer.locked) {
+                status("این لایه قفل است؛ برای تغییر آن ابتدا قفل را باز کن.");
+                return;
+            }
+            if (action === "flip-x") item.layer.flip_x = !item.layer.flip_x;
+            else if (action === "flip-y") item.layer.flip_y = !item.layer.flip_y;
+            else return;
+
+            project(item, item.surfacePoint || item.position, item.surfaceNormal || item.normal);
+            sync();
+            render();
+            render2DPreview();
+        });
+    }
+
+    function bindSceneBackdropPanel() {
+        const workspace = root.closest(".customizer-workspace--premium") || root;
+        const tabs = document.querySelectorAll("[data-studio-panel-tab]");
+        const scenePanel = document.getElementById("studio-scene-panel");
+        if (!tabs.length || !scenePanel) return;
+
+        workspace.dataset.studioPanelTab = "selected";
+        tabs.forEach(button => {
+            button.addEventListener("click", () => {
+                workspace.dataset.studioPanelTab = button.dataset.studioPanelTab || "selected";
+                syncSceneBackdropPanel();
+            });
+        });
+
+        document.querySelectorAll("[data-scene-backdrop-mode]").forEach(button => {
+            button.addEventListener("click", () => {
+                setSceneBackdropMode(button.dataset.sceneBackdropMode);
+            });
+        });
+
+        document.querySelectorAll("[data-scene-color]").forEach(button => {
+            button.addEventListener("click", () => {
+                const color = String(button.dataset.sceneColor || "").trim();
+                if (!/^#[0-9a-f]{6}$/i.test(color)) return;
+                sceneBackdropColor = color.toLowerCase();
+                setSceneBackdropMode("color");
+            });
+        });
+
+        document.getElementById("studio-scene-color-input")?.addEventListener("input", event => {
+            const color = String(event.currentTarget.value || "").trim();
+            if (!/^#[0-9a-f]{6}$/i.test(color)) return;
+            sceneBackdropColor = color.toLowerCase();
+            setSceneBackdropMode("color");
+        });
+
+        const fileInput = document.getElementById("studio-scene-image-input");
+        fileInput?.addEventListener("change", event => {
+            const file = event.currentTarget.files?.[0];
+            if (file) void loadSceneBackdropFile(file);
+            event.currentTarget.value = "";
+        });
+
+        const dropzone = document.getElementById("studio-scene-upload-dropzone");
+        if (dropzone) {
+            ["dragenter", "dragover"].forEach(type => {
+                dropzone.addEventListener(type, event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    dropzone.classList.add("is-dragover");
+                });
+            });
+            ["dragleave", "dragend"].forEach(type => {
+                dropzone.addEventListener(type, event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    dropzone.classList.remove("is-dragover");
+                });
+            });
+            dropzone.addEventListener("drop", event => {
+                event.preventDefault();
+                event.stopPropagation();
+                dropzone.classList.remove("is-dragover");
+                const file = Array.from(event.dataTransfer?.files || [])
+                    .find(item => /^image\/(png|jpeg|webp)$/i.test(item.type) || /\.(png|jpe?g|webp)$/i.test(item.name || ""));
+                if (file) void loadSceneBackdropFile(file);
+            });
+        }
+
+        document.getElementById("studio-scene-image-remove")?.addEventListener("click", () => {
+            sceneBackdropLoadToken += 1;
+            if (sceneBackdropObjectUrl) URL.revokeObjectURL(sceneBackdropObjectUrl);
+            sceneBackdropObjectUrl = null;
+            sceneBackdropFileName = "";
+            if (fileInput) fileInput.value = "";
+            setSceneBackdropMode("none");
+        });
+
+        applySceneBackdrop();
+        syncSceneBackdropPanel();
     }
 
     function bind() {
@@ -2314,7 +3397,33 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         canvas.addEventListener("pointerdown", event => {
             if (compactMedia.matches) hideMobileDragHint();
-            const intersections = garmentHits(event);
+            garmentHits(event);
+
+            const handleHits = raycaster.intersectObjects(
+                Array.from(layers.values()).map(item => item.handles).filter(Boolean),
+                true
+            );
+            const handleHit = handleHits.find(hit => hit.object?.userData?.customizerHandleType);
+            if (handleHit) {
+                const layerId = Number(handleHit.object.userData.customizerLayerId);
+                const selectedLayer = layers.get(layerId);
+                selectedId = layerId;
+                openSelectedPanel();
+                drag = beginLayerTransform(
+                    event,
+                    selectedLayer,
+                    handleHit.object.userData.customizerHandleType === "rotate" ? "rotate" : "resize",
+                    handleHit.object.userData.customizerHandleType
+                );
+                if (drag) {
+                    controls.enabled = false;
+                    canvas.style.touchAction = "none";
+                    canvas.setPointerCapture(event.pointerId);
+                }
+                sync();
+                return;
+            }
+
             const decal = raycaster.intersectObjects(
                 Array.from(layers.values()).map(item => item.mesh).filter(Boolean),
                 true
@@ -2322,9 +3431,20 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             if (decal) {
                 selectedId = Number(decal.object.userData.customizerLayerId);
-                drag = { pointerId: event.pointerId };
-                controls.enabled = false;
-                canvas.setPointerCapture(event.pointerId);
+                openSelectedPanel();
+                const selectedLayer = layers.get(selectedId);
+                if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
+                    drag = {
+                        pointerId: event.pointerId,
+                        mode: "move",
+                        layerId: selectedId,
+                    };
+                    controls.enabled = false;
+                    canvas.style.touchAction = "none";
+                    canvas.setPointerCapture(event.pointerId);
+                } else {
+                    drag = null;
+                }
                 sync();
                 return;
             }
@@ -2333,7 +3453,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             // A selected label must only move after the user starts dragging the label itself.
             // Clicking another point on the garment must never teleport the selected label.
-            return;
         });
 
         canvas.addEventListener("pointermove", event => {
@@ -2346,7 +3465,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 const latestEvent = pendingDragEvent;
                 pendingDragEvent = null;
                 if (drag?.pointerId === latestEvent?.pointerId) {
-                    moveSelected(latestEvent);
+                    applyLayerTransform(latestEvent);
                 }
             });
         });
@@ -2356,7 +3475,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 if (drag?.pointerId !== event.pointerId) return;
                 // Apply the last coalesced pointer position before ending the drag.
                 if (pendingDragEvent?.pointerId === event.pointerId) {
-                    moveSelected(pendingDragEvent);
+                    applyLayerTransform(pendingDragEvent);
                 }
                 pendingDragEvent = null;
                 if (dragFrameId) {
@@ -2365,6 +3484,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 }
                 drag = null;
                 controls.enabled = true;
+                canvas.style.touchAction = "";
                 canvas.releasePointerCapture?.(event.pointerId);
                 sync();
             });
@@ -2376,6 +3496,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 if (!item) return;
 
                 const action = button.dataset.action;
+                if (item.layer.locked && action !== "delete") {
+                    status("این لایه قفل است؛ برای تغییر آن ابتدا قفل را باز کن.");
+                    return;
+                }
 
                 if (action === "move-left") {
                     moveSelectedBy(-1, 0);
@@ -2428,9 +3552,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                         status("فضای آزاد مناسبی برای مرکز کردن این لیبل پیدا نشد.");
                     }
                 } else if (action === "delete") {
-                    disposeLayer(item);
-                    layers.delete(selectedId);
-                    selectedId = null;
+                    removeLayerById(selectedId);
+                    return;
                 }
 
                 sync();
@@ -2469,6 +3592,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         document.getElementById("label-scale")?.addEventListener("input", event => {
             const item = layers.get(selectedId);
             if (!item) return;
+            if (item.layer.locked) {
+                event.target.value = String(Math.round(item.layer.width * 100));
+                status("این لایه قفل است؛ برای تغییر اندازه ابتدا قفل را باز کن.");
+                return;
+            }
 
             const previousWidth = item.layer.width;
             const previousHeight = item.layer.height;
@@ -2493,6 +3621,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         document.getElementById("label-rotation")?.addEventListener("input", event => {
             const item = layers.get(selectedId);
             if (!item) return;
+            if (item.layer.locked) {
+                event.target.value = String(Math.round(item.layer.rotation));
+                status("این لایه قفل است؛ برای چرخاندن ابتدا قفل را باز کن.");
+                return;
+            }
 
             const previousRotation = item.layer.rotation;
             item.layer.rotation = THREE.MathUtils.clamp(Number(event.target.value), -180, 180);
@@ -2677,6 +3810,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         renderAreas();
         bind();
+        bindSceneBackdropPanel();
+        bindSelectedPanelActions();
+        renderLayersPanel();
+        renderSelectedPreview();
         resize();
 
         try {
@@ -2706,6 +3843,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         resizeObserver.disconnect();
         controls?.dispose();
         renderer?.dispose();
+        if (sceneBackdropObjectUrl) {
+            URL.revokeObjectURL(sceneBackdropObjectUrl);
+            sceneBackdropObjectUrl = null;
+        }
     }, { once: true });
 
     window.BabaeiCustomizer3D = {
