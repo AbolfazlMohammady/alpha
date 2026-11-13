@@ -393,7 +393,10 @@ def test_studio_default_print_areas_cover_front_and_back(product):
     assert _ensure_default_print_area(product, PrintArea.Side.BACK).pk == back.pk
 
 
-def test_designer_page_provides_pattern_fallback_for_both_sides(product, client):
+def test_designer_page_provides_pattern_fallback_for_both_sides(product, client, django_user_model):
+    user = django_user_model.objects.create_user(phone="+989121234585", password="test-pass-123")
+    client.force_login(user)
+
     response = client.get(
         reverse("customizer:designer", kwargs={"product_ref": str(product.uuid)})
     )
