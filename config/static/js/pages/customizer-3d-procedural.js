@@ -2516,36 +2516,41 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             .map(item => {
                 const bodyPlacement = placementForLayer(item);
                 const side = layerSide(item);
+
                 return {
                     ...item.layer,
-                type: item.artwork?.is_text ? "text" : "artwork",
-                        side,
-                x: bodyPlacement?.x ?? item.layer.x,
-                y: bodyPlacement?.y ?? item.layer.y,
-                color: item.layer.color || "#ffffff",
-                opacity: Number(item.layer.opacity ?? 1),
-                visible: item.layer.visible !== false,
-                locked: Boolean(item.layer.locked),
-                z_index: Number(item.layer.z_index) || 0,
-                text: item.artwork?.is_text ? String(item.layer.text || item.artwork.name || "") : null,
-                text_style: item.artwork?.is_text ? normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {}) : null,
-                three_d: {
-                    position: item.position?.toArray().map(value => Number(value.toFixed(6))) || null,
-                    normal: item.normal?.toArray().map(value => Number(value.toFixed(6))) || null,
-                    mesh: item.target?.name || null,
-                    size: item.size?.toArray().map(value => Number(value.toFixed(6))) || null,
+                    type: item.artwork?.is_text ? "text" : "artwork",
                     side,
-                    mode: "glb_surface_decal",
-                    template: garmentModels[garmentType]?.template || "babaei_tshirt_glb_v1",
-                    model: garmentModels[garmentType]?.model || "Glb/whit_t_shirt.glb",
-                    coordinate_space: "garment_body",
-                    label: {
-                        id: item.artwork?.id ?? null,
-                        code: item.artwork?.code || null,
-                        name: item.artwork?.name || "",
-                        image: item.artwork?.image || null,
-                        background_removed: item.artwork?.background_removed !== false,
-                    },
+                    x: bodyPlacement?.x ?? item.layer.x,
+                    y: bodyPlacement?.y ?? item.layer.y,
+                    color: item.layer.color || "#ffffff",
+                    opacity: Number(item.layer.opacity ?? 1),
+                    visible: item.layer.visible !== false,
+                    locked: Boolean(item.layer.locked),
+                    z_index: Number(item.layer.z_index) || 0,
+                    text: item.artwork?.is_text
+                        ? String(item.layer.text || item.artwork.name || "")
+                        : null,
+                    text_style: item.artwork?.is_text
+                        ? normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {})
+                        : null,
+                    three_d: {
+                        position: item.position?.toArray().map(value => Number(value.toFixed(6))) || null,
+                        normal: item.normal?.toArray().map(value => Number(value.toFixed(6))) || null,
+                        mesh: item.target?.name || null,
+                        size: item.size?.toArray().map(value => Number(value.toFixed(6))) || null,
+                        side,
+                        mode: "glb_surface_decal",
+                        template: garmentModels[garmentType]?.template || "babaei_tshirt_glb_v1",
+                        model: garmentModels[garmentType]?.model || "Glb/whit_t_shirt.glb",
+                        coordinate_space: "garment_body",
+                        label: {
+                            id: item.artwork?.id ?? null,
+                            code: item.artwork?.code || null,
+                            name: item.artwork?.name || "",
+                            image: item.artwork?.image || null,
+                            background_removed: item.artwork?.background_removed !== false,
+                        },
                     },
                 };
             });
