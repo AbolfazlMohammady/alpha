@@ -19,7 +19,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/pages/customizer.css' %}">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d.css' %}">
-<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-garment-toolbar2">
+<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-clean-stage1">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio-ui.css' %}?v=20260930-mobile-tools13">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-mobile-nav.css' %}?v=20260925-1">
 {% endblock %}
@@ -243,21 +243,11 @@
         <canvas id="designer-3d-canvas"></canvas>
                     <div class="designer-3d-loading" id="designer-3d-loading">در حال بارگذاری مدل سه‌بعدی…</div>
                     <div class="designer-3d-hint" id="designer-3d-hint">با ماوس/لمس مدل را بچرخان · برای انتخاب لیبل روی آن کلیک کن</div>
-                    <div class="designer-3d-bottom-controls">
-                        <button type="button" data-camera-action="rotate-left" title="چرخش چپ">↶</button>
-                        <button type="button" data-camera-action="rotate-right" title="چرخش راست">↷</button>
-                        <button type="button" data-camera-action="zoom-out" title="کوچک‌نمایی">−</button>
-                        <span id="camera-zoom-label">100%</span>
-                        <button type="button" data-camera-action="zoom-in" title="بزرگ‌نمایی">+</button>
-                        <button type="button" data-camera-action="fit" title="جا دادن تیشرت">⌗</button>
-                        <button type="button" data-camera-action="reset" title="بازنشانی">↻</button>
-                    </div>
+
                 </div>
                 <div class="designer-2d-stage is-hidden" id="designer-2d-stage"><canvas id="designer-canvas" aria-label="پیش‌نمایش چاپ لباس"></canvas><div class="stage-loading" id="stage-loading">نمای چاپ</div></div>
             </div>
-            <div class="stage-controls stage-controls--premium">
-                <div class="stage-control-group"><button type="button" data-action="zoom-out">−</button><span id="zoom-label">100%</span><button type="button" data-action="zoom-in">+</button></div>
-            </div>
+
         </section>
 
         <aside class="customizer-panel customizer-panel--assets customizer-panel--premium-right is-drawer-closed">
@@ -497,8 +487,8 @@
 {% if designer_has_3d %}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script>
 <script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261113-model-selector4"></script>
-<script src="{% static 'js/pages/customizer-3d-studio-ui.js' %}?v=20261113-garment-toolbar1" defer></script>
-<script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261113-garment-toolbar1" defer></script>
+<script src="{% static 'js/pages/customizer-3d-studio-ui.js' %}?v=20261113-clean-stage1" defer></script>
+<script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261113-clean-stage1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-mobile-nav.js' %}?v=20261113-garment-toolbar1" defer></script>
 {% endif %}
 {% endblock %}
