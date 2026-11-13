@@ -19,7 +19,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/pages/customizer.css' %}">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d.css' %}">
-<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-clean-stage3">
+<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-view-modes1">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio-ui.css' %}?v=20260930-mobile-tools13">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-mobile-nav.css' %}?v=20260925-1">
 {% endblock %}
@@ -74,17 +74,17 @@
                 data-model-path="Glb/mug.glb" data-garment-template="babaei_mug_glb_v1"
                 aria-pressed="false" disabled></button>
             <button type="button" data-garment-type="long_sleeve"
-                data-garment-label="لانگ‌تیشرت" data-garment-subtitle="آستین بلند" data-garment-icon="👕"
+                data-garment-label="لانگ‌تیشرت" data-garment-subtitle="آستین بلند" data-garment-icon="👕" data-garment-target-size="1.5"
                 data-model-url="{% static 'Glb/long_sleeve_t-_shirt.glb' %}"
                 data-model-path="Glb/long_sleeve_t-_shirt.glb" data-garment-template="babaei_long_sleeve_glb_v1"
                 aria-pressed="false" disabled></button>
             <button type="button" data-garment-type="hoodie"
-                data-garment-label="هودی" data-garment-subtitle="طراحی روی هودی" data-garment-icon="🧥"
+                data-garment-label="هودی" data-garment-subtitle="طراحی روی هودی" data-garment-icon="🧥" data-garment-target-size="1.5"
                 data-model-url="{% static 'Glb/Hoodie.glb' %}"
                 data-model-path="Glb/Hoodie.glb" data-garment-template="babaei_hoodie_glb_v1"
                 aria-pressed="false" disabled></button>
             <button type="button" class="is-active" data-garment-type="tshirt"
-                data-garment-label="تیشرت" data-garment-subtitle="آستین کوتاه" data-garment-icon="👕"
+                data-garment-label="تیشرت" data-garment-subtitle="آستین کوتاه" data-garment-icon="👕" data-garment-target-size="1.5"
                 data-model-url="{% static 'Glb/whit_t_shirt.glb' %}"
                 data-model-path="Glb/whit_t_shirt.glb" data-garment-template="babaei_tshirt_glb_v1"
                 aria-pressed="true" disabled></button>
@@ -245,10 +245,22 @@
                     <div class="designer-3d-hint" id="designer-3d-hint">با ماوس/لمس مدل را بچرخان · برای انتخاب لیبل روی آن کلیک کن</div>
 
                 </div>
-                <div class="designer-2d-stage is-hidden" id="designer-2d-stage"><canvas id="designer-canvas" aria-label="پیش‌نمایش چاپ لباس"></canvas><div class="stage-loading" id="stage-loading">نمای چاپ</div></div>
+                <div class="designer-2d-stage is-hidden" id="designer-2d-stage">
+                    <div class="designer-2d-stage__toolbar">
+                        <button type="button" data-2d-side="front" class="is-active" aria-pressed="true">نمای جلو</button>
+                        <button type="button" data-2d-side="back" aria-pressed="false">نمای پشت</button>
+                    </div>
+                    <canvas id="designer-canvas" aria-label="پیش‌نمایش دوبعدی چاپ لباس"></canvas>
+                    <div class="stage-loading" id="stage-loading">در حال آماده‌سازی نمای دوبعدی…</div>
+                </div>
             </div>
 
         </section>
+        <nav class="studio-view-switcher" id="studio-view-switcher" aria-label="حالت نمایش">
+            <button type="button" data-studio-view="2d">2D</button>
+            <button type="button" data-studio-view="split" class="is-active" aria-pressed="true">Split</button>
+            <button type="button" data-studio-view="3d">3D</button>
+        </nav>
 
         <aside class="customizer-panel customizer-panel--assets customizer-panel--premium-right is-drawer-closed">
             <div class="panel-heading">
@@ -486,7 +498,7 @@
 <script src="{% static 'js/pages/customizer.js' %}?v=20261003-label-picker3" defer></script>
 {% if designer_has_3d %}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script>
-<script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261113-model-selector5"></script>
+<script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261113-view-modes1"></script>
 <script src="{% static 'js/pages/customizer-3d-studio-ui.js' %}?v=20261113-clean-stage1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261113-clean-stage1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-mobile-nav.js' %}?v=20261113-garment-toolbar1" defer></script>
