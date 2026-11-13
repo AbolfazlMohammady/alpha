@@ -61,27 +61,30 @@ def _model_url(request, view, generated_asset=None):
 
 
 
-def _ensure_default_print_area(product):
-    """Create the standard persisted print area used by the standalone 3D studio."""
-    area = (
-        PrintArea.objects
-        .filter(product=product, is_active=True)
-        .order_by("sort_order", "id")
-        .first()
-    )
-    if area:
-        return area
-    return PrintArea.objects.create(
+def _ensure_default_print_area(product, side=PrintArea.Side.FRONT):
+    """Ensure a default front/back print area exists for the 2D pattern studio."""
+    key = "studio-front-print" if side == PrintArea.Side.FRONT else "studio-back-print"
+    name = "ناحیه چاپ جلو" if side == PrintArea.Side.FRONT else "ناحیه چاپ پشت"
+
+    area, created = PrintArea.objects.get_or_create(
         product=product,
-        key="front-print",
-        side=PrintArea.Side.FRONT,
-        name="ناحیه چاپ اصلی",
-        max_width_mm=300,
-        max_height_mm=400,
-        max_layers=5,
-        sort_order=0,
-        is_active=True,
+        key=key,
+        defaults={
+            "side": side,
+            "name": name,
+            "max_width_mm": 300,
+            "max_height_mm": 400,
+            "max_layers": 5,
+            "sort_order": 900,
+            "is_active": True,
+        },
     )
+    # These keys are reserved for this studio fallback, so revive them when a
+    # previous request created them but an admin later disabled the row.
+    if not area.is_active:
+        area.is_active = True
+        area.save(update_fields=["is_active"])
+    return area
 
 
 def _generation_payload(product):
@@ -131,8 +134,11 @@ class DesignerPageView(View):
         raw_views = list(DesignerViewModel.objects.filter(product=product, is_active=True).exclude(background_image="").order_by("sort_order", "id"))
         views = [view for view in raw_views if _file_url(request, view.background_image)]
         areas = list(PrintArea.objects.filter(product=product, is_active=True).order_by("sort_order", "id"))
-        if not areas:
-            areas = [_ensure_default_print_area(product)]
+        active_sides = {area.side for area in areas}
+        for side in (PrintArea.Side.FRONT, PrintArea.Side.BACK):
+            if side not in active_sides:
+                _ensure_default_print_area(product, side=side)
+        areas = list(PrintArea.objects.filter(product=product, is_active=True).order_by("sort_order", "id"))
         area_maps = list(PrintAreaView.objects.filter(area__in=areas, view__in=views, area__is_active=True, view__is_active=True).select_related("area", "view"))
         generation = _generation_payload(product)
         # Re-read after generation state normalization so a freshly completed
@@ -151,35 +157,62 @@ class DesignerPageView(View):
             if target_view:
                 target_view["areas"].append({"id": area_map.area_id, "key": area_map.area.key, "name": area_map.area.name, "side": area_map.area.side, "geometry": area_map.geometry, "max_layers": area_map.area.max_layers, "max_width_mm": float(area_map.area.max_width_mm), "max_height_mm": float(area_map.area.max_height_mm)})
 
-        # The 3D studio uses its own stable global GLB; product-specific 2D views are optional.
-        if not view_data:
-            view_data = [{
-                "id": 0,
-                "key": "front",
-                "name": "جلو",
-                "angle": 0,
-                "background": "",
-                "mask": None,
-                "model": None,
-                "model_scale": 1,
-                "width": 1600,
-                "height": 1600,
-                "areas": [{
+        # Every garment needs a front and a back canvas. Database photo views,
+        # when configured, take precedence; missing sides are supplied by the
+        # generated FreeSewing SVG patterns in config/static/customizer/patterns/.
+        def _view_side(view_item):
+            key = str(view_item.get("key") or "").lower()
+            name = str(view_item.get("name") or "").lower()
+            return "back" if ("back" in key or "back" in name or "پشت" in name) else "front"
+
+        default_geometry = [
+            {"x": 0.28, "y": 0.22},
+            {"x": 0.72, "y": 0.22},
+            {"x": 0.72, "y": 0.76},
+            {"x": 0.28, "y": 0.76},
+        ]
+        for side, synthetic_id, side_name in (
+            (PrintArea.Side.FRONT, -1, "جلو"),
+            (PrintArea.Side.BACK, -2, "پشت"),
+        ):
+            side_areas = [area for area in areas if area.side == side]
+            if not side_areas:
+                continue
+
+            target_view = next(
+                (item for item in view_data if _view_side(item) == side),
+                None,
+            )
+            if target_view is None:
+                target_view = {
+                    "id": synthetic_id,
+                    "key": side,
+                    "name": side_name,
+                    "angle": 0 if side == PrintArea.Side.FRONT else 180,
+                    "background": "",
+                    "mask": None,
+                    "model": None,
+                    "model_scale": 1,
+                    "width": 1600,
+                    "height": 1600,
+                    "areas": [],
+                }
+                view_data.append(target_view)
+
+            mapped_ids = {int(item["id"]) for item in target_view["areas"]}
+            for area in side_areas:
+                if area.id in mapped_ids:
+                    continue
+                target_view["areas"].append({
                     "id": area.id,
                     "key": area.key,
                     "name": area.name,
                     "side": area.side,
-                    "geometry": [
-                        {"x": 0.28, "y": 0.22},
-                        {"x": 0.72, "y": 0.22},
-                        {"x": 0.72, "y": 0.76},
-                        {"x": 0.28, "y": 0.76},
-                    ],
+                    "geometry": default_geometry,
                     "max_layers": area.max_layers,
                     "max_width_mm": float(area.max_width_mm),
                     "max_height_mm": float(area.max_height_mm),
-                } for area in areas],
-            }]
+                })
 
         price_area_ids = {area.id for area in areas}
         pricing = CustomizerPricingSettings.get_solo()
