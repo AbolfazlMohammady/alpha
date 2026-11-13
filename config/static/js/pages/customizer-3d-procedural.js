@@ -2692,7 +2692,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         }
 
         const token = ++sceneBackdropLoadToken;
-        const nextUrl = URL.createObjectURL(file);
+        let nextUrl = URL.createObjectURL(file);
 
         try {
             // Decode locally before swapping the current backdrop to avoid flicker.
@@ -2702,6 +2702,35 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 probe.onerror = () => reject(new Error("بارگذاری تصویر ممکن نشد."));
                 probe.src = nextUrl;
             });
+
+            // Large phone photos can decode to hundreds of megabytes. Downscale
+            // them locally so the editor keeps a predictable memory footprint.
+            const sourceWidth = probe.naturalWidth || probe.width;
+            const sourceHeight = probe.naturalHeight || probe.height;
+            const longestEdge = Math.max(sourceWidth, sourceHeight);
+            const scale = longestEdge > 2560 ? 2560 / longestEdge : 1;
+
+            if (scale < 1) {
+                const resized = document.createElement("canvas");
+                resized.width = Math.max(1, Math.round(sourceWidth * scale));
+                resized.height = Math.max(1, Math.round(sourceHeight * scale));
+                const context = resized.getContext("2d");
+                if (!context) throw new Error("آماده‌سازی تصویر در مرورگر ممکن نشد.");
+
+                context.drawImage(probe, 0, 0, resized.width, resized.height);
+                const outputType = file.type === "image/png" ? "image/png" : "image/webp";
+                const optimizedBlob = await new Promise((resolve, reject) => {
+                    resized.toBlob(
+                        blob => blob ? resolve(blob) : reject(new Error("فشرده‌سازی تصویر انجام نشد.")),
+                        outputType,
+                        0.88
+                    );
+                });
+
+                const optimizedUrl = URL.createObjectURL(optimizedBlob);
+                URL.revokeObjectURL(nextUrl);
+                nextUrl = optimizedUrl;
+            }
 
             if (token !== sceneBackdropLoadToken) {
                 URL.revokeObjectURL(nextUrl);
@@ -2782,7 +2811,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 event.stopPropagation();
                 dropzone.classList.remove("is-dragover");
                 const file = Array.from(event.dataTransfer?.files || [])
-                    .find(item => item.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(item.name || ""));
+                    .find(item => /^image\/(png|jpeg|webp)$/i.test(item.type) || /\.(png|jpe?g|webp)$/i.test(item.name || ""));
                 if (file) void loadSceneBackdropFile(file);
             });
         }
