@@ -109,6 +109,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const pointer = new THREE.Vector2();
     const layers = new Map();
     const textures = new Map();
+    const selectedPreviewImages = new Map();
     const frontAxis = new THREE.Vector3(0, 0, 1);
     const garmentModelOptions = Array.from(
         document.querySelectorAll("[data-garment-type][data-model-url]")
@@ -1419,6 +1420,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             const cropped = cropTextureToVisiblePixels(sourceTexture);
             const texture = cropped.texture;
+            texture.center.set(0.5, 0.5);
+            texture.repeat.set(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
+            texture.offset.set(item.layer.flip_x ? 1 : 0, item.layer.flip_y ? 1 : 0);
+            texture.needsUpdate = true;
             item.visibleTexture = texture;
             item.visibleArtworkWidth = cropped.visibleWidth || texture.image?.width || 0;
             item.visibleArtworkHeight = cropped.visibleHeight || texture.image?.height || 0;
@@ -1786,6 +1791,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             opacity: 1,
             visible: true,
             locked: false,
+            flip_x: false,
+            flip_y: false,
             z_index: layers.size
                 ? Math.max(...Array.from(layers.values()).map(existing => Number(existing.layer.z_index) || 0)) + 1
                 : 0,
@@ -1811,6 +1818,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         layers.set(item.id, item);
         selectedId = item.id;
+        openSelectedPanel();
         project(item, item.surfacePoint, item.surfaceNormal);
         sync();
         showMobileDragHint();
@@ -2142,6 +2150,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const item = layers.get(Number(layerId));
         if (!item) return;
         selectedId = item.id;
+        openSelectedPanel();
         sync();
         render();
     }
@@ -2251,6 +2260,175 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             row.append(handle, thumbnail, copy, actions);
             list.append(row);
+        });
+    }
+
+    let selectedPreviewRevision = 0;
+
+    async function selectedPreviewImage(src) {
+        if (!src) return null;
+        if (!selectedPreviewImages.has(src)) {
+            selectedPreviewImages.set(src, imageFromSource(src).catch(() => null));
+        }
+        return selectedPreviewImages.get(src);
+    }
+
+    async function renderSelectedPreview() {
+        const canvas = document.getElementById("studio-selected-preview");
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width < 2 || rect.height < 2) return;
+
+        const token = ++selectedPreviewRevision;
+        const ratio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.max(1, Math.round(rect.width * ratio));
+        canvas.height = Math.max(1, Math.round(rect.height * ratio));
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, rect.width, rect.height);
+
+        // Subtle alignment guides keep the preview readable without adding a garment mockup.
+        ctx.save();
+        ctx.strokeStyle = "rgba(30,30,35,.055)";
+        ctx.lineWidth = 1;
+        for (let x = 18; x < rect.width; x += 24) {
+            ctx.beginPath();
+            ctx.moveTo(x, 10);
+            ctx.lineTo(x, rect.height - 10);
+            ctx.stroke();
+        }
+        for (let y = 18; y < rect.height; y += 24) {
+            ctx.beginPath();
+            ctx.moveTo(10, y);
+            ctx.lineTo(rect.width - 10, y);
+            ctx.stroke();
+        }
+        ctx.restore();
+
+        const selected = layers.get(selectedId);
+        const side = selected ? layerSide(selected) : active2DSide;
+        const visibleItems = Array.from(layers.values())
+            .filter(item => layerSide(item) === side && item.layer.visible !== false)
+            .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0));
+
+        const padding = 18;
+        const usableWidth = Math.max(1, rect.width - padding * 2);
+        const usableHeight = Math.max(1, rect.height - padding * 2);
+
+        for (const item of visibleItems) {
+            const normalized = normalizedGarmentPoint(item.surfacePoint || item.position) || {
+                x: Number(item.layer.x ?? 0.5),
+                y: Number(item.layer.y ?? 0.5),
+            };
+            const centerX = padding + THREE.MathUtils.clamp(normalized.x, 0, 1) * usableWidth;
+            const centerY = padding + THREE.MathUtils.clamp(normalized.y, 0, 1) * usableHeight;
+            const image = await selectedPreviewImage(item.artwork?.image || "");
+            if (token !== selectedPreviewRevision) return;
+
+            const aspect = Math.max(
+                0.15,
+                image
+                    ? (image.naturalWidth || image.width) / Math.max(1, image.naturalHeight || image.height)
+                    : 2.2
+            );
+            const drawWidth = Math.max(16, Math.min(
+                usableWidth * 0.56,
+                usableWidth * Number(item.layer.width || 0.35) * 0.88
+            ));
+            const drawHeight = Math.min(usableHeight * 0.58, drawWidth / aspect);
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(THREE.MathUtils.degToRad(Number(item.layer.rotation) || 0));
+            ctx.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
+            if (image) {
+                ctx.globalAlpha = Number(item.layer.opacity ?? 1);
+                ctx.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+            } else {
+                ctx.fillStyle = item.layer.color || "#252525";
+                ctx.font = "700 15px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(String(item.layer.text || item.artwork?.name || "TEXT"), 0, 0, drawWidth);
+            }
+            ctx.restore();
+
+            if (item.id !== selectedId) continue;
+
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(THREE.MathUtils.degToRad(Number(item.layer.rotation) || 0));
+            ctx.strokeStyle = item.layer.locked ? "#9ca3af" : "#8874ff";
+            ctx.lineWidth = 1.4;
+            ctx.strokeRect(-drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+
+            if (!item.layer.locked) {
+                const grips = [
+                    [-drawWidth / 2, -drawHeight / 2],
+                    [0, -drawHeight / 2],
+                    [drawWidth / 2, -drawHeight / 2],
+                    [drawWidth / 2, 0],
+                    [drawWidth / 2, drawHeight / 2],
+                    [0, drawHeight / 2],
+                    [-drawWidth / 2, drawHeight / 2],
+                    [-drawWidth / 2, 0],
+                ];
+                grips.forEach(([x, y]) => {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.strokeStyle = "#8874ff";
+                    ctx.lineWidth = 1.2;
+                    ctx.fillRect(x - 4, y - 4, 8, 8);
+                    ctx.strokeRect(x - 4, y - 4, 8, 8);
+                });
+
+                ctx.beginPath();
+                ctx.moveTo(0, -drawHeight / 2);
+                ctx.lineTo(0, -drawHeight / 2 - 17);
+                ctx.strokeStyle = "#8874ff";
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(0, -drawHeight / 2 - 20, 7, 0, Math.PI * 2);
+                ctx.fillStyle = "#8874ff";
+                ctx.fill();
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "10px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("↻", 0, -drawHeight / 2 - 20);
+            }
+            ctx.restore();
+        }
+
+        const empty = document.getElementById("studio-selected-preview-empty");
+        if (empty) empty.hidden = Boolean(selected);
+        const sideLabel = document.getElementById("studio-selected-side");
+        if (sideLabel) sideLabel.textContent = side === "back" ? "نمای پشت" : "نمای جلو";
+
+        const name = document.getElementById("studio-selected-layer-name");
+        const meta = document.getElementById("studio-selected-layer-meta");
+        if (name) name.textContent = selected
+            ? String(selected.layer.text || selected.artwork?.name || "لیبل")
+            : "لایه‌ای انتخاب نشده";
+        if (meta) {
+            if (!selected) {
+                meta.textContent = "از فهرست بالا یک طرح انتخاب کن.";
+            } else {
+                const state = selected.layer.locked ? "قفل‌شده" : "قابل ویرایش";
+                const layerSideLabel = layerSide(selected) === "back" ? "پشت لباس" : "جلوی لباس";
+                meta.textContent = `${layerSideLabel} · ${state} · ${Math.round(Number(selected.layer.width || 0.35) * 100)}٪`;
+            }
+        }
+
+        document.querySelectorAll("#studio-selected-actions [data-selected-action]").forEach(button => {
+            const action = button.dataset.selectedAction;
+            const requiresEditable = ["flip-x", "flip-y"].includes(action);
+            button.disabled = !selected || (requiresEditable && Boolean(selected.layer.locked));
         });
     }
 
@@ -2421,6 +2599,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         renderAreas();
         renderLayersPanel();
+        renderSelectedPreview();
         if (!document.getElementById("designer-2d-stage")?.classList.contains("is-hidden")) {
             render2DPreview();
         }
@@ -2499,6 +2678,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 try {
                     const artworkImage = await imageFromSource(item.artwork.image);
                     ctx.globalAlpha = Number(item.layer.opacity ?? 1);
+                    ctx.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
                     ctx.drawImage(artworkImage, -width / 2, -height / 2, width, height);
                 } catch (error) {
                     console.warn("2D artwork preview failed", error);
@@ -2710,6 +2890,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                     opacity: Number(item.layer.opacity ?? 1),
                     visible: item.layer.visible !== false,
                     locked: Boolean(item.layer.locked),
+                    flip_x: Boolean(item.layer.flip_x),
+                    flip_y: Boolean(item.layer.flip_y),
                     z_index: Number(item.layer.z_index) || 0,
                     text: item.artwork?.is_text
                         ? String(item.layer.text || item.artwork.name || "")
@@ -2771,6 +2953,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const count = document.getElementById("studio-layers-count");
         const layers = document.getElementById("studio-layers-list");
         const footer = document.querySelector(".studio-layers-panel__footer");
+        const selectedPanel = document.getElementById("studio-selected-panel");
         const scenePanel = document.getElementById("studio-scene-panel");
         const colorControls = document.getElementById("studio-scene-color-controls");
         const imageControls = document.getElementById("studio-scene-image-controls");
@@ -2779,13 +2962,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const colorInput = document.getElementById("studio-scene-color-input");
         const uploadDropzone = document.getElementById("studio-scene-upload-dropzone");
 
-        const activeTab = workspace.dataset.studioPanelTab || "layers";
+        const activeTab = workspace.dataset.studioPanelTab || "selected";
         const sceneActive = activeTab === "scene";
 
-        if (heading) heading.textContent = sceneActive ? "صحنه" : "لایه‌ها";
-        if (count) count.hidden = sceneActive;
-        if (layers) layers.hidden = sceneActive;
-        if (footer) footer.hidden = sceneActive;
+        // The layer stack is shared by both tabs and remains visible at the top.
+        if (heading) heading.textContent = "لایه‌ها";
+        if (count) count.hidden = false;
+        if (layers) layers.hidden = false;
+        if (footer) footer.hidden = false;
+        if (selectedPanel) selectedPanel.hidden = sceneActive;
         if (scenePanel) scenePanel.hidden = !sceneActive;
 
         document.querySelectorAll("[data-studio-panel-tab]").forEach(button => {
@@ -2827,6 +3012,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                     : "تصویر PNG، JPG یا WEBP را انتخاب کن یا اینجا رها کن.";
             }
         }
+
+        if (!sceneActive) renderSelectedPreview();
     }
 
     function setSceneBackdropMode(mode) {
@@ -2921,16 +3108,151 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         }
     }
 
+    function openSelectedPanel() {
+        const workspace = root.closest(".customizer-workspace--premium") || root;
+        workspace.dataset.studioPanelTab = "selected";
+        syncSceneBackdropPanel();
+    }
+
+    function selectedLayerOrderTopFirst() {
+        return Array.from(layers.values())
+            .sort((a, b) => (Number(b.layer.z_index) || 0) - (Number(a.layer.z_index) || 0))
+            .map(item => item.id);
+    }
+
+    function duplicateSelectedLayer() {
+        const source = layers.get(selectedId);
+        if (!source || source.layer.visible === false || source.layer.locked) return false;
+
+        const base = normalizedGarmentPoint(source.surfacePoint || source.position) || {
+            x: Number(source.layer.x ?? 0.5),
+            y: Number(source.layer.y ?? 0.5),
+        };
+        const side = layerSide(source);
+        const area = areaForSurfaceSide(side, areaById(source.layer.area_id, side));
+        const offsets = [[0.055, 0.035], [-0.055, 0.035], [0, 0.07], [0, -0.07]];
+        let hit = null;
+        let nextX = base.x;
+        let nextY = base.y;
+
+        for (const [dx, dy] of offsets) {
+            const candidateX = THREE.MathUtils.clamp(base.x + dx, 0.02, 0.98);
+            const candidateY = THREE.MathUtils.clamp(base.y + dy, 0.02, 0.98);
+            const candidateHit = garmentSurfaceHitAtPlacement(candidateX, candidateY, side);
+            if (candidateHit && isValidPrintSurface(candidateHit, area)) {
+                hit = candidateHit;
+                nextX = candidateX;
+                nextY = candidateY;
+                break;
+            }
+        }
+
+        if (!hit || !area) {
+            status("فضای مناسبی برای تکثیر این لیبل پیدا نشد.");
+            return false;
+        }
+
+        const newId = nextId++;
+        const nextZ = layers.size
+            ? Math.max(...Array.from(layers.values()).map(item => Number(item.layer.z_index) || 0)) + 1
+            : 0;
+        const layer = {
+            ...source.layer,
+            id: newId,
+            x: nextX,
+            y: nextY,
+            area_id: area.id,
+            z_index: nextZ,
+            visible: true,
+            locked: false,
+        };
+        const item = {
+            id: newId,
+            layer,
+            artwork: { ...source.artwork },
+            target: hit.object,
+            position: hit.point.clone(),
+            normal: hitNormal(hit),
+            surfacePoint: hit.point.clone(),
+            surfaceNormal: hitNormal(hit),
+            projectRevision: 0,
+            mesh: null,
+            frame: null,
+            handles: null,
+            size: null,
+        };
+
+        layers.set(newId, item);
+        selectedId = newId;
+        openSelectedPanel();
+        project(item, item.surfacePoint, item.surfaceNormal);
+        sync();
+        render();
+        return true;
+    }
+
+    function moveLayerInStack(layerId, direction) {
+        const ordered = selectedLayerOrderTopFirst();
+        const index = ordered.indexOf(Number(layerId));
+        if (index < 0) return;
+
+        const nextIndex = index + (direction === "forward" ? -1 : 1);
+        if (nextIndex < 0 || nextIndex >= ordered.length) return;
+
+        [ordered[index], ordered[nextIndex]] = [ordered[nextIndex], ordered[index]];
+        reorderLayers(ordered);
+    }
+
+    function bindSelectedPanelActions() {
+        const actions = document.getElementById("studio-selected-actions");
+        if (!actions || actions.dataset.bound === "1") return;
+        actions.dataset.bound = "1";
+
+        actions.addEventListener("click", event => {
+            const button = event.target.closest("[data-selected-action]");
+            if (!button || button.disabled) return;
+
+            const item = layers.get(selectedId);
+            if (!item) return;
+            const action = button.dataset.selectedAction;
+
+            if (action === "duplicate") {
+                duplicateSelectedLayer();
+                return;
+            }
+            if (action === "delete") {
+                removeLayerById(selectedId);
+                return;
+            }
+            if (action === "bring-forward" || action === "send-back") {
+                moveLayerInStack(selectedId, action === "bring-forward" ? "forward" : "back");
+                return;
+            }
+            if (item.layer.locked) {
+                status("این لایه قفل است؛ برای تغییر آن ابتدا قفل را باز کن.");
+                return;
+            }
+            if (action === "flip-x") item.layer.flip_x = !item.layer.flip_x;
+            else if (action === "flip-y") item.layer.flip_y = !item.layer.flip_y;
+            else return;
+
+            project(item, item.surfacePoint || item.position, item.surfaceNormal || item.normal);
+            sync();
+            render();
+            render2DPreview();
+        });
+    }
+
     function bindSceneBackdropPanel() {
         const workspace = root.closest(".customizer-workspace--premium") || root;
         const tabs = document.querySelectorAll("[data-studio-panel-tab]");
         const scenePanel = document.getElementById("studio-scene-panel");
         if (!tabs.length || !scenePanel) return;
 
-        workspace.dataset.studioPanelTab = "layers";
+        workspace.dataset.studioPanelTab = "selected";
         tabs.forEach(button => {
             button.addEventListener("click", () => {
-                workspace.dataset.studioPanelTab = button.dataset.studioPanelTab || "layers";
+                workspace.dataset.studioPanelTab = button.dataset.studioPanelTab || "selected";
                 syncSceneBackdropPanel();
             });
         });
@@ -3027,6 +3349,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 const layerId = Number(handleHit.object.userData.customizerLayerId);
                 const selectedLayer = layers.get(layerId);
                 selectedId = layerId;
+                openSelectedPanel();
                 drag = beginLayerTransform(
                     event,
                     selectedLayer,
@@ -3049,6 +3372,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             if (decal) {
                 selectedId = Number(decal.object.userData.customizerLayerId);
+                openSelectedPanel();
                 const selectedLayer = layers.get(selectedId);
                 if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
                     drag = {
@@ -3428,7 +3752,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         renderAreas();
         bind();
         bindSceneBackdropPanel();
+        bindSelectedPanelActions();
         renderLayersPanel();
+        renderSelectedPreview();
         resize();
 
         try {
