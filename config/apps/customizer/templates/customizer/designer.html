@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261003-label-picker2">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio-ui.css' %}?v=20260930-mobile-tools13">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-mobile-nav.css' %}?v=20260925-1">
+<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-product-selector.css' %}?v=20261113-1">
 {% endblock %}
 
 {% block content %}
@@ -64,6 +65,47 @@
         <a href="{{ product.get_absolute_url }}">بازگشت به محصول</a>
     </section>
     {% else %}
+    <section class="garment-picker" aria-label="انتخاب مدل محصول">
+        <div class="garment-picker__heading">
+            <span class="garment-picker__eyebrow">3D PRODUCT MODELS</span>
+            <strong>مدل محصول را انتخاب کن</strong>
+            <small>برای شروع طراحی، یکی از مدل‌ها را انتخاب کن.</small>
+        </div>
+        <div class="garment-picker__options">
+            <button type="button" class="garment-picker__button" data-garment-type="mug"
+                data-garment-label="ماگ" data-model-url="{% static 'Glb/mug.glb' %}"
+                data-model-path="Glb/mug.glb" data-garment-template="babaei_mug_glb_v1"
+                aria-pressed="false" disabled>
+                <span class="garment-picker__icon" aria-hidden="true">☕</span>
+                <span class="garment-picker__copy"><strong>ماگ</strong><small>طراحی روی ماگ</small></span>
+                <span class="garment-picker__arrow" aria-hidden="true">↗</span>
+            </button>
+            <button type="button" class="garment-picker__button" data-garment-type="long_sleeve"
+                data-garment-label="لانگ‌تیشرت" data-model-url="{% static 'Glb/long_sleeve_t-_shirt.glb' %}"
+                data-model-path="Glb/long_sleeve_t-_shirt.glb" data-garment-template="babaei_long_sleeve_glb_v1"
+                aria-pressed="false" disabled>
+                <span class="garment-picker__icon" aria-hidden="true">👕</span>
+                <span class="garment-picker__copy"><strong>لانگ‌تیشرت</strong><small>آستین بلند</small></span>
+                <span class="garment-picker__arrow" aria-hidden="true">↗</span>
+            </button>
+            <button type="button" class="garment-picker__button" data-garment-type="hoodie"
+                data-garment-label="هودی" data-model-url="{% static 'Glb/Hoodie.glb' %}"
+                data-model-path="Glb/Hoodie.glb" data-garment-template="babaei_hoodie_glb_v1"
+                aria-pressed="false" disabled>
+                <span class="garment-picker__icon" aria-hidden="true">🧥</span>
+                <span class="garment-picker__copy"><strong>هودی</strong><small>طراحی روی هودی</small></span>
+                <span class="garment-picker__arrow" aria-hidden="true">↗</span>
+            </button>
+            <button type="button" class="garment-picker__button is-active" data-garment-type="tshirt"
+                data-garment-label="تیشرت" data-model-url="{% static 'Glb/whit_t_shirt.glb' %}"
+                data-model-path="Glb/whit_t_shirt.glb" data-garment-template="babaei_tshirt_glb_v1"
+                aria-pressed="true" disabled>
+                <span class="garment-picker__icon" aria-hidden="true">T</span>
+                <span class="garment-picker__copy"><strong>تیشرت</strong><small>مدل پایه</small></span>
+                <span class="garment-picker__arrow" aria-hidden="true">↗</span>
+            </button>
+        </div>
+    </section>
     <main class="customizer-workspace customizer-workspace--premium left-drawer-closed right-drawer-closed" aria-label="محیط طراحی تیشرت">
         <button type="button" class="studio-drawer-backdrop" id="studio-drawer-backdrop" aria-label="بستن پنل"></button>
         <button type="button" class="studio-drawer-toggle studio-drawer-toggle--left" id="studio-drawer-left-toggle" aria-label="باز کردن ابزار طراحی" aria-expanded="false" title="ابزار طراحی">
