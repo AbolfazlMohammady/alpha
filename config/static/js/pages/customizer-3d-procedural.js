@@ -1915,6 +1915,94 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         };
     }
 
+
+    function captureLayerVisualState(item) {
+        const target = item?.target;
+        if (!target || !item?.surfacePoint) return null;
+
+        target.updateWorldMatrix(true, false);
+        const snapshot = object => object ? {
+            object,
+            position: object.position.clone(),
+            quaternion: object.quaternion.clone(),
+            scale: object.scale.clone(),
+        } : null;
+
+        return {
+            target,
+            center: target.worldToLocal(item.surfacePoint.clone()),
+            surfacePoint: item.surfacePoint.clone(),
+            surfaceNormal: (item.surfaceNormal || item.normal || frontAxis).clone().normalize(),
+            mesh: snapshot(item.mesh),
+            frame: snapshot(item.frame),
+            handles: snapshot(item.handles),
+        };
+    }
+
+    function restoreLayerVisualState(state) {
+        if (!state) return;
+        [state.mesh, state.frame, state.handles].forEach(saved => {
+            if (!saved?.object) return;
+            saved.object.position.copy(saved.position);
+            saved.object.quaternion.copy(saved.quaternion);
+            saved.object.scale.copy(saved.scale);
+        });
+    }
+
+    function applyLayerVisualMove(state, worldDelta) {
+        if (!state?.target || !worldDelta || worldDelta.lengthSq() < 1e-12) return;
+        state.target.updateWorldMatrix(true, false);
+
+        const startLocal = state.target.worldToLocal(state.surfacePoint.clone());
+        const nextLocal = state.target.worldToLocal(state.surfacePoint.clone().add(worldDelta));
+        const localDelta = nextLocal.sub(startLocal);
+
+        [state.mesh, state.frame, state.handles].forEach(saved => {
+            if (!saved?.object) return;
+            saved.object.position.copy(saved.position).add(localDelta);
+        });
+    }
+
+    function applyLayerVisualScale(state, factor) {
+        if (!state || !Number.isFinite(factor)) return;
+        const safeFactor = THREE.MathUtils.clamp(factor, 0.05, 4);
+
+        if (state.mesh?.object) {
+            const saved = state.mesh;
+            saved.object.position.copy(state.center).add(
+                saved.position.clone().sub(state.center).multiplyScalar(safeFactor)
+            );
+            saved.object.quaternion.copy(saved.quaternion);
+            saved.object.scale.copy(saved.scale).multiplyScalar(safeFactor);
+        }
+
+        [state.frame, state.handles].forEach(saved => {
+            if (!saved?.object) return;
+            saved.object.position.copy(saved.position);
+            saved.object.quaternion.copy(saved.quaternion);
+            saved.object.scale.copy(saved.scale).multiplyScalar(safeFactor);
+        });
+    }
+
+    function applyLayerVisualRotation(state, degrees) {
+        if (!state?.target || !Number.isFinite(degrees)) return;
+        const inverseWorld = state.target.matrixWorld.clone().invert();
+        const localNormal = state.surfaceNormal.clone().transformDirection(inverseWorld).normalize();
+        const delta = new THREE.Quaternion().setFromAxisAngle(
+            localNormal,
+            THREE.MathUtils.degToRad(degrees)
+        );
+
+        [state.mesh, state.frame, state.handles].forEach(saved => {
+            if (!saved?.object) return;
+            saved.object.position.copy(state.center).add(
+                saved.position.clone().sub(state.center).applyQuaternion(delta)
+            );
+            saved.object.quaternion.copy(delta).multiply(saved.quaternion);
+            saved.object.scale.copy(saved.scale);
+        });
+    }
+
     function beginLayerTransform(event, item, mode, handleType = null) {
         if (!item || item.layer.locked || item.layer.visible === false ||
             !item.surfacePoint || !item.surfaceNormal) {
@@ -1935,6 +2023,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             handleType,
             plane,
             axes,
+            startPointerPoint: point.clone(),
+            startSurfacePoint: item.surfacePoint.clone(),
+            startSurfaceNormal: item.surfaceNormal.clone(),
+            visual: captureLayerVisualState(item),
             startX: start.x,
             startY: start.y,
             startWidth: Number(item.layer.width) || 0.35,
@@ -1944,10 +2036,26 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         };
     }
 
+    function previewLayerMove(event) {
+        const activeDrag = drag;
+        const item = activeDrag ? layers.get(activeDrag.layerId) : null;
+        if (!activeDrag || !item || !activeDrag.visual) return;
+
+        const point = pointerOnLayerPlane(event, activeDrag.plane);
+        if (!point) return;
+
+        const delta = point.sub(activeDrag.startPointerPoint);
+        activeDrag.previewDelta = delta.clone();
+        applyLayerVisualMove(activeDrag.visual, delta);
+        render();
+    }
+
     function applyLayerTransform(event) {
         const activeDrag = drag;
-        if (!activeDrag || activeDrag.mode === "move") {
-            moveSelected(event);
+        if (!activeDrag) return;
+
+        if (activeDrag.mode === "move") {
+            previewLayerMove(event);
             return;
         }
 
@@ -1969,14 +2077,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 -180,
                 180
             );
-            const previousRotation = item.layer.rotation;
             item.layer.rotation = nextRotation;
-            const validation = validateLayerPlacement(item, placementForLayer(item));
-            if (!validation.ok) {
-                item.layer.rotation = previousRotation;
-                return;
-            }
-            project(item, item.surfacePoint, item.surfaceNormal);
+            applyLayerVisualRotation(
+                activeDrag.visual,
+                nextRotation - activeDrag.startRotation
+            );
+            render();
             return;
         }
 
@@ -1996,21 +2102,50 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             if (!ratios.length) return;
 
             const factor = ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length;
-            const nextWidth = THREE.MathUtils.clamp(activeDrag.startWidth * factor, 0.06, 0.98);
-            const nextHeight = THREE.MathUtils.clamp(activeDrag.startHeight * factor, 0.04, 0.78);
-            const previousWidth = item.layer.width;
-            const previousHeight = item.layer.height;
-
-            item.layer.width = nextWidth;
-            item.layer.height = nextHeight;
-            const validation = validateLayerPlacement(item, placementForLayer(item));
-            if (!validation.ok) {
-                item.layer.width = previousWidth;
-                item.layer.height = previousHeight;
-                return;
-            }
-            project(item, item.surfacePoint, item.surfaceNormal);
+            item.layer.width = THREE.MathUtils.clamp(activeDrag.startWidth * factor, 0.06, 0.98);
+            item.layer.height = THREE.MathUtils.clamp(activeDrag.startHeight * factor, 0.04, 0.78);
+            applyLayerVisualScale(activeDrag.visual, item.layer.width / activeDrag.startWidth);
+            render();
         }
+    }
+
+    function finishLayerTransform(activeDrag, event, commit = true) {
+        if (!activeDrag) return;
+        const item = layers.get(activeDrag.layerId);
+        if (!item) return;
+
+        if (!commit) {
+            item.layer.width = activeDrag.startWidth;
+            item.layer.height = activeDrag.startHeight;
+            item.layer.rotation = activeDrag.startRotation;
+            restoreLayerVisualState(activeDrag.visual);
+            render();
+            return;
+        }
+
+        if (activeDrag.mode === "move") {
+            const moved = moveSelected(event);
+            if (!moved) {
+                restoreLayerVisualState(activeDrag.visual);
+                render();
+            }
+            return;
+        }
+
+        const validation = validateLayerPlacement(item, placementForLayer(item));
+        if (!validation.ok) {
+            item.layer.width = activeDrag.startWidth;
+            item.layer.height = activeDrag.startHeight;
+            item.layer.rotation = activeDrag.startRotation;
+            restoreLayerVisualState(activeDrag.visual);
+            status(validation.message);
+            render();
+            return;
+        }
+
+        // Rebuild the decal once after the drag. Live movement updates the existing mesh.
+        project(item, item.surfacePoint || item.position, item.surfaceNormal || item.normal);
+        render();
     }
 
     function moveSelected(event) {
