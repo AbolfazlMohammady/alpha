@@ -11,6 +11,7 @@ from apps.shop.models import Category, Product, ProductColor, ProductSize, Produ
 
 from .models import Artwork, ArtworkAreaPrice, CustomizerPricingSettings, DesignDraft, DesignerView, PrintArea, PrintAreaView
 from .services import Placement, oriented_rects_overlap, point_in_polygon, validate_design_payload
+from .views import _ensure_default_print_area
 
 def make_valid_png(size=(300, 300)):
     from io import BytesIO
@@ -376,3 +377,36 @@ def test_customer_upload_access_is_private(client, configured_designer, tmp_path
         other = Client()
         forbidden = other.get(image_url)
         assert forbidden.status_code in {403, 404}
+
+
+def test_studio_default_print_areas_cover_front_and_back(product):
+    front = _ensure_default_print_area(product, PrintArea.Side.FRONT)
+    back = _ensure_default_print_area(product, PrintArea.Side.BACK)
+
+    assert front.side == PrintArea.Side.FRONT
+    assert back.side == PrintArea.Side.BACK
+    assert front.key == "studio-front-print"
+    assert back.key == "studio-back-print"
+
+    # Repeated page loads must reuse the same reserved rows.
+    assert _ensure_default_print_area(product, PrintArea.Side.FRONT).pk == front.pk
+    assert _ensure_default_print_area(product, PrintArea.Side.BACK).pk == back.pk
+
+
+def test_designer_page_provides_pattern_fallback_for_both_sides(product, client):
+    response = client.get(
+        reverse("customizer:designer", kwargs={"product_ref": str(product.uuid)})
+    )
+    assert response.status_code == 200
+
+    designer_data = json.loads(response.context["designer_data"])
+    views = designer_data["views"]
+    assert {view["key"] for view in views} == {"front", "back"}
+
+    areas_by_side = {
+        side: [area for view in views for area in view["areas"] if area["side"] == side]
+        for side in ("front", "back")
+    }
+    assert areas_by_side["front"]
+    assert areas_by_side["back"]
+    assert all(not view["background"] for view in views)
