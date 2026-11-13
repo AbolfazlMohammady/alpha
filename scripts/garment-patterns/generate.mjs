@@ -30,7 +30,7 @@ function translationFromAttributes(attributes, label) {
     const transformValues = attributes?.getAsArray?.("transform") || [];
     const transformText = transformValues.join(" ");
     const unsupported = transformText.replace(
-        /translate\\(\\s*-?[\\d.]+(?:px)?[ ,]+\\s*-?[\\d.]+(?:px)?\\s*\\)/g,
+        /translate\(\s*-?[\d.]+(?:px)?[ ,]+\s*-?[\d.]+(?:px)?\s*\)/g,
         ""
     ).trim();
 
@@ -43,7 +43,7 @@ function translationFromAttributes(attributes, label) {
 
     let x = 0;
     let y = 0;
-    const regex = /translate\\(\\s*(-?[\\d.]+)(?:px)?[ ,]+\\s*(-?[\\d.]+)(?:px)?\\s*\\)/g;
+    const regex = /translate\(\s*(-?[\d.]+)(?:px)?[ ,]+\s*(-?[\d.]+)(?:px)?\s*\)/g;
     for (const match of transformText.matchAll(regex)) {
         x += Number(match[1]);
         y += Number(match[2]);
@@ -60,7 +60,7 @@ function getPartBounds(part, stack) {
     const fabricPaths = Object.values(part.paths || {}).filter(pathObject => {
         if (pathObject.hidden) return false;
         const className = String(pathObject.attributes?.get?.("class") || "");
-        return className.split(/\\s+/).includes("fabric");
+        return className.split(/\s+/).includes("fabric");
     });
 
     if (!fabricPaths.length) {
@@ -135,7 +135,7 @@ function inspectPatternErrors(pattern, name) {
     const errors = (logs.sets || []).flatMap(set => set?.error || set?.errors || []);
     if (errors.length) {
         const messages = errors.map(entry => typeof entry === "string" ? entry : JSON.stringify(entry));
-        throw new Error(`${name} pattern drafting failed:\\n${messages.join("\\n")}`);
+        throw new Error(`${name} pattern drafting failed:\n${messages.join("\n")}`);
     }
 }
 
@@ -268,9 +268,9 @@ async function main() {
     }
 
     const manifestPath = path.join(OUTPUT_DIR, "manifest.json");
-    await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\\n`, "utf8");
+    await fs.writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
 
-    console.log("\\nDone. Generated pattern files:");
+    console.log("\nDone. Generated pattern files:");
     for (const definition of definitions) {
         console.log(`  - config/static/customizer/patterns/${definition.key}.svg`);
     }
@@ -278,7 +278,7 @@ async function main() {
 }
 
 main().catch(error => {
-    console.error("\\nPattern generation failed:");
+    console.error("\nPattern generation failed:");
     console.error(error?.stack || error);
     process.exitCode = 1;
 });
