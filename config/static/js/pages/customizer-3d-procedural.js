@@ -113,6 +113,66 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const garmentModelOptions = Array.from(
         document.querySelectorAll("[data-garment-type][data-model-url]")
     );
+    const patternManifestUrl = document.getElementById("garment-model-registry")?.dataset.patternManifestUrl || "";
+    let patternManifestPromise = null;
+
+    async function loadPatternManifest() {
+        if (!patternManifestUrl) return null;
+        if (!patternManifestPromise) {
+            const manifestAbsoluteUrl = new URL(patternManifestUrl, window.location.href).href;
+            patternManifestPromise = fetch(manifestAbsoluteUrl, {
+                credentials: "same-origin",
+                cache: "no-cache",
+            }).then(async response => {
+                if (!response.ok) throw new Error("Pattern manifest HTTP " + response.status);
+                return response.json();
+            }).catch(error => {
+                console.warn("2D garment pattern manifest is not available yet.", error);
+                return null;
+            });
+        }
+        return patternManifestPromise;
+    }
+
+    function viewMatchesSide(view, side) {
+        const label = String(view?.key || "") + " " + String(view?.name || "");
+        return side === "front"
+            ? /(front|جلو|روبه|رو)/i.test(label)
+            : /(back|پشت)/i.test(label);
+    }
+
+    async function resolve2DPatternView(side) {
+        const databaseView = (data.views || []).find(view => viewMatchesSide(view, side)) || null;
+        // Product-specific studio photos are authoritative when an admin has uploaded them.
+        if (databaseView?.background) return databaseView;
+
+        const manifest = await loadPatternManifest();
+        if (!manifest?.generated) return databaseView;
+        const pattern = manifest.models?.[garmentType];
+        const patternSide = pattern?.views?.[side];
+        if (!pattern?.svg || !patternSide?.geometry?.length) return databaseView;
+
+        const manifestAbsoluteUrl = new URL(patternManifestUrl, window.location.href).href;
+        const background = new URL(pattern.svg, manifestAbsoluteUrl).href;
+        const sideAreas = areas.filter(area => area.side === side);
+        const mappedAreas = sideAreas.map(area => ({
+            ...area,
+            // Use the geometry calculated from the actual FreeSewing cut-piece bounds.
+            geometry: patternSide.geometry,
+        }));
+
+        return {
+            ...(databaseView || {}),
+            id: databaseView?.id ?? (side === "front" ? -1 : -2),
+            key: side,
+            name: side === "front" ? "الگوی جلو" : "الگوی پشت",
+            background,
+            width: pattern.page?.width || 1600,
+            height: pattern.page?.height || 1600,
+            areas: mappedAreas,
+            patternName: pattern.name,
+        };
+    }
     const garmentModels = {
         tshirt: {
             key: "tshirt",
@@ -1376,7 +1436,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             fitCamera(true);
             await reprojectLayersAfterGarmentSwitch();
             render();
-            setStudioView("split");
+            setStudioView(key === "mug" ? "3d" : "split");
 
             const title = document.getElementById("designer-product-title");
             if (title) title.textContent = `طراحی ${model.label}`;
@@ -1965,12 +2025,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     async function build2DPreview(side) {
-        const view = (data.views || []).find(item => {
-            const value = `${item.key || ""} ${item.name || ""}`.toLowerCase();
-            return side === "front"
-                ? /(front|جلو|رو)/i.test(value)
-                : /(back|پشت)/i.test(value);
-        }) || (side === "front" ? data.views?.[0] : null);
+        const view = await resolve2DPatternView(side);
         if (!view?.background) return null;
 
         const background = await imageFromSource(view.background);
@@ -2042,7 +2097,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             if (token !== previewRenderToken) return;
             if (!blob) {
                 if (loading) {
-                    loading.textContent = "برای این محصول تصویر الگوی دوبعدی تعریف نشده است.";
+                    loading.textContent = "الگوی دوبعدی این مدل هنوز تولید نشده است؛ اسکریپت scripts/garment-patterns را اجرا کنید.";
                     loading.classList.remove("is-hidden");
                 }
                 return;
@@ -2082,7 +2137,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const twoD = document.getElementById("designer-2d-stage");
         const threeD = document.getElementById("designer-3d-stage");
         if (!shell || !twoD || !threeD) return;
-        const view = ["2d", "split", "3d"].includes(mode) ? mode : "split";
+        const requestedView = ["2d", "split", "3d"].includes(mode) ? mode : "split";
+        const view = garmentType === "mug" ? "3d" : requestedView;
         const switcher = document.getElementById("studio-view-switcher");
         if (switcher) switcher.hidden = garmentType === "mug";
         shell.classList.toggle("stage-shell--split", view === "split");
