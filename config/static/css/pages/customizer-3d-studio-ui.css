@@ -509,3 +509,217 @@ body.customizer-page .customizer-header--studio {
     }
 }
 
+
+
+/* =========================================================
+   SELECTED DESIGN TAB — compact 2D layer preview and actions
+   ========================================================= */
+body.customizer-page .studio-layers-panel__list {
+    flex: 0 0 auto !important;
+    max-height: min(28vh, 250px) !important;
+    overflow: auto !important;
+}
+
+body.customizer-page .studio-selected-panel,
+body.customizer-page .studio-selected-panel[hidden] {
+    box-sizing: border-box;
+}
+
+body.customizer-page .studio-selected-panel {
+    min-height: 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    direction: rtl;
+    background: #fff;
+    color: #282828;
+    scrollbar-width: thin;
+    scrollbar-color: #c9c9c9 transparent;
+}
+
+body.customizer-page .studio-selected-panel[hidden] {
+    display: none !important;
+}
+
+body.customizer-page .studio-selected-panel__header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+body.customizer-page .studio-selected-panel__eyebrow {
+    display: block;
+    margin-bottom: 3px;
+    color: #999;
+    font-size: 8px;
+    font-weight: 850;
+    letter-spacing: .13em;
+    direction: ltr;
+    text-align: right;
+}
+
+body.customizer-page .studio-selected-panel__header h3 {
+    margin: 0;
+    color: #363636;
+    font-size: 14px;
+    font-weight: 850;
+}
+
+body.customizer-page .studio-selected-panel__side {
+    flex: 0 0 auto;
+    padding: 5px 8px;
+    border: 1px solid #ececf0;
+    border-radius: 7px;
+    color: #757575;
+    background: #f8f8fa;
+    font-size: 9px;
+    font-weight: 750;
+}
+
+body.customizer-page .studio-selected-preview-wrap {
+    position: relative;
+    flex: 0 0 auto;
+    width: 100%;
+    height: clamp(190px, 27vh, 280px);
+    min-height: 190px;
+    overflow: hidden;
+    border: 1px solid #e5e5e8;
+    border-radius: 10px;
+    background: #fff;
+}
+
+body.customizer-page #studio-selected-preview {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+}
+
+body.customizer-page .studio-selected-preview-empty {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 14px;
+    color: #9a9a9a;
+    font-size: 11px;
+    text-align: center;
+    pointer-events: none;
+    background: rgba(255,255,255,.76);
+}
+
+body.customizer-page .studio-selected-preview-empty[hidden] {
+    display: none !important;
+}
+
+body.customizer-page .studio-selected-layer-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 1px 2px;
+}
+
+body.customizer-page .studio-selected-layer-info strong {
+    overflow: hidden;
+    color: #292929;
+    font-size: 12px;
+    font-weight: 850;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.customizer-page .studio-selected-layer-info small {
+    color: #898989;
+    font-size: 10px;
+}
+
+body.customizer-page .studio-selected-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 7px 0 2px;
+    border-top: 1px solid #ededed;
+    direction: ltr;
+}
+
+body.customizer-page .studio-selected-actions button {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 38px;
+    padding: 0 4px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #777;
+    font: inherit;
+    font-size: 19px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color .14s ease, background .14s ease, opacity .14s ease;
+}
+
+body.customizer-page .studio-selected-actions button:hover:not(:disabled) {
+    background: #f1f1f4;
+    color: #292929;
+}
+
+body.customizer-page .studio-selected-actions button:disabled {
+    opacity: .3;
+    cursor: not-allowed;
+}
+
+body.customizer-page .studio-selected-actions button.is-danger:hover:not(:disabled) {
+    color: #d43d3d;
+    background: #fff0f0;
+}
+
+body.customizer-page .studio-selected-actions__separator {
+    flex: 0 0 1px;
+    width: 1px;
+    height: 22px;
+    margin: 0 2px;
+    background: #e8e8e8;
+}
+
+body.customizer-page .studio-selected-panel__hint {
+    flex: 0 0 auto;
+    margin: 0;
+    color: #909090;
+    font-size: 9px;
+    line-height: 1.8;
+}
+
+@media (max-width: 820px) {
+    body.customizer-page .studio-layers-panel__list {
+        max-height: min(22svh, 180px) !important;
+    }
+
+    body.customizer-page .studio-selected-panel {
+        gap: 8px;
+        padding: 10px;
+    }
+
+    body.customizer-page .studio-selected-preview-wrap {
+        height: clamp(160px, 23svh, 220px);
+        min-height: 160px;
+    }
+
+    body.customizer-page .studio-selected-actions button {
+        min-height: 42px;
+        height: 42px;
+    }
+}
