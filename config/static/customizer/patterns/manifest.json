@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "generated": false,
+  "message": "Run scripts/garment-patterns/generate.mjs to create the FreeSewing SVG pattern files.",
+  "models": {}
+}
