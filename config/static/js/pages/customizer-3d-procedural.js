@@ -3238,6 +3238,31 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         return canvasBlob(canvas);
     }
 
+    function draw2DStudioGrid(context, width, height, ratio = 1) {
+        const step = 24 * Math.max(1, Math.min(ratio, 2));
+        context.save();
+        context.lineWidth = 1;
+        for (let x = 0, index = 0; x <= width; x += step, index += 1) {
+            context.beginPath();
+            context.moveTo(Math.round(x) + 0.5, 0);
+            context.lineTo(Math.round(x) + 0.5, height);
+            context.strokeStyle = index % 5 === 0
+                ? "rgba(117, 119, 124, 0.18)"
+                : "rgba(117, 119, 124, 0.075)";
+            context.stroke();
+        }
+        for (let y = 0, index = 0; y <= height; y += step, index += 1) {
+            context.beginPath();
+            context.moveTo(0, Math.round(y) + 0.5);
+            context.lineTo(width, Math.round(y) + 0.5);
+            context.strokeStyle = index % 5 === 0
+                ? "rgba(117, 119, 124, 0.18)"
+                : "rgba(117, 119, 124, 0.075)";
+            context.stroke();
+        }
+        context.restore();
+    }
+
     let active2DSide = "front";
     let previewRenderToken = 0;
 
@@ -3264,16 +3289,36 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             try {
                 const image = await imageFromSource(imageUrl);
                 if (token !== previewRenderToken) return;
-                const rect = previewCanvas.getBoundingClientRect();
-                const width = Math.max(1, Math.round(rect.width * (window.devicePixelRatio || 1)));
-                const height = Math.max(1, Math.round(rect.height * (window.devicePixelRatio || 1)));
+
+                // Wait for layout after the 2D panel becomes visible.
+                let rect = null;
+                for (let attempt = 0; attempt < 4; attempt += 1) {
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                    if (token !== previewRenderToken) return;
+                    rect = previewCanvas.getBoundingClientRect();
+                    if (rect.width > 1 && rect.height > 1) break;
+                }
+                if (!rect || rect.width <= 1 || rect.height <= 1) {
+                    throw new Error("2D preview stage has no visible layout size.");
+                }
+
+                const ratio = Math.min(window.devicePixelRatio || 1, 2);
+                const width = Math.max(1, Math.round(rect.width * ratio));
+                const height = Math.max(1, Math.round(rect.height * ratio));
                 previewCanvas.width = width;
                 previewCanvas.height = height;
                 const context = previewCanvas.getContext("2d");
+                if (!context) throw new Error("2D preview canvas context is unavailable.");
                 context.clearRect(0, 0, width, height);
                 context.fillStyle = "#f5f3ee";
                 context.fillRect(0, 0, width, height);
-                const scale = Math.min(width / image.width, height / image.height);
+                draw2DStudioGrid(context, width, height, ratio);
+
+                // Preserve the pattern sheet's aspect ratio and keep all pieces visible.
+                const padding = 18 * ratio;
+                const availableWidth = Math.max(1, width - padding * 2);
+                const availableHeight = Math.max(1, height - padding * 2);
+                const scale = Math.min(availableWidth / image.width, availableHeight / image.height);
                 const drawWidth = image.width * scale;
                 const drawHeight = image.height * scale;
                 context.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
@@ -3300,6 +3345,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const switcher = document.getElementById("studio-view-switcher");
         if (switcher) switcher.hidden = garmentType === "mug";
         shell.classList.toggle("stage-shell--split", view === "split");
+        shell.classList.toggle("stage-shell--2d", view === "2d");
+        shell.classList.toggle("stage-shell--3d", view === "3d");
         twoD.classList.toggle("is-hidden", view === "3d");
         threeD.classList.toggle("is-hidden", view === "2d");
         bindLayersPanel();
@@ -3309,7 +3356,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             button.classList.toggle("is-active", active);
             button.setAttribute("aria-pressed", String(active));
         });
-        if (view !== "3d") render2DPreview();
+
+        if (view !== "3d") {
+            requestAnimationFrame(() => requestAnimationFrame(() => render2DPreview()));
+        } else {
+            // Cancel any pending 2D render while the panel is hidden.
+            previewRenderToken += 1;
+        }
         if (view !== "2d") requestAnimationFrame(() => resize());
     }
 
