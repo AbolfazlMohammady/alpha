@@ -19,8 +19,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/pages/customizer.css' %}">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d.css' %}">
-<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-view-modes1">
-<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio-ui.css' %}?v=20260930-mobile-tools13">
+<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-scene-backdrop1">
+<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio-ui.css' %}?v=20261113-main-studio-merge1">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-mobile-nav.css' %}?v=20260925-1">
 {% endblock %}
 
@@ -201,40 +201,159 @@
             </div>
         </aside>
 
-        <div class="desktop-tool-dock" id="desktop-tool-dock" aria-label="ابزارهای طراحی دسکتاپ">
-            <button type="button" class="desktop-tool desktop-tool--label" data-desktop-tool="label" title="لیبل" aria-label="ابزار لیبل">
-                <span class="desktop-tool__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H13l7 7-6 6-7-7A2.5 2.5 0 0 1 4 7.5v-1Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/></svg>
-                </span>
-            </button>
-            <button type="button" class="desktop-tool" data-desktop-tool="garment"
-                title="نوع محصول" aria-label="انتخاب نوع محصول" aria-haspopup="dialog">
-                <span class="desktop-tool__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/>
-                        <path d="m4 7.5 8 4.5 8-4.5M12 12v9" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                    </svg>
-                </span>
-            </button>
-            <button type="button" class="desktop-tool" data-desktop-tool="shirt-color" title="رنگ تیشرت" aria-label="رنگ تیشرت">
-                <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 5 12 7l4-2 4 3-2 3-2-1v9H8v-9l-2 1-2-3 4-3Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><path d="M15.5 16.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>
-            </button>
-            <button type="button" class="desktop-tool" data-desktop-tool="size" title="سایز تیشرت" aria-label="انتخاب سایز">
-                <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 5v14M19 5v14M5 8h3M5 12h4M5 16h3M16 8h3M15 12h4M16 16h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M10 7h4M10 17h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
-            </button>
-            <button type="button" class="desktop-tool" data-desktop-tool="text-font" title="متن و استایل" aria-label="متن و استایل متن">
-                <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 18 10.5 5h3L19 18M7.2 13h9.6" stroke="currentColor" stroke-width="1.65" stroke-linecap="round"/><path d="M17 6h3M18.5 4.5v3" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg></span>
-            </button>
-            <button type="button" class="desktop-tool desktop-tool--save" data-desktop-tool="save" title="افزودن به سبد خرید" aria-label="افزودن طراحی به سبد خرید">
-                <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13H5V4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 4v6h7V4M8 20v-6h8v6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m10 17 1.5 1.5L14.5 15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            </button>
-            <button type="button" class="desktop-tool desktop-tool--back" id="customizer-back-button" title="بازگشت به صفحه قبل" aria-label="بازگشت به صفحه قبل">
-                <span class="desktop-tool__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none"><path d="m15 5-7 7 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </span>
-            </button>
+        <div class="studio-bottom-toolbar" id="studio-bottom-toolbar" role="group" aria-label="ابزارها و حالت نمایش">
+            <div class="desktop-tool-dock" id="desktop-tool-dock" aria-label="ابزارهای طراحی دسکتاپ">
+                <button type="button" class="desktop-tool desktop-tool--label" data-desktop-tool="label" title="لیبل" aria-label="ابزار لیبل">
+                    <span class="desktop-tool__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H13l7 7-6 6-7-7A2.5 2.5 0 0 1 4 7.5v-1Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/></svg>
+                    </span>
+                </button>
+                <button type="button" class="desktop-tool" data-desktop-tool="garment"
+                    title="نوع محصول" aria-label="انتخاب نوع محصول" aria-haspopup="dialog">
+                    <span class="desktop-tool__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/>
+                            <path d="m4 7.5 8 4.5 8-4.5M12 12v9" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </button>
+                <button type="button" class="desktop-tool" data-desktop-tool="shirt-color" title="رنگ تیشرت" aria-label="رنگ تیشرت">
+                    <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 5 12 7l4-2 4 3-2 3-2-1v9H8v-9l-2 1-2-3 4-3Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><path d="M15.5 16.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>
+                </button>
+                <button type="button" class="desktop-tool" data-desktop-tool="size" title="سایز تیشرت" aria-label="انتخاب سایز">
+                    <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 5v14M19 5v14M5 8h3M5 12h4M5 16h3M16 8h3M15 12h4M16 16h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M10 7h4M10 17h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+                </button>
+                <button type="button" class="desktop-tool" data-desktop-tool="text-font" title="متن و استایل" aria-label="متن و استایل متن">
+                    <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 18 10.5 5h3L19 18M7.2 13h9.6" stroke="currentColor" stroke-width="1.65" stroke-linecap="round"/><path d="M17 6h3M18.5 4.5v3" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg></span>
+                </button>
+                <button type="button" class="desktop-tool desktop-tool--save" data-desktop-tool="save" title="افزودن به سبد خرید" aria-label="افزودن طراحی به سبد خرید">
+                    <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13H5V4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 4v6h7V4M8 20v-6h8v6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m10 17 1.5 1.5L14.5 15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                </button>
+                <button type="button" class="desktop-tool desktop-tool--back" id="customizer-back-button" title="بازگشت به صفحه قبل" aria-label="بازگشت به صفحه قبل">
+                    <span class="desktop-tool__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="m15 5-7 7 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                </button>
+            </div>
+            <nav class="studio-view-switcher" id="studio-view-switcher" aria-label="حالت نمایش">
+                <button type="button" data-studio-view="2d">2D</button>
+                <button type="button" data-studio-view="split" class="is-active" aria-pressed="true">Split</button>
+                <button type="button" data-studio-view="3d">3D</button>
+            </nav>
         </div>
         <div class="desktop-tool-popover" id="desktop-tool-popover" hidden></div>
+        <aside class="studio-layers-panel" id="studio-layers-panel" aria-label="مدیریت لایه‌های طراحی">
+            <header class="studio-layers-panel__header">
+                <div class="studio-layers-panel__heading">
+                    <span class="studio-layers-panel__eyebrow">DESIGN STACK</span>
+                    <h2 id="studio-layers-heading">لایه‌ها</h2>
+                </div>
+                <span class="studio-layers-panel__count" id="studio-layers-count">۰ لایه</span>
+            </header>
+            <div class="studio-layers-panel__list" id="studio-layers-list" role="list"
+                tabindex="0" aria-label="فهرست لایه‌های طراحی">
+                <div class="studio-layers-panel__empty">هنوز طرحی اضافه نکرده‌ای.</div>
+            </div>
+            <div class="studio-layers-panel__tabs" role="tablist" aria-label="بخش‌های استودیو">
+                <button type="button" class="is-active" id="studio-tab-selected" role="tab"
+                    aria-selected="true" aria-controls="studio-selected-panel" data-studio-panel-tab="selected">انتخاب‌شده</button>
+                <button type="button" id="studio-tab-scene" role="tab"
+                    aria-selected="false" aria-controls="studio-scene-panel" data-studio-panel-tab="scene">صحنه</button>
+            </div>
+            <section class="studio-selected-panel" id="studio-selected-panel" role="tabpanel"
+                aria-labelledby="studio-tab-selected" tabindex="0">
+                <header class="studio-selected-panel__header">
+                    <div>
+                        <span class="studio-selected-panel__eyebrow">SELECTED DESIGN</span>
+                        <h3>نمای دوبعدی</h3>
+                    </div>
+                    <span class="studio-selected-panel__side" id="studio-selected-side">—</span>
+                </header>
+                <div class="studio-selected-preview-wrap">
+                    <canvas id="studio-selected-preview" aria-label="پیش‌نمایش دوبعدی لایه‌های انتخاب‌شده"></canvas>
+                    <div class="studio-selected-preview-empty" id="studio-selected-preview-empty">برای ویرایش، یک لایه را انتخاب کن.</div>
+                </div>
+                <div class="studio-selected-layer-info" id="studio-selected-layer-info">
+                    <strong id="studio-selected-layer-name">لایه‌ای انتخاب نشده</strong>
+                    <small id="studio-selected-layer-meta">از فهرست بالا یک طرح انتخاب کن.</small>
+                </div>
+                <div class="studio-selected-actions" id="studio-selected-actions" role="group" aria-label="عملیات لایه انتخاب‌شده">
+                    <button type="button" data-selected-action="duplicate" title="تکثیر لایه" aria-label="تکثیر لایه" disabled>⧉</button>
+                    <button type="button" data-selected-action="flip-x" title="قرینه افقی" aria-label="قرینه افقی" disabled>⇆</button>
+                    <button type="button" data-selected-action="flip-y" title="قرینه عمودی" aria-label="قرینه عمودی" disabled>⇅</button>
+                    <span class="studio-selected-actions__separator" aria-hidden="true"></span>
+                    <button type="button" data-selected-action="bring-forward" title="انتقال به جلو" aria-label="انتقال به جلو" disabled>↑</button>
+                    <button type="button" data-selected-action="send-back" title="انتقال به عقب" aria-label="انتقال به عقب" disabled>↓</button>
+                    <button type="button" class="is-danger" data-selected-action="delete" title="حذف لایه" aria-label="حذف لایه" disabled>⌫</button>
+                </div>
+                <p class="studio-selected-panel__hint" id="studio-selected-panel-hint">
+                    برای جابه‌جایی، اندازه و چرخش، دستگیره‌های دور لیبل را روی لباس بکش.
+                </p>
+            </section>
+            <section class="studio-scene-panel" id="studio-scene-panel" role="tabpanel"
+                aria-labelledby="studio-tab-scene" tabindex="0" hidden>
+                <header class="studio-scene-panel__intro">
+                    <span class="studio-scene-panel__eyebrow">SCENE SETTINGS</span>
+                    <h3>پس‌زمینه محیط سه‌بعدی</h3>
+                    <p>رنگ یا تصویر پس‌زمینه را همان لحظه تغییر بده.</p>
+                </header>
+
+                <div class="studio-scene-panel__modes" role="group" aria-label="نوع پس‌زمینه">
+                    <button type="button" class="is-active" data-scene-backdrop-mode="color" aria-pressed="true">
+                        <span aria-hidden="true">◉</span> رنگ
+                    </button>
+                    <button type="button" data-scene-backdrop-mode="image" aria-pressed="false">
+                        <span aria-hidden="true">▧</span> تصویر
+                    </button>
+                    <button type="button" data-scene-backdrop-mode="none" aria-pressed="false">
+                        <span aria-hidden="true">◇</span> هیچ‌کدام
+                    </button>
+                </div>
+
+                <div class="studio-scene-panel__controls" id="studio-scene-color-controls">
+                    <div class="studio-scene-panel__section-heading">
+                        <strong>رنگ پس‌زمینه</strong>
+                        <small>برای تغییر سریع، یکی از رنگ‌ها را انتخاب کن.</small>
+                    </div>
+                    <div class="studio-scene-color-palette" role="group" aria-label="رنگ‌های آماده پس‌زمینه">
+                        <button type="button" data-scene-color="#FFFFFF" style="--scene-color:#FFFFFF" aria-label="سفید" title="سفید"></button>
+                        <button type="button" data-scene-color="#F2F2F2" style="--scene-color:#F2F2F2" aria-label="خاکستری خیلی روشن" title="خاکستری خیلی روشن"></button>
+                        <button type="button" data-scene-color="#E7E5E4" style="--scene-color:#E7E5E4" aria-label="خاکستری گرم" title="خاکستری گرم"></button>
+                        <button type="button" data-scene-color="#D6D3D1" style="--scene-color:#D6D3D1" aria-label="طوسی روشن" title="طوسی روشن"></button>
+                        <button type="button" data-scene-color="#C6D2D5" style="--scene-color:#C6D2D5" aria-label="آبی خاکستری" title="آبی خاکستری"></button>
+                        <button type="button" data-scene-color="#DCD4EA" style="--scene-color:#DCD4EA" aria-label="یاسی" title="یاسی"></button>
+                        <button type="button" data-scene-color="#E8D6D0" style="--scene-color:#E8D6D0" aria-label="صورتی ملایم" title="صورتی ملایم"></button>
+                        <button type="button" data-scene-color="#B5B5B5" style="--scene-color:#B5B5B5" aria-label="طوسی" title="طوسی"></button>
+                        <button type="button" class="is-active" data-scene-color="#2B2B2E" style="--scene-color:#2B2B2E" aria-label="ذغالی" title="ذغالی"></button>
+                    </div>
+                    <label class="studio-scene-color-picker" for="studio-scene-color-input">
+                        <span>انتخاب رنگ دلخواه</span>
+                        <input type="color" id="studio-scene-color-input" value="#2b2b2e" aria-label="انتخاب رنگ دلخواه پس‌زمینه">
+                    </label>
+                </div>
+
+                <div class="studio-scene-panel__controls" id="studio-scene-image-controls" hidden>
+                    <label class="studio-scene-upload" id="studio-scene-upload-dropzone" for="studio-scene-image-input">
+                        <input type="file" id="studio-scene-image-input" accept="image/png,image/jpeg,image/webp" hidden>
+                        <span class="studio-scene-upload__icon" aria-hidden="true">＋</span>
+                        <strong>افزودن تصویر پس‌زمینه</strong>
+                        <small>تصویر PNG، JPG یا WEBP را انتخاب کن یا اینجا رها کن.</small>
+                    </label>
+                    <div class="studio-scene-image-file">
+                        <span id="studio-scene-image-name">تصویری انتخاب نشده است</span>
+                        <button type="button" id="studio-scene-image-remove" hidden>حذف تصویر</button>
+                    </div>
+                </div>
+
+                <p class="studio-scene-panel__note" id="studio-scene-status" role="status" aria-live="polite">
+                    تغییرات فقط در همین صفحه اعمال می‌شوند و به سرور یا دیتابیس ارسال نمی‌شوند.
+                </p>
+            </section>
+            <footer class="studio-layers-panel__footer">
+                <span class="studio-layers-panel__footer-dot" aria-hidden="true"></span>
+                لایهٔ بالاتر روی لایه‌های پایین‌تر قرار می‌گیرد.
+            </footer>
+        </aside>
         <section class="customizer-stage-wrap customizer-stage-wrap--premium" aria-label="محیط سه‌بعدی طراحی">
             <div class="customizer-stage customizer-stage--premium" id="stage-shell">
                 <div class="designer-3d-stage" id="designer-3d-stage" data-model-url="{% static 'Glb/whit_t_shirt.glb' %}"
@@ -256,12 +375,6 @@
             </div>
 
         </section>
-        <nav class="studio-view-switcher" id="studio-view-switcher" aria-label="حالت نمایش">
-            <button type="button" data-studio-view="2d">2D</button>
-            <button type="button" data-studio-view="split" class="is-active" aria-pressed="true">Split</button>
-            <button type="button" data-studio-view="3d">3D</button>
-        </nav>
-
         <aside class="customizer-panel customizer-panel--assets customizer-panel--premium-right is-drawer-closed">
             <div class="panel-heading">
                 <div><span class="panel-kicker">PRODUCT SETTINGS</span><h2>تنظیمات محصول</h2></div>
@@ -498,9 +611,9 @@
 <script src="{% static 'js/pages/customizer.js' %}?v=20261003-label-picker3" defer></script>
 {% if designer_has_3d %}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script>
-<script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261113-generated-patterns2"></script>
+<script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261113-main-studio-merge1"></script>
 <script src="{% static 'js/pages/customizer-3d-studio-ui.js' %}?v=20261113-clean-stage1" defer></script>
-<script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261113-clean-stage1" defer></script>
+<script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261113-bottom-toolbar1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-mobile-nav.js' %}?v=20261113-garment-toolbar1" defer></script>
 {% endif %}
 {% endblock %}
