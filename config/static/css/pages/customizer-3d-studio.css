@@ -9114,6 +9114,7 @@ body.customizer-page .studio-scene-upload:focus-within {
 }
 
 body.customizer-page .studio-layers-panel__list[hidden],
+body.customizer-page .studio-layers-panel__footer[hidden],
 body.customizer-page .studio-scene-panel[hidden],
 body.customizer-page .studio-scene-panel__controls[hidden],
 body.customizer-page .studio-scene-image-file button[hidden] {
