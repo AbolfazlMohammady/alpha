@@ -1531,30 +1531,73 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             handleGroup.quaternion.copy(targetWorldQuaternion.clone().invert().multiply(worldQuaternion));
             handleGroup.userData.customizerLayerId = item.id;
             handleGroup.renderOrder = 81;
-            handleGroup.visible = item.id === selectedId && item.layer.visible !== false;
+            handleGroup.visible = item.id === selectedId && item.layer.visible !== false && !item.layer.locked;
 
-            const handleSize = Math.max(0.026, Math.min(size.x, size.y) * 0.045);
-            const handleGeometry = new THREE.SphereGeometry(handleSize, 12, 8);
+            const isTouchEditor = compactMedia.matches || (navigator.maxTouchPoints || 0) > 0;
+            const handleSize = Math.max(
+                isTouchEditor ? 0.038 : 0.026,
+                Math.min(size.x, size.y) * (isTouchEditor ? 0.065 : 0.05)
+            );
+            const handleGeometry = new THREE.SphereGeometry(handleSize, 16, 12);
             const handleMaterial = new THREE.MeshBasicMaterial({
-                color: 0xf4f0e7,
+                color: 0xf8f8ff,
                 transparent: true,
-                opacity: 0.98,
+                opacity: 1,
+                depthTest: false,
+                depthWrite: false,
+            });
+            const rotationMaterial = new THREE.MeshBasicMaterial({
+                color: 0x8b72ff,
+                transparent: true,
+                opacity: 1,
                 depthTest: false,
                 depthWrite: false,
             });
 
-            [
-                [-size.x / 2, -size.y / 2],
-                [ size.x / 2, -size.y / 2],
-                [ size.x / 2,  size.y / 2],
-                [-size.x / 2,  size.y / 2],
-            ].forEach(([x, y]) => {
+            const resizeHandles = [
+                { type: "nw", x: -size.x / 2, y: size.y / 2 },
+                { type: "n",  x: 0,             y: size.y / 2 },
+                { type: "ne", x: size.x / 2,  y: size.y / 2 },
+                { type: "e",  x: size.x / 2,  y: 0 },
+                { type: "se", x: size.x / 2,  y: -size.y / 2 },
+                { type: "s",  x: 0,             y: -size.y / 2 },
+                { type: "sw", x: -size.x / 2, y: -size.y / 2 },
+                { type: "w",  x: -size.x / 2, y: 0 },
+            ];
+
+            resizeHandles.forEach(({ type, x, y }) => {
                 const handle = new THREE.Mesh(handleGeometry.clone(), handleMaterial.clone());
-                handle.position.set(x, y, 0);
+                handle.position.set(x, y, handleSize * 0.18);
                 handle.renderOrder = 82;
                 handle.userData.customizerLayerId = item.id;
+                handle.userData.customizerHandleType = type;
                 handleGroup.add(handle);
             });
+
+            const rotationStemStart = new THREE.Vector3(0, size.y / 2, handleSize * 0.15);
+            const rotationStemEnd = new THREE.Vector3(
+                0,
+                size.y / 2 + handleSize * 3.2,
+                handleSize * 0.15
+            );
+            const rotationStem = new THREE.Line(
+                new THREE.BufferGeometry().setFromPoints([rotationStemStart, rotationStemEnd]),
+                new THREE.LineBasicMaterial({
+                    color: 0x8b72ff,
+                    depthTest: false,
+                    depthWrite: false,
+                })
+            );
+            rotationStem.renderOrder = 82;
+            handleGroup.add(rotationStem);
+
+            const rotationHandle = new THREE.Mesh(handleGeometry.clone(), rotationMaterial);
+            rotationHandle.position.copy(rotationStemEnd);
+            rotationHandle.renderOrder = 83;
+            rotationHandle.userData.customizerLayerId = item.id;
+            rotationHandle.userData.customizerHandleType = "rotate";
+            handleGroup.add(rotationHandle);
+
             target.add(handleGroup);
 
             const previousMesh = item.mesh;
@@ -1773,6 +1816,128 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         showMobileDragHint();
         document.dispatchEvent(new CustomEvent("babaei:label-added"));
         return true;
+    }
+
+    function pointerOnLayerPlane(event, plane) {
+        pointerOf(event);
+        raycaster.setFromCamera(pointer, camera);
+        return raycaster.ray.intersectPlane(plane, new THREE.Vector3());
+    }
+
+    function layerPlaneAxes(item, rotation = item.layer.rotation) {
+        const quaternion = new THREE.Quaternion().setFromEuler(
+            orientation(item.surfaceNormal || item.normal, rotation)
+        );
+        return {
+            right: new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion).normalize(),
+            up: new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion).normalize(),
+        };
+    }
+
+    function layerPlaneCoordinates(point, center, axes) {
+        const offset = point.clone().sub(center);
+        return {
+            x: offset.dot(axes.right),
+            y: offset.dot(axes.up),
+        };
+    }
+
+    function beginLayerTransform(event, item, mode, handleType = null) {
+        if (!item || item.layer.locked || item.layer.visible === false ||
+            !item.surfacePoint || !item.surfaceNormal) {
+            return null;
+        }
+
+        const normal = item.surfaceNormal.clone().normalize();
+        const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, item.surfacePoint);
+        const point = pointerOnLayerPlane(event, plane);
+        if (!point) return null;
+
+        const axes = layerPlaneAxes(item);
+        const start = layerPlaneCoordinates(point, item.surfacePoint, axes);
+        return {
+            pointerId: event.pointerId,
+            mode,
+            layerId: item.id,
+            handleType,
+            plane,
+            axes,
+            startX: start.x,
+            startY: start.y,
+            startWidth: Number(item.layer.width) || 0.35,
+            startHeight: Number(item.layer.height) || 0.25,
+            startRotation: Number(item.layer.rotation) || 0,
+            startAngle: Math.atan2(start.y, start.x),
+        };
+    }
+
+    function applyLayerTransform(event) {
+        const activeDrag = drag;
+        if (!activeDrag || activeDrag.mode === "move") {
+            moveSelected(event);
+            return;
+        }
+
+        const item = layers.get(activeDrag.layerId);
+        if (!item || item.layer.locked || item.layer.visible === false) return;
+
+        const point = pointerOnLayerPlane(event, activeDrag.plane);
+        if (!point) return;
+
+        if (activeDrag.mode === "rotate") {
+            const current = layerPlaneCoordinates(point, item.surfacePoint, activeDrag.axes);
+            const currentAngle = Math.atan2(current.y, current.x);
+            let angleDelta = currentAngle - activeDrag.startAngle;
+            if (angleDelta > Math.PI) angleDelta -= Math.PI * 2;
+            if (angleDelta < -Math.PI) angleDelta += Math.PI * 2;
+
+            const nextRotation = THREE.MathUtils.clamp(
+                activeDrag.startRotation + THREE.MathUtils.radToDeg(angleDelta),
+                -180,
+                180
+            );
+            const previousRotation = item.layer.rotation;
+            item.layer.rotation = nextRotation;
+            const validation = validateLayerPlacement(item, placementForLayer(item));
+            if (!validation.ok) {
+                item.layer.rotation = previousRotation;
+                return;
+            }
+            project(item, item.surfacePoint, item.surfaceNormal);
+            return;
+        }
+
+        if (activeDrag.mode === "resize") {
+            const current = layerPlaneCoordinates(point, item.surfacePoint, activeDrag.axes);
+            const type = activeDrag.handleType || "";
+            const affectsX = type.includes("e") || type.includes("w");
+            const affectsY = type.includes("n") || type.includes("s");
+            const ratios = [];
+
+            if (affectsX && Math.abs(activeDrag.startX) > 0.001) {
+                ratios.push(Math.abs(current.x / activeDrag.startX));
+            }
+            if (affectsY && Math.abs(activeDrag.startY) > 0.001) {
+                ratios.push(Math.abs(current.y / activeDrag.startY));
+            }
+            if (!ratios.length) return;
+
+            const factor = ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length;
+            const nextWidth = THREE.MathUtils.clamp(activeDrag.startWidth * factor, 0.06, 0.98);
+            const nextHeight = THREE.MathUtils.clamp(activeDrag.startHeight * factor, 0.04, 0.78);
+            const previousWidth = item.layer.width;
+            const previousHeight = item.layer.height;
+
+            item.layer.width = nextWidth;
+            item.layer.height = nextHeight;
+            const validation = validateLayerPlacement(item, placementForLayer(item));
+            if (!validation.ok) {
+                item.layer.width = previousWidth;
+                item.layer.height = previousHeight;
+                return;
+            }
+            project(item, item.surfacePoint, item.surfaceNormal);
+        }
     }
 
     function moveSelected(event) {
@@ -2210,7 +2375,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             const selectedVisible = item.id === selectedId && layerVisible;
             if (item.mesh) item.mesh.visible = layerVisible;
             if (item.frame) item.frame.visible = selectedVisible;
-            if (item.handles) item.handles.visible = selectedVisible;
+            if (item.handles) item.handles.visible = selectedVisible && !item.layer.locked;
         });
         if (scaleInput) {
             scaleInput.disabled = !selected;
@@ -2842,7 +3007,32 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         canvas.addEventListener("pointerdown", event => {
             if (compactMedia.matches) hideMobileDragHint();
-            const intersections = garmentHits(event);
+            garmentHits(event);
+
+            const handleHits = raycaster.intersectObjects(
+                Array.from(layers.values()).map(item => item.handles).filter(Boolean),
+                true
+            );
+            const handleHit = handleHits.find(hit => hit.object?.userData?.customizerHandleType);
+            if (handleHit) {
+                const layerId = Number(handleHit.object.userData.customizerLayerId);
+                const selectedLayer = layers.get(layerId);
+                selectedId = layerId;
+                drag = beginLayerTransform(
+                    event,
+                    selectedLayer,
+                    handleHit.object.userData.customizerHandleType === "rotate" ? "rotate" : "resize",
+                    handleHit.object.userData.customizerHandleType
+                );
+                if (drag) {
+                    controls.enabled = false;
+                    canvas.style.touchAction = "none";
+                    canvas.setPointerCapture(event.pointerId);
+                }
+                sync();
+                return;
+            }
+
             const decal = raycaster.intersectObjects(
                 Array.from(layers.values()).map(item => item.mesh).filter(Boolean),
                 true
@@ -2852,8 +3042,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 selectedId = Number(decal.object.userData.customizerLayerId);
                 const selectedLayer = layers.get(selectedId);
                 if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
-                    drag = { pointerId: event.pointerId };
+                    drag = {
+                        pointerId: event.pointerId,
+                        mode: "move",
+                        layerId: selectedId,
+                    };
                     controls.enabled = false;
+                    canvas.style.touchAction = "none";
                     canvas.setPointerCapture(event.pointerId);
                 } else {
                     drag = null;
@@ -2866,7 +3061,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             // A selected label must only move after the user starts dragging the label itself.
             // Clicking another point on the garment must never teleport the selected label.
-            return;
         });
 
         canvas.addEventListener("pointermove", event => {
@@ -2879,7 +3073,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 const latestEvent = pendingDragEvent;
                 pendingDragEvent = null;
                 if (drag?.pointerId === latestEvent?.pointerId) {
-                    moveSelected(latestEvent);
+                    applyLayerTransform(latestEvent);
                 }
             });
         });
@@ -2889,7 +3083,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 if (drag?.pointerId !== event.pointerId) return;
                 // Apply the last coalesced pointer position before ending the drag.
                 if (pendingDragEvent?.pointerId === event.pointerId) {
-                    moveSelected(pendingDragEvent);
+                    applyLayerTransform(pendingDragEvent);
                 }
                 pendingDragEvent = null;
                 if (dragFrameId) {
@@ -2898,6 +3092,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 }
                 drag = null;
                 controls.enabled = true;
+                canvas.style.touchAction = "";
                 canvas.releasePointerCapture?.(event.pointerId);
                 sync();
             });
