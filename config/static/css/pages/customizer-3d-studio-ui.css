@@ -723,3 +723,84 @@ body.customizer-page .studio-selected-panel__hint {
         height: 42px;
     }
 }
+
+
+/* Direct manipulation for the selected artwork's compact 2D preview. */
+body.customizer-page #studio-selected-preview {
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body.customizer-page #studio-selected-preview:active {
+    cursor: grabbing;
+}
+
+body.customizer-page .studio-selected-scale-controls {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 9px;
+    border: 1px solid #ececf0;
+    border-radius: 9px;
+    background: #fafafa;
+    color: #626262;
+    font-size: 10px;
+    font-weight: 750;
+}
+
+body.customizer-page .studio-selected-scale-controls > span {
+    margin-right: auto;
+}
+
+body.customizer-page .studio-selected-scale-controls output {
+    min-width: 42px;
+    color: #292929;
+    font-size: 11px;
+    font-weight: 850;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+body.customizer-page .studio-selected-scale-controls button {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid #e2e2e6;
+    border-radius: 8px;
+    background: #fff;
+    color: #53535b;
+    font: 700 18px/1 Arial, sans-serif;
+    cursor: pointer;
+    transition: background .14s ease, border-color .14s ease, color .14s ease;
+}
+
+body.customizer-page .studio-selected-scale-controls button:hover:not(:disabled) {
+    border-color: #8874ff;
+    background: #f5f2ff;
+    color: #5e48d5;
+}
+
+body.customizer-page .studio-selected-scale-controls button:disabled {
+    opacity: .35;
+    cursor: not-allowed;
+}
+
+@media (max-width: 820px) {
+    body.customizer-page .studio-selected-scale-controls {
+        min-height: 44px;
+    }
+
+    body.customizer-page .studio-selected-scale-controls button {
+        width: 36px;
+        height: 36px;
+        flex-basis: 36px;
+    }
+}
