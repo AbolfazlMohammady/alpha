@@ -2371,22 +2371,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             sync();
         });
 
-        document.querySelectorAll("[data-camera-action]").forEach(button => {
-            button.addEventListener("click", () => {
-                const action = button.dataset.cameraAction;
-                if (action === "rotate-left") rotateGarment(-15);
-                if (action === "rotate-right") rotateGarment(15);
-                if (action === "zoom-in") changeCameraZoom(0.88);
-                if (action === "zoom-out") changeCameraZoom(1.14);
-                if (action === "fit") fitCamera();
-                if (action === "reset") {
-                    if (garment) garment.rotation.y = 0;
-                    controls?.reset();
-                    fitCamera();
-                }
-            });
-        });
-
         document.getElementById("designer-3d-reset")?.addEventListener("click", () => {
             if (garment) garment.rotation.y = 0;
             controls?.reset();
