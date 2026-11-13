@@ -105,6 +105,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     let activeAreaId = areas[0]?.id || null;
     let nextId = 1;
     let drag = null;
+    let selectedPreviewDrag = null;
+    let selectedPreviewFrameId = 0;
+    let pendingSelectedPreviewEvent = null;
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const layers = new Map();
@@ -2012,7 +2015,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     function moveSelected(event) {
         const item = layers.get(selectedId);
-        if (!item || item.layer.locked || item.layer.visible === false) return;
+        if (!item || item.layer.locked || item.layer.visible === false) return false;
 
         const currentArea = areaById(item.layer.area_id, layerSide(item));
         pointerOf(event);
@@ -2031,12 +2034,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         if (!hit) {
             status("لیبل فقط روی سطح قابل چاپ جلو یا پشت بدنه قابل جابه‌جایی است.");
-            return;
+            return false;
         }
 
         const hitSide = surfaceSide(hitNormal(hit));
         const targetArea = areaForSurfaceSide(hitSide, currentArea);
-        if (!targetArea) return;
+        if (!targetArea) return false;
 
         const placement = placementFromPoint(
             targetArea,
@@ -2048,7 +2051,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const validation = validateLayerPlacement(item, placement);
         if (!validation.ok) {
             status(validation.message);
-            return;
+            return false;
         }
 
         item.layer.area_id = targetArea.id;
@@ -2056,6 +2059,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         item.target = hit.object;
         item.normal = hitNormal(hit);
         project(item, hit.point, hitNormal(hit));
+        return true;
     }
 
     function moveSelectedBy(dx, dy) {
