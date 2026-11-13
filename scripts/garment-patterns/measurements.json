@@ -14,7 +14,8 @@
     "waistToArmpit": 220,
     "waistToHips": 145,
     "shoulderToWrist": 610,
-    "wrist": 180
+    "wrist": 180,
+    "head": 570
   },
   "seamAllowance": 10,
   "margin": 24
