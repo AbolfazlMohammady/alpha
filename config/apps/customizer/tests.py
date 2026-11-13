@@ -273,6 +273,11 @@ def test_designer_page_and_save_endpoint(client, product, configured_designer, d
     assert b'data-garment-target-size="0.75"' in response.content
     assert b'data-garment-type="long_sleeve"' in response.content
     assert b'data-garment-type="hoodie"' in response.content
+    assert b'data-garment-type="long_sleeve"' in response.content
+    assert b'data-garment-target-size="1.5"' in response.content
+    assert b'data-studio-view="2d"' in response.content
+    assert b'data-studio-view="split"' in response.content
+    assert b'data-studio-view="3d"' in response.content
     assert b'id="garment-model-registry" hidden inert' in response.content
     assert b'data-desktop-tool="garment"' in response.content
     assert b'data-mobile-action="garment"' in response.content
