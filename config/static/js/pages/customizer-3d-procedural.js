@@ -2620,6 +2620,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (name) name.textContent = selected
             ? String(selected.layer.text || selected.artwork?.name || "لیبل")
             : "لایه‌ای انتخاب نشده";
+        const scaleValue = document.getElementById("studio-selected-scale-value");
+        if (scaleValue) {
+            scaleValue.textContent = selected
+                ? Math.round(Number(selected.layer.width || 0.35) * 100) + "٪"
+                : "—";
+        }
         if (meta) {
             if (!selected) {
                 meta.textContent = "از فهرست بالا یک طرح انتخاب کن.";
@@ -2632,7 +2638,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         document.querySelectorAll("#studio-selected-actions [data-selected-action]").forEach(button => {
             const action = button.dataset.selectedAction;
-            const requiresEditable = ["flip-x", "flip-y"].includes(action);
+            const requiresEditable = ["flip-x", "flip-y", "scale-up", "scale-down"].includes(action);
             button.disabled = !selected || (requiresEditable && Boolean(selected.layer.locked));
         });
     }
@@ -3776,6 +3782,20 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 status("این لایه قفل است؛ برای تغییر آن ابتدا قفل را باز کن.");
                 return;
             }
+            if (action === "scale-up" || action === "scale-down") {
+                const factor = action === "scale-up" ? 1.1 : 0.9;
+                item.layer.width = THREE.MathUtils.clamp(Number(item.layer.width || 0.35) * factor, 0.06, 0.98);
+                item.layer.height = THREE.MathUtils.clamp(Number(item.layer.height || 0.25) * factor, 0.04, 0.78);
+                const validation = validateLayerPlacement(item, placementForLayer(item));
+                if (!validation.ok) {
+                    status(validation.message);
+                } else {
+                    project(item, item.surfacePoint || item.position, item.surfaceNormal || item.normal);
+                }
+                sync();
+                render();
+                return;
+            }
             if (action === "flip-x") item.layer.flip_x = !item.layer.flip_x;
             else if (action === "flip-y") item.layer.flip_y = !item.layer.flip_y;
             else return;
@@ -4295,6 +4315,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         bind();
         bindSceneBackdropPanel();
         bindSelectedPanelActions();
+        bindSelectedPreviewInteraction();
         renderLayersPanel();
         renderSelectedPreview();
         resize();
