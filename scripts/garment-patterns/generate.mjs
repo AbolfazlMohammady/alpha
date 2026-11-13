@@ -63,9 +63,10 @@ function getPartBounds(part, stack) {
         return className.split(/\s+/).includes("fabric");
     });
 
-    if (!fabricPaths.length) {
-        throw new Error(`No visible fabric outline found for FreeSewing part "${part.name}".`);
-    }
+    // Some designs contain helper/trim parts without a separate fabric
+    // outline. Skip those; the required front/back body pieces are validated
+    // explicitly after collecting all visible cut-piece bounds.
+    if (!fabricPaths.length) return null;
 
     let minX = Infinity;
     let minY = Infinity;
@@ -89,7 +90,7 @@ function getPartBounds(part, stack) {
     }
 
     if (![minX, minY, maxX, maxY].every(Number.isFinite) || maxX <= minX || maxY <= minY) {
-        throw new Error(`Could not calculate a valid cut-piece boundary for "${part.name}".`);
+        return null;
     }
 
     return {
@@ -104,7 +105,8 @@ function collectPartBounds(pattern) {
     const result = {};
     for (const stack of Object.values(pattern.stacks || {})) {
         for (const part of stack.getPartList()) {
-            result[part.name] = getPartBounds(part, stack);
+            const bounds = getPartBounds(part, stack);
+            if (bounds) result[part.name] = bounds;
         }
     }
     return result;
