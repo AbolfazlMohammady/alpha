@@ -1700,6 +1700,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             }
 
             scheduleRenderLoop();
+            renderSelectedPreview();
         }).catch(() => status("تصویر لیبل برای پیش‌نمایش بارگذاری نشد."));
     }
 
@@ -3837,10 +3838,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             }
             if (action === "scale-up" || action === "scale-down") {
                 const factor = action === "scale-up" ? 1.1 : 0.9;
-                item.layer.width = THREE.MathUtils.clamp(Number(item.layer.width || 0.35) * factor, 0.06, 0.98);
-                item.layer.height = THREE.MathUtils.clamp(Number(item.layer.height || 0.25) * factor, 0.04, 0.78);
+                const previousWidth = item.layer.width;
+                const previousHeight = item.layer.height;
+                item.layer.width = THREE.MathUtils.clamp(Number(previousWidth || 0.35) * factor, 0.06, 0.98);
+                item.layer.height = THREE.MathUtils.clamp(Number(previousHeight || 0.25) * factor, 0.04, 0.78);
                 const validation = validateLayerPlacement(item, placementForLayer(item));
                 if (!validation.ok) {
+                    item.layer.width = previousWidth;
+                    item.layer.height = previousHeight;
                     status(validation.message);
                 } else {
                     project(item, item.surfacePoint || item.position, item.surfaceNormal || item.normal);
@@ -4024,7 +4029,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             });
         });
 
-        ["pointerup", "pointercancel"].forEach(type => {
+        ["pointerup", "pointercancel", "lostpointercapture"].forEach(type => {
             canvas.addEventListener(type, event => {
                 if (drag?.pointerId !== event.pointerId) return;
                 // Apply the last coalesced pointer position before ending the drag.
