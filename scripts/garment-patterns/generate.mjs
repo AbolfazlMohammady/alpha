@@ -141,6 +141,23 @@ function inspectPatternErrors(pattern, name) {
     }
 }
 
+const PATTERN_PREVIEW_STYLES = '<![CDATA[\n' +
+    'svg { shape-rendering: geometricPrecision; }\n' +
+    '.fabric:not(.sa) { fill: #fffefa; stroke: #292d35; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }\n' +
+    '.fabric.sa { fill: none; stroke: #b89a61; stroke-width: 1.05; stroke-dasharray: 6 4; stroke-linejoin: round; }\n' +
+    'text, .text, .note, .help, .mark, .logo, .scalebox { display: none !important; }\n' +
+    ']]>';
+
+function stylePatternSvg(svg, key) {
+    const styleStart = svg.indexOf('<style');
+    const styleEnd = styleStart >= 0 ? svg.indexOf('</style>', styleStart) : -1;
+    if (styleStart < 0 || styleEnd < 0) {
+        throw new Error('FreeSewing SVG for ' + key + ' has no style block.');
+    }
+    const styleTag = '<style type="text/css">' + PATTERN_PREVIEW_STYLES + '</style>';
+    return svg.slice(0, styleStart) + styleTag + svg.slice(styleEnd + '</style>'.length);
+}
+
 function generateOne({ key, name, Design, options, partNames }, profile) {
     const settings = {
         units: profile.units || "metric",
@@ -149,7 +166,8 @@ function generateOne({ key, name, Design, options, partNames }, profile) {
         sa: profile.seamAllowance,
         margin: profile.margin,
         layout: true,
-        complete: true,
+        // Keep the SVG focused on pattern pieces, not the instruction sheet.
+        complete: false,
         paperless: false,
         locale: "en"
     };
@@ -159,10 +177,11 @@ function generateOne({ key, name, Design, options, partNames }, profile) {
     pattern.draft();
     inspectPatternErrors(pattern, key);
 
-    const svg = pattern.render();
-    if (typeof svg !== "string" || !svg.includes("<svg") || !/viewBox=/.test(svg)) {
+    const rawSvg = pattern.render();
+    if (typeof rawSvg !== "string" || !rawSvg.includes("<svg") || !/viewBox=/.test(rawSvg)) {
         throw new Error(`FreeSewing did not produce a valid SVG for ${key}.`);
     }
+    const svg = stylePatternSvg(rawSvg, key);
 
     const pageWidth = assertFinitePositive(pattern.width, `${key}.pageWidth`);
     const pageHeight = assertFinitePositive(pattern.height, `${key}.pageHeight`);
