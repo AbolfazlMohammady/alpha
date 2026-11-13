@@ -1491,7 +1491,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             geometry.applyMatrix4(target.matrixWorld.clone().invert());
 
             const mesh = new THREE.Mesh(geometry, material);
-            mesh.renderOrder = 30 + Number(item.layer.z_index || 0);
+            mesh.renderOrder = 30 + (Number(item.layer.z_index) || 0);
+            mesh.visible = item.layer.visible !== false;
             mesh.userData.customizerLayerId = item.id;
             target.add(mesh);
 
@@ -1518,6 +1519,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             frame.quaternion.copy(targetWorldQuaternion.clone().invert().multiply(worldQuaternion));
             frame.userData.customizerLayerId = item.id;
             frame.renderOrder = 80;
+            frame.visible = item.id === selectedId && item.layer.visible !== false;
             target.add(frame);
 
             // Four compact handles make the selected artwork feel like a real
@@ -1527,6 +1529,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             handleGroup.quaternion.copy(targetWorldQuaternion.clone().invert().multiply(worldQuaternion));
             handleGroup.userData.customizerLayerId = item.id;
             handleGroup.renderOrder = 81;
+            handleGroup.visible = item.id === selectedId && item.layer.visible !== false;
 
             const handleSize = Math.max(0.026, Math.min(size.x, size.y) * 0.045);
             const handleGeometry = new THREE.SphereGeometry(handleSize, 12, 8);
@@ -1559,6 +1562,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             item.mesh = mesh;
             item.frame = frame;
             item.handles = handleGroup;
+            mesh.visible = item.layer.visible !== false;
+            frame.visible = item.id === selectedId && item.layer.visible !== false;
+            handleGroup.visible = item.id === selectedId && item.layer.visible !== false;
 
             if (previousMesh) {
                 previousMesh.geometry?.dispose();
@@ -1733,7 +1739,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             rotation: 0,
             color: "#ffffff",
             opacity: 1,
-            z_index: layers.size,
+            visible: true,
+            locked: false,
+            z_index: layers.size
+                ? Math.max(...Array.from(layers.values()).map(existing => Number(existing.layer.z_index) || 0)) + 1
+                : 0,
             text: artwork.is_text ? String(artwork.name || "TEXT") : null,
             text_style: artwork.is_text ? normalizeTextStyle(artwork.text_style || {}) : null,
             side,
@@ -1765,7 +1775,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     function moveSelected(event) {
         const item = layers.get(selectedId);
-        if (!item) return;
+        if (!item || item.layer.locked || item.layer.visible === false) return;
 
         const area = areaById(item.layer.area_id, layerSide(item));
         pointerOf(event);
@@ -1803,7 +1813,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     function moveSelectedBy(dx, dy) {
         const item = layers.get(selectedId);
-        if (!item?.target || !item.surfacePoint || !item.surfaceNormal) return;
+        if (!item || item.layer.locked || item.layer.visible === false) return;
+        if (!item.target || !item.surfacePoint || !item.surfaceNormal) return;
 
         const area = areaById(item.layer.area_id, layerSide(item));
         const normal = item.surfaceNormal.clone().normalize();
@@ -1871,6 +1882,282 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         });
     }
 
+    function compactLayerOrder() {
+        const ordered = Array.from(layers.values())
+            .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0));
+        ordered.forEach((item, index) => {
+            item.layer.z_index = index;
+            if (item.mesh) item.mesh.renderOrder = 30 + index;
+        });
+    }
+
+    function reorderLayers(topFirstIds) {
+        const requested = topFirstIds
+            .map(id => layers.get(Number(id)))
+            .filter(Boolean);
+        const included = new Set(requested.map(item => item.id));
+        const missing = Array.from(layers.values())
+            .filter(item => !included.has(item.id))
+            .sort((a, b) => (Number(b.layer.z_index) || 0) - (Number(a.layer.z_index) || 0));
+        const orderedTopFirst = [...requested, ...missing];
+
+        orderedTopFirst.forEach((item, index) => {
+            item.layer.z_index = orderedTopFirst.length - index - 1;
+            if (item.mesh) item.mesh.renderOrder = 30 + item.layer.z_index;
+        });
+
+        sync();
+        render();
+    }
+
+    function removeLayerById(layerId) {
+        const id = Number(layerId);
+        const item = layers.get(id);
+        if (!item) return;
+
+        if (selectedId === id) selectedId = null;
+        if (drag && selectedId === id) {
+            drag = null;
+            controls.enabled = true;
+        }
+        disposeLayer(item);
+        layers.delete(id);
+        compactLayerOrder();
+        sync();
+        render();
+    }
+
+    function setLayerVisibility(layerId, visible) {
+        const item = layers.get(Number(layerId));
+        if (!item) return;
+
+        item.layer.visible = Boolean(visible);
+        if (item.mesh) item.mesh.visible = item.layer.visible;
+        if (item.frame) item.frame.visible = item.layer.visible && item.id === selectedId;
+        if (item.handles) item.handles.visible = item.layer.visible && item.id === selectedId;
+        if (!item.layer.visible && selectedId === item.id) {
+            selectedId = null;
+            drag = null;
+            controls.enabled = true;
+        }
+        sync();
+        render();
+    }
+
+    function setLayerLocked(layerId, locked) {
+        const item = layers.get(Number(layerId));
+        if (!item) return;
+
+        item.layer.locked = Boolean(locked);
+        if (item.layer.locked && selectedId === item.id && drag) {
+            drag = null;
+            controls.enabled = true;
+        }
+        sync();
+    }
+
+    function selectLayer(layerId) {
+        const item = layers.get(Number(layerId));
+        if (!item) return;
+        selectedId = item.id;
+        sync();
+        render();
+    }
+
+    function layerActionButton(action, title, pressed, iconMarkup) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `studio-layer-action studio-layer-action--${action}`;
+        button.dataset.layerAction = action;
+        button.title = title;
+        button.setAttribute("aria-label", title);
+        button.setAttribute("aria-pressed", String(Boolean(pressed)));
+        button.innerHTML = iconMarkup;
+        return button;
+    }
+
+    function renderLayersPanel() {
+        const list = document.getElementById("studio-layers-list");
+        const count = document.getElementById("studio-layers-count");
+        if (!list) return;
+
+        const ordered = Array.from(layers.values())
+            .sort((a, b) => (Number(b.layer.z_index) || 0) - (Number(a.layer.z_index) || 0));
+        if (count) count.textContent = `${ordered.length.toLocaleString("fa-IR")} لایه`;
+
+        list.replaceChildren();
+        if (!ordered.length) {
+            const empty = document.createElement("div");
+            empty.className = "studio-layers-panel__empty";
+            empty.textContent = "هنوز طرحی اضافه نکرده‌ای.";
+            list.append(empty);
+            return;
+        }
+
+        const eyeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.4-6.2 9.5-6.2 9.5 6.2 9.5 6.2-3.4 6.2-9.5 6.2S2.5 12 2.5 12Z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>';
+        const hiddenIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6a9.8 9.8 0 0 1 1.4-.1c6.1 0 9.5 6.1 9.5 6.1a15.8 15.8 0 0 1-3 3.6M6.2 6.5C3.8 8.1 2.5 12 2.5 12s3.4 6.2 9.5 6.2c1 0 1.9-.2 2.7-.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.8 9.8a3.1 3.1 0 0 0 4.4 4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+        const lockIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10" width="15" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+        const unlockIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="10" width="15" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 0 1 7.6-1.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
+        const deleteIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m4 4v5m4-5v5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+        ordered.forEach((item, index) => {
+            const visible = item.layer.visible !== false;
+            const locked = Boolean(item.layer.locked);
+            const row = document.createElement("div");
+            row.className = "studio-layer-row";
+            row.dataset.layerId = String(item.id);
+            row.setAttribute("role", "listitem");
+            row.tabIndex = 0;
+            row.draggable = false;
+            if (item.id === selectedId) row.classList.add("is-selected");
+            if (!visible) row.classList.add("is-hidden-layer");
+            if (locked) row.classList.add("is-locked-layer");
+
+            const handle = document.createElement("span");
+            handle.className = "studio-layer-drag";
+            handle.textContent = "⠿";
+            handle.title = "برای تغییر ترتیب بکش";
+            handle.setAttribute("role", "button");
+            handle.setAttribute("aria-label", `تغییر ترتیب لایه ${index + 1}`);
+            handle.tabIndex = 0;
+            handle.draggable = true;
+
+            const thumbnail = document.createElement("span");
+            thumbnail.className = "studio-layer-row__thumbnail";
+            const image = document.createElement("img");
+            image.alt = "";
+            image.loading = "lazy";
+            image.src = item.artwork?.image || "";
+            image.addEventListener("error", () => {
+                image.hidden = true;
+                thumbnail.classList.add("is-empty");
+            }, { once: true });
+            thumbnail.append(image);
+
+            const copy = document.createElement("span");
+            copy.className = "studio-layer-row__copy";
+            const name = document.createElement("strong");
+            name.textContent = String(item.layer.text || item.artwork?.name || "لیبل");
+            const type = document.createElement("small");
+            type.textContent = item.artwork?.is_text ? "متن" : "تصویر";
+            copy.append(name, type);
+
+            const actions = document.createElement("span");
+            actions.className = "studio-layer-row__actions";
+            actions.append(
+                layerActionButton(
+                    "visibility",
+                    visible ? "مخفی کردن لایه" : "نمایش لایه",
+                    visible,
+                    visible ? eyeIcon : hiddenIcon
+                ),
+                layerActionButton(
+                    "lock",
+                    locked ? "باز کردن قفل لایه" : "قفل کردن لایه",
+                    locked,
+                    locked ? lockIcon : unlockIcon
+                ),
+                layerActionButton("delete", "حذف لایه", false, deleteIcon)
+            );
+
+            row.append(handle, thumbnail, copy, actions);
+            list.append(row);
+        });
+    }
+
+    function bindLayersPanel() {
+        const list = document.getElementById("studio-layers-list");
+        if (!list || list.dataset.bound === "1") return;
+        list.dataset.bound = "1";
+
+        list.addEventListener("click", event => {
+            const actionButton = event.target.closest("[data-layer-action]");
+            const row = event.target.closest("[data-layer-id]");
+            if (!row || !list.contains(row)) return;
+
+            const id = Number(row.dataset.layerId);
+            if (actionButton) {
+                event.preventDefault();
+                event.stopPropagation();
+                const item = layers.get(id);
+                if (!item) return;
+                const action = actionButton.dataset.layerAction;
+                if (action === "visibility") {
+                    setLayerVisibility(id, item.layer.visible === false);
+                } else if (action === "lock") {
+                    setLayerLocked(id, !item.layer.locked);
+                } else if (action === "delete") {
+                    removeLayerById(id);
+                }
+                return;
+            }
+
+            selectLayer(id);
+        });
+
+        list.addEventListener("keydown", event => {
+            const row = event.target.closest("[data-layer-id]");
+            if (!row) return;
+            if ((event.key === "Enter" || event.key === " ") && event.target === row) {
+                event.preventDefault();
+                selectLayer(Number(row.dataset.layerId));
+                return;
+            }
+            if (!event.altKey || !["ArrowUp", "ArrowDown"].includes(event.key)) return;
+
+            const rows = Array.from(list.querySelectorAll("[data-layer-id]"));
+            const currentIndex = rows.indexOf(row);
+            const nextIndex = currentIndex + (event.key === "ArrowUp" ? -1 : 1);
+            if (nextIndex < 0 || nextIndex >= rows.length) return;
+            event.preventDefault();
+            const moving = rows[currentIndex];
+            const target = rows[nextIndex];
+            list.insertBefore(moving, event.key === "ArrowUp" ? target : target.nextSibling);
+            reorderLayers(Array.from(list.querySelectorAll("[data-layer-id]")).map(node => Number(node.dataset.layerId)));
+            row.focus();
+        });
+
+        let draggedId = null;
+        list.addEventListener("dragstart", event => {
+            const handle = event.target.closest(".studio-layer-drag");
+            const row = handle?.closest("[data-layer-id]");
+            if (!handle || !row) {
+                event.preventDefault();
+                return;
+            }
+            draggedId = Number(row.dataset.layerId);
+            row.classList.add("is-dragging");
+            if (event.dataTransfer) {
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", String(draggedId));
+            }
+        });
+
+        list.addEventListener("dragover", event => {
+            if (draggedId === null || !event.target.closest("[data-layer-id]")) return;
+            event.preventDefault();
+            if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+        });
+
+        list.addEventListener("drop", event => {
+            const targetRow = event.target.closest("[data-layer-id]");
+            if (draggedId === null || !targetRow) return;
+            event.preventDefault();
+            const movingRow = list.querySelector(`[data-layer-id="${draggedId}"]`);
+            if (!movingRow || movingRow === targetRow) return;
+
+            const bounds = targetRow.getBoundingClientRect();
+            const insertAfter = event.clientY > bounds.top + bounds.height / 2;
+            list.insertBefore(movingRow, insertAfter ? targetRow.nextSibling : targetRow);
+            reorderLayers(Array.from(list.querySelectorAll("[data-layer-id]")).map(node => Number(node.dataset.layerId)));
+        });
+
+        list.addEventListener("dragend", () => {
+            list.querySelectorAll(".is-dragging").forEach(row => row.classList.remove("is-dragging"));
+            draggedId = null;
+        });
+    }
+
     function sync() {
         const selected = layers.get(selectedId);
         document.dispatchEvent(new CustomEvent("babaei:selection-changed", {
@@ -1885,6 +2172,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                     ? normalizeTextStyle(selected.layer.text_style || selected.artwork.text_style || {})
                     : null,
                 color: selected?.layer?.color || null,
+                locked: Boolean(selected?.layer?.locked),
+                visible: selected ? selected.layer.visible !== false : false,
+                zIndex: selected ? Number(selected.layer.z_index) || 0 : null,
             }
         }));
         const card = document.getElementById("selected-card");
@@ -1901,9 +2191,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         if (controls) controls.hidden = !selected;
         layers.forEach(item => {
-            const visible = item.id === selectedId;
-            if (item.frame) item.frame.visible = visible;
-            if (item.handles) item.handles.visible = visible;
+            const layerVisible = item.layer.visible !== false;
+            const selectedVisible = item.id === selectedId && layerVisible;
+            if (item.mesh) item.mesh.visible = layerVisible;
+            if (item.frame) item.frame.visible = selectedVisible;
+            if (item.handles) item.handles.visible = selectedVisible;
         });
         if (scaleInput) {
             scaleInput.disabled = !selected;
@@ -1939,6 +2231,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (totalEl) totalEl.textContent = money(total);
 
         renderAreas();
+        renderLayersPanel();
         if (!document.getElementById("designer-2d-stage")?.classList.contains("is-hidden")) {
             render2DPreview();
         }
@@ -1983,7 +2276,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         const viewAreas = view.areas || [];
         const areaByIdLocal = id => viewAreas.find(area => Number(area.id) === Number(id));
-        const sideLayers = Array.from(layers.values()).filter(item => layerSide(item) === side);
+        const sideLayers = Array.from(layers.values())
+            .filter(item => layerSide(item) === side && item.layer.visible !== false)
+            .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0));
 
         for (const item of sideLayers) {
             const area = areaByIdLocal(item.layer.area_id);
@@ -2088,6 +2383,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         shell.classList.toggle("stage-shell--split", view === "split");
         twoD.classList.toggle("is-hidden", view === "3d");
         threeD.classList.toggle("is-hidden", view === "2d");
+        bindLayersPanel();
+
         document.querySelectorAll("[data-studio-view]").forEach(button => {
             const active = button.dataset.studioView === view;
             button.classList.toggle("is-active", active);
@@ -2208,7 +2505,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     function saveLayers() {
-        return Array.from(layers.values()).map(item => {
+        return Array.from(layers.values())
+            .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0))
+            .map(item => {
             const bodyPlacement = placementForLayer(item);
             const side = layerSide(item);
             return {
@@ -2219,6 +2518,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 y: bodyPlacement?.y ?? item.layer.y,
                 color: item.layer.color || "#ffffff",
                 opacity: Number(item.layer.opacity ?? 1),
+                visible: item.layer.visible !== false,
+                locked: Boolean(item.layer.locked),
+                z_index: Number(item.layer.z_index) || 0,
                 text: item.artwork?.is_text ? String(item.layer.text || item.artwork.name || "") : null,
                 text_style: item.artwork?.is_text ? normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {}) : null,
                 three_d: {
@@ -2264,9 +2566,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             if (decal) {
                 selectedId = Number(decal.object.userData.customizerLayerId);
-                drag = { pointerId: event.pointerId };
-                controls.enabled = false;
-                canvas.setPointerCapture(event.pointerId);
+                const selectedLayer = layers.get(selectedId);
+                if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
+                    drag = { pointerId: event.pointerId };
+                    controls.enabled = false;
+                    canvas.setPointerCapture(event.pointerId);
+                } else {
+                    drag = null;
+                }
                 sync();
                 return;
             }
@@ -2318,6 +2625,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 if (!item) return;
 
                 const action = button.dataset.action;
+                if (item.layer.locked && action !== "delete") {
+                    status("این لایه قفل است؛ برای تغییر آن ابتدا قفل را باز کن.");
+                    return;
+                }
 
                 if (action === "move-left") {
                     moveSelectedBy(-1, 0);
@@ -2370,9 +2681,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                         status("فضای آزاد مناسبی برای مرکز کردن این لیبل پیدا نشد.");
                     }
                 } else if (action === "delete") {
-                    disposeLayer(item);
-                    layers.delete(selectedId);
-                    selectedId = null;
+                    removeLayerById(selectedId);
+                    return;
                 }
 
                 sync();
@@ -2411,6 +2721,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         document.getElementById("label-scale")?.addEventListener("input", event => {
             const item = layers.get(selectedId);
             if (!item) return;
+            if (item.layer.locked) {
+                event.target.value = String(Math.round(item.layer.width * 100));
+                status("این لایه قفل است؛ برای تغییر اندازه ابتدا قفل را باز کن.");
+                return;
+            }
 
             const previousWidth = item.layer.width;
             const previousHeight = item.layer.height;
@@ -2435,6 +2750,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         document.getElementById("label-rotation")?.addEventListener("input", event => {
             const item = layers.get(selectedId);
             if (!item) return;
+            if (item.layer.locked) {
+                event.target.value = String(Math.round(item.layer.rotation));
+                status("این لایه قفل است؛ برای چرخاندن ابتدا قفل را باز کن.");
+                return;
+            }
 
             const previousRotation = item.layer.rotation;
             item.layer.rotation = THREE.MathUtils.clamp(Number(event.target.value), -180, 180);
@@ -2619,6 +2939,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         renderAreas();
         bind();
+        renderLayersPanel();
         resize();
 
         try {
