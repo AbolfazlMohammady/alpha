@@ -8501,3 +8501,22 @@ body.customizer-page.customizer-mobile-sheet-open .designer-3d-hint {
         grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
     }
 }
+
+
+/* Give the four-option desktop model selector enough room beside the right rail. */
+@media (min-width: 821px) {
+    .desktop-tool-popover:has(.garment-type-popover) {
+        width: min(460px, calc(100vw - 180px));
+    }
+
+    .desktop-tool-popover .garment-type-popover {
+        width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .desktop-tool-popover .garment-type-card:disabled {
+        cursor: wait;
+        opacity: .58;
+    }
+}
