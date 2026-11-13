@@ -1609,7 +1609,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             item.handles = handleGroup;
             mesh.visible = item.layer.visible !== false;
             frame.visible = item.id === selectedId && item.layer.visible !== false;
-            handleGroup.visible = item.id === selectedId && item.layer.visible !== false;
+            handleGroup.visible = item.id === selectedId && item.layer.visible !== false && !item.layer.locked;
 
             if (previousMesh) {
                 previousMesh.geometry?.dispose();
