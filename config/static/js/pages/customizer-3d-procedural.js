@@ -2563,6 +2563,241 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             });
     }
 
+
+    // Scene backdrops are intentionally client-only. They are applied to the stage
+    // element (behind the transparent WebGL canvas), never added to the design
+    // payload and never uploaded to the server or database.
+    let sceneBackdropMode = "color";
+    let sceneBackdropColor = "#2b2b2e";
+    let sceneBackdropObjectUrl = null;
+    let sceneBackdropFileName = "";
+    let sceneBackdropLoadToken = 0;
+    const SCENE_BACKDROP_MAX_BYTES = 15 * 1024 * 1024;
+
+    function applySceneBackdrop() {
+        if (!stage) return;
+
+        let background = "#f2f3f5";
+        if (sceneBackdropMode === "color") {
+            background = sceneBackdropColor;
+        } else if (sceneBackdropMode === "image" && sceneBackdropObjectUrl) {
+            background = `#f2f3f5 url("${sceneBackdropObjectUrl}") center / cover no-repeat`;
+        }
+
+        // The renderer uses alpha:true. Keeping this background on the DOM stage
+        // means it is visible in the editor but remains outside saved design data.
+        stage.style.setProperty("background", background, "important");
+    }
+
+    function syncSceneBackdropPanel() {
+        const workspace = root.closest(".customizer-workspace--premium") || root;
+        const heading = document.getElementById("studio-layers-heading");
+        const count = document.getElementById("studio-layers-count");
+        const layers = document.getElementById("studio-layers-list");
+        const footer = document.querySelector(".studio-layers-panel__footer");
+        const scenePanel = document.getElementById("studio-scene-panel");
+        const colorControls = document.getElementById("studio-scene-color-controls");
+        const imageControls = document.getElementById("studio-scene-image-controls");
+        const imageName = document.getElementById("studio-scene-image-name");
+        const removeImage = document.getElementById("studio-scene-image-remove");
+        const colorInput = document.getElementById("studio-scene-color-input");
+        const uploadDropzone = document.getElementById("studio-scene-upload-dropzone");
+
+        const activeTab = workspace.dataset.studioPanelTab || "layers";
+        const sceneActive = activeTab === "scene";
+
+        if (heading) heading.textContent = sceneActive ? "صحنه" : "لایه‌ها";
+        if (count) count.hidden = sceneActive;
+        if (layers) layers.hidden = sceneActive;
+        if (footer) footer.hidden = sceneActive;
+        if (scenePanel) scenePanel.hidden = !sceneActive;
+
+        document.querySelectorAll("[data-studio-panel-tab]").forEach(button => {
+            const active = button.dataset.studioPanelTab === activeTab;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-selected", String(active));
+            button.tabIndex = active ? 0 : -1;
+        });
+
+        document.querySelectorAll("[data-scene-backdrop-mode]").forEach(button => {
+            const active = button.dataset.sceneBackdropMode === sceneBackdropMode;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+
+        if (colorControls) colorControls.hidden = sceneBackdropMode !== "color";
+        if (imageControls) imageControls.hidden = sceneBackdropMode !== "image";
+
+        document.querySelectorAll("[data-scene-color]").forEach(button => {
+            const active = button.dataset.sceneColor?.toLowerCase() === sceneBackdropColor.toLowerCase();
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+
+        if (colorInput && colorInput.value.toLowerCase() !== sceneBackdropColor.toLowerCase()) {
+            colorInput.value = sceneBackdropColor;
+        }
+
+        if (imageName) {
+            imageName.textContent = sceneBackdropFileName || "تصویری انتخاب نشده است";
+        }
+        if (removeImage) removeImage.hidden = !sceneBackdropObjectUrl;
+        if (uploadDropzone) {
+            uploadDropzone.classList.remove("is-dragover");
+            const subtitle = uploadDropzone.querySelector("small");
+            if (subtitle) {
+                subtitle.textContent = sceneBackdropFileName
+                    ? "برای جایگزینی تصویر، فایل دیگری انتخاب کن یا اینجا رها کن."
+                    : "تصویر PNG، JPG یا WEBP را انتخاب کن یا اینجا رها کن.";
+            }
+        }
+    }
+
+    function setSceneBackdropMode(mode) {
+        if (!["color", "image", "none"].includes(mode)) return;
+        sceneBackdropMode = mode;
+        applySceneBackdrop();
+        syncSceneBackdropPanel();
+
+        const statusNode = document.getElementById("studio-scene-status");
+        if (!statusNode) return;
+
+        if (mode === "color") {
+            statusNode.textContent = "رنگ پس‌زمینه فوراً اعمال می‌شود؛ هیچ درخواستی به سرور ارسال نمی‌شود.";
+        } else if (mode === "image") {
+            statusNode.textContent = sceneBackdropObjectUrl
+                ? "تصویر فقط به‌صورت محلی در همین صفحه نمایش داده می‌شود."
+                : "یک تصویر انتخاب کن؛ فایل از دستگاهت خارج یا در دیتابیس ذخیره نمی‌شود.";
+        } else {
+            statusNode.textContent = "پس‌زمینه‌ای نمایش داده نمی‌شود؛ خروجی خود Canvas همچنان شفاف باقی می‌ماند.";
+        }
+    }
+
+    async function loadSceneBackdropFile(file) {
+        if (!file) return;
+
+        const allowedType = /^image\/(png|jpeg|webp)$/i.test(file.type)
+            || /\.(png|jpe?g|webp)$/i.test(file.name || "");
+        const statusNode = document.getElementById("studio-scene-status");
+
+        if (!allowedType) {
+            if (statusNode) statusNode.textContent = "فرمت فایل باید PNG، JPG یا WEBP باشد.";
+            return;
+        }
+        if (file.size > SCENE_BACKDROP_MAX_BYTES) {
+            if (statusNode) statusNode.textContent = "حجم تصویر باید کمتر از ۱۵ مگابایت باشد.";
+            return;
+        }
+
+        const token = ++sceneBackdropLoadToken;
+        const nextUrl = URL.createObjectURL(file);
+
+        try {
+            // Decode locally before swapping the current backdrop to avoid flicker.
+            const probe = new Image();
+            await new Promise((resolve, reject) => {
+                probe.onload = resolve;
+                probe.onerror = () => reject(new Error("بارگذاری تصویر ممکن نشد."));
+                probe.src = nextUrl;
+            });
+
+            if (token !== sceneBackdropLoadToken) {
+                URL.revokeObjectURL(nextUrl);
+                return;
+            }
+
+            if (sceneBackdropObjectUrl) URL.revokeObjectURL(sceneBackdropObjectUrl);
+            sceneBackdropObjectUrl = nextUrl;
+            sceneBackdropFileName = file.name || "backdrop-image";
+            setSceneBackdropMode("image");
+        } catch (error) {
+            URL.revokeObjectURL(nextUrl);
+            if (statusNode) statusNode.textContent = error.message || "خواندن تصویر انجام نشد.";
+        }
+    }
+
+    function bindSceneBackdropPanel() {
+        const workspace = root.closest(".customizer-workspace--premium") || root;
+        const tabs = document.querySelectorAll("[data-studio-panel-tab]");
+        const scenePanel = document.getElementById("studio-scene-panel");
+        if (!tabs.length || !scenePanel) return;
+
+        workspace.dataset.studioPanelTab = "layers";
+        tabs.forEach(button => {
+            button.addEventListener("click", () => {
+                workspace.dataset.studioPanelTab = button.dataset.studioPanelTab || "layers";
+                syncSceneBackdropPanel();
+            });
+        });
+
+        document.querySelectorAll("[data-scene-backdrop-mode]").forEach(button => {
+            button.addEventListener("click", () => {
+                setSceneBackdropMode(button.dataset.sceneBackdropMode);
+            });
+        });
+
+        document.querySelectorAll("[data-scene-color]").forEach(button => {
+            button.addEventListener("click", () => {
+                const color = String(button.dataset.sceneColor || "").trim();
+                if (!/^#[0-9a-f]{6}$/i.test(color)) return;
+                sceneBackdropColor = color.toLowerCase();
+                setSceneBackdropMode("color");
+            });
+        });
+
+        document.getElementById("studio-scene-color-input")?.addEventListener("input", event => {
+            const color = String(event.currentTarget.value || "").trim();
+            if (!/^#[0-9a-f]{6}$/i.test(color)) return;
+            sceneBackdropColor = color.toLowerCase();
+            setSceneBackdropMode("color");
+        });
+
+        const fileInput = document.getElementById("studio-scene-image-input");
+        fileInput?.addEventListener("change", event => {
+            const file = event.currentTarget.files?.[0];
+            if (file) void loadSceneBackdropFile(file);
+            event.currentTarget.value = "";
+        });
+
+        const dropzone = document.getElementById("studio-scene-upload-dropzone");
+        if (dropzone) {
+            ["dragenter", "dragover"].forEach(type => {
+                dropzone.addEventListener(type, event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    dropzone.classList.add("is-dragover");
+                });
+            });
+            ["dragleave", "dragend"].forEach(type => {
+                dropzone.addEventListener(type, event => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    dropzone.classList.remove("is-dragover");
+                });
+            });
+            dropzone.addEventListener("drop", event => {
+                event.preventDefault();
+                event.stopPropagation();
+                dropzone.classList.remove("is-dragover");
+                const file = Array.from(event.dataTransfer?.files || [])
+                    .find(item => item.type.startsWith("image/") || /\.(png|jpe?g|webp)$/i.test(item.name || ""));
+                if (file) void loadSceneBackdropFile(file);
+            });
+        }
+
+        document.getElementById("studio-scene-image-remove")?.addEventListener("click", () => {
+            sceneBackdropLoadToken += 1;
+            if (sceneBackdropObjectUrl) URL.revokeObjectURL(sceneBackdropObjectUrl);
+            sceneBackdropObjectUrl = null;
+            sceneBackdropFileName = "";
+            if (fileInput) fileInput.value = "";
+            setSceneBackdropMode("none");
+        });
+
+        applySceneBackdrop();
+        syncSceneBackdropPanel();
+    }
+
     function bind() {
         document.getElementById("customizer-back-button")?.addEventListener("click", () => {
             if (window.history.length > 1) {
@@ -2957,6 +3192,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         renderAreas();
         bind();
+        bindSceneBackdropPanel();
         renderLayersPanel();
         resize();
 
@@ -2987,6 +3223,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         resizeObserver.disconnect();
         controls?.dispose();
         renderer?.dispose();
+        if (sceneBackdropObjectUrl) {
+            URL.revokeObjectURL(sceneBackdropObjectUrl);
+            sceneBackdropObjectUrl = null;
+        }
     }, { once: true });
 
     window.BabaeiCustomizer3D = {
