@@ -210,3 +210,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Node.js tooling dependencies (installed in a Docker named volume)
+scripts/garment-patterns/node_modules/
