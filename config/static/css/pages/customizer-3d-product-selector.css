@@ -1,0 +1,206 @@
+/* Product model picker shown above the 3D studio. */
+.garment-picker {
+    width: min(1440px, calc(100% - 24px));
+    margin: 0 auto 12px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    border: 1px solid rgba(216, 182, 107, .19);
+    border-radius: 17px;
+    background:
+        radial-gradient(circle at 10% 0, rgba(216, 182, 107, .09), transparent 34%),
+        linear-gradient(135deg, rgba(24, 24, 26, .98), rgba(15, 15, 17, .98));
+    box-shadow: 0 12px 34px rgba(0, 0, 0, .14);
+    direction: rtl;
+}
+
+.garment-picker__heading {
+    min-width: 175px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.garment-picker__eyebrow {
+    color: #d8b66b;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .15em;
+}
+
+.garment-picker__heading strong {
+    color: #f3eee5;
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.garment-picker__heading small {
+    color: #85817a;
+    font-size: 10px;
+}
+
+.garment-picker__options {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.garment-picker__button {
+    min-width: 0;
+    min-height: 56px;
+    padding: 8px 11px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid #303033;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .025);
+    color: #e9e4da;
+    text-align: right;
+    cursor: pointer;
+    transition: border-color .18s ease, background .18s ease, transform .18s ease, opacity .18s ease;
+}
+
+.garment-picker__button:hover:not(:disabled) {
+    border-color: rgba(216, 182, 107, .65);
+    background: rgba(216, 182, 107, .075);
+    transform: translateY(-1px);
+}
+
+.garment-picker__button.is-active {
+    border-color: #d8b66b;
+    background: linear-gradient(135deg, rgba(216, 182, 107, .17), rgba(216, 182, 107, .055));
+    box-shadow: inset 0 0 0 1px rgba(216, 182, 107, .12);
+}
+
+.garment-picker__button:disabled {
+    cursor: wait;
+    opacity: .68;
+}
+
+.garment-picker__icon {
+    width: 35px;
+    height: 35px;
+    flex: 0 0 35px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(216, 182, 107, .2);
+    border-radius: 10px;
+    background: rgba(216, 182, 107, .075);
+    color: #d8b66b;
+    font-size: 17px;
+    font-weight: 800;
+}
+
+.garment-picker__copy {
+    min-width: 0;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.garment-picker__copy strong {
+    overflow: hidden;
+    color: #f0ece4;
+    font-size: 12px;
+    font-weight: 750;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.garment-picker__copy small {
+    overflow: hidden;
+    color: #89857e;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.garment-picker__arrow {
+    color: #77736c;
+    font-size: 14px;
+}
+
+.garment-picker__button.is-active .garment-picker__arrow {
+    color: #d8b66b;
+}
+
+@media (max-width: 900px) {
+    .garment-picker {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 9px;
+        padding: 10px;
+        margin-bottom: 9px;
+    }
+
+    .garment-picker__heading {
+        gap: 2px;
+    }
+
+    .garment-picker__heading small {
+        display: none;
+    }
+
+    .garment-picker__options {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .garment-picker__button {
+        min-height: 58px;
+        padding: 7px;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        text-align: center;
+    }
+
+    .garment-picker__icon {
+        width: 29px;
+        height: 29px;
+        flex-basis: 29px;
+        border-radius: 8px;
+        font-size: 15px;
+    }
+
+    .garment-picker__copy {
+        width: 100%;
+        flex: initial;
+        align-items: center;
+        gap: 1px;
+    }
+
+    .garment-picker__copy strong {
+        font-size: 10px;
+    }
+
+    .garment-picker__copy small,
+    .garment-picker__arrow {
+        display: none;
+    }
+}
+
+@media (max-width: 420px) {
+    .garment-picker__options {
+        gap: 5px;
+    }
+
+    .garment-picker__button {
+        padding: 6px 3px;
+    }
+
+    .garment-picker__copy strong {
+        font-size: 9px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .garment-picker__button {
+        transition: none;
+    }
+}
