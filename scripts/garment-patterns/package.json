@@ -15,6 +15,7 @@
     "@freesewing/hugo": "4.10.2",
     "@freesewing/brian": "4.10.2",
     "@freesewing/plugin-bust": "4.10.2",
-    "@freesewing/plugin-transform": "4.10.2"
+    "@freesewing/plugin-transform": "4.10.2",
+    "@freesewing/config": "4.10.2"
   }
 }
