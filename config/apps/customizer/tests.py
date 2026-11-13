@@ -270,6 +270,7 @@ def test_designer_page_and_save_endpoint(client, product, configured_designer, d
     response = client.get(reverse("customizer:designer", kwargs={"product_ref": str(product.uuid)}))
     assert response.status_code == 200
     assert b'data-garment-type="mug"' in response.content
+    assert b'data-garment-target-size="2.05"' in response.content
     assert b'data-garment-type="long_sleeve"' in response.content
     assert b'data-garment-type="hoodie"' in response.content
     assert b'id="garment-model-registry" hidden inert' in response.content
