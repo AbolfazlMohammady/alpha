@@ -19,7 +19,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/pages/customizer.css' %}">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d.css' %}">
-<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-view-modes1">
+<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-bottom-toolbar1">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio-ui.css' %}?v=20260930-mobile-tools13">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-mobile-nav.css' %}?v=20260925-1">
 {% endblock %}
@@ -201,38 +201,45 @@
             </div>
         </aside>
 
-        <div class="desktop-tool-dock" id="desktop-tool-dock" aria-label="ابزارهای طراحی دسکتاپ">
-            <button type="button" class="desktop-tool desktop-tool--label" data-desktop-tool="label" title="لیبل" aria-label="ابزار لیبل">
-                <span class="desktop-tool__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H13l7 7-6 6-7-7A2.5 2.5 0 0 1 4 7.5v-1Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/></svg>
-                </span>
-            </button>
-            <button type="button" class="desktop-tool" data-desktop-tool="garment"
-                title="نوع محصول" aria-label="انتخاب نوع محصول" aria-haspopup="dialog">
-                <span class="desktop-tool__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none">
-                        <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/>
-                        <path d="m4 7.5 8 4.5 8-4.5M12 12v9" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                    </svg>
-                </span>
-            </button>
-            <button type="button" class="desktop-tool" data-desktop-tool="shirt-color" title="رنگ تیشرت" aria-label="رنگ تیشرت">
-                <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 5 12 7l4-2 4 3-2 3-2-1v9H8v-9l-2 1-2-3 4-3Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><path d="M15.5 16.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>
-            </button>
-            <button type="button" class="desktop-tool" data-desktop-tool="size" title="سایز تیشرت" aria-label="انتخاب سایز">
-                <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 5v14M19 5v14M5 8h3M5 12h4M5 16h3M16 8h3M15 12h4M16 16h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M10 7h4M10 17h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
-            </button>
-            <button type="button" class="desktop-tool" data-desktop-tool="text-font" title="متن و استایل" aria-label="متن و استایل متن">
-                <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 18 10.5 5h3L19 18M7.2 13h9.6" stroke="currentColor" stroke-width="1.65" stroke-linecap="round"/><path d="M17 6h3M18.5 4.5v3" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg></span>
-            </button>
-            <button type="button" class="desktop-tool desktop-tool--save" data-desktop-tool="save" title="افزودن به سبد خرید" aria-label="افزودن طراحی به سبد خرید">
-                <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13H5V4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 4v6h7V4M8 20v-6h8v6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m10 17 1.5 1.5L14.5 15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            </button>
-            <button type="button" class="desktop-tool desktop-tool--back" id="customizer-back-button" title="بازگشت به صفحه قبل" aria-label="بازگشت به صفحه قبل">
-                <span class="desktop-tool__icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none"><path d="m15 5-7 7 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                </span>
-            </button>
+        <div class="studio-bottom-toolbar" id="studio-bottom-toolbar" role="group" aria-label="ابزارها و حالت نمایش">
+            <div class="desktop-tool-dock" id="desktop-tool-dock" aria-label="ابزارهای طراحی دسکتاپ">
+                <button type="button" class="desktop-tool desktop-tool--label" data-desktop-tool="label" title="لیبل" aria-label="ابزار لیبل">
+                    <span class="desktop-tool__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H13l7 7-6 6-7-7A2.5 2.5 0 0 1 4 7.5v-1Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/></svg>
+                    </span>
+                </button>
+                <button type="button" class="desktop-tool" data-desktop-tool="garment"
+                    title="نوع محصول" aria-label="انتخاب نوع محصول" aria-haspopup="dialog">
+                    <span class="desktop-tool__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/>
+                            <path d="m4 7.5 8 4.5 8-4.5M12 12v9" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                        </svg>
+                    </span>
+                </button>
+                <button type="button" class="desktop-tool" data-desktop-tool="shirt-color" title="رنگ تیشرت" aria-label="رنگ تیشرت">
+                    <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 5 12 7l4-2 4 3-2 3-2-1v9H8v-9l-2 1-2-3 4-3Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><path d="M15.5 16.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>
+                </button>
+                <button type="button" class="desktop-tool" data-desktop-tool="size" title="سایز تیشرت" aria-label="انتخاب سایز">
+                    <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 5v14M19 5v14M5 8h3M5 12h4M5 16h3M16 8h3M15 12h4M16 16h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M10 7h4M10 17h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+                </button>
+                <button type="button" class="desktop-tool" data-desktop-tool="text-font" title="متن و استایل" aria-label="متن و استایل متن">
+                    <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 18 10.5 5h3L19 18M7.2 13h9.6" stroke="currentColor" stroke-width="1.65" stroke-linecap="round"/><path d="M17 6h3M18.5 4.5v3" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg></span>
+                </button>
+                <button type="button" class="desktop-tool desktop-tool--save" data-desktop-tool="save" title="افزودن به سبد خرید" aria-label="افزودن طراحی به سبد خرید">
+                    <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13H5V4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 4v6h7V4M8 20v-6h8v6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m10 17 1.5 1.5L14.5 15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                </button>
+                <button type="button" class="desktop-tool desktop-tool--back" id="customizer-back-button" title="بازگشت به صفحه قبل" aria-label="بازگشت به صفحه قبل">
+                    <span class="desktop-tool__icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="m15 5-7 7 7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </span>
+                </button>
+            </div>
+            <nav class="studio-view-switcher" id="studio-view-switcher" aria-label="حالت نمایش">
+                <button type="button" data-studio-view="2d">2D</button>
+                <button type="button" data-studio-view="split" class="is-active" aria-pressed="true">Split</button>
+                <button type="button" data-studio-view="3d">3D</button>
+            </nav>
         </div>
         <div class="desktop-tool-popover" id="desktop-tool-popover" hidden></div>
         <section class="customizer-stage-wrap customizer-stage-wrap--premium" aria-label="محیط سه‌بعدی طراحی">
@@ -256,12 +263,6 @@
             </div>
 
         </section>
-        <nav class="studio-view-switcher" id="studio-view-switcher" aria-label="حالت نمایش">
-            <button type="button" data-studio-view="2d">2D</button>
-            <button type="button" data-studio-view="split" class="is-active" aria-pressed="true">Split</button>
-            <button type="button" data-studio-view="3d">3D</button>
-        </nav>
-
         <aside class="customizer-panel customizer-panel--assets customizer-panel--premium-right is-drawer-closed">
             <div class="panel-heading">
                 <div><span class="panel-kicker">PRODUCT SETTINGS</span><h2>تنظیمات محصول</h2></div>
@@ -500,7 +501,7 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script>
 <script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261113-view-modes1"></script>
 <script src="{% static 'js/pages/customizer-3d-studio-ui.js' %}?v=20261113-clean-stage1" defer></script>
-<script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261113-clean-stage1" defer></script>
+<script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261113-bottom-toolbar1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-mobile-nav.js' %}?v=20261113-garment-toolbar1" defer></script>
 {% endif %}
 {% endblock %}
