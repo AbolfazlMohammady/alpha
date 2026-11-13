@@ -8520,3 +8520,11 @@ body.customizer-page.customizer-mobile-sheet-open .designer-3d-hint {
         opacity: .58;
     }
 }
+
+
+/* The stage keeps camera logic but does not render duplicate white control bars.
+   Zoom/rotation remain available through the intended studio interaction. */
+body.customizer-page .designer-3d-bottom-controls,
+body.customizer-page .stage-controls--premium {
+    display: none !important;
+}
