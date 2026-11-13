@@ -209,6 +209,7 @@ class DesignerPageView(View):
                     "name": area.name,
                     "side": area.side,
                     "geometry": default_geometry,
+                    "pattern_geometry_fallback": True,
                     "max_layers": area.max_layers,
                     "max_width_mm": float(area.max_width_mm),
                     "max_height_mm": float(area.max_height_mm),
