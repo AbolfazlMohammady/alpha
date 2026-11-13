@@ -2495,7 +2495,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 const payload = {
                     variant_id: selectedVariant.id,
                     version: 2,
-                    preview_mode: "3d_glb_tshirt",
+                    preview_mode: `3d_glb_${garmentType}`,
                     coordinate_space: "garment_body",
                     garment_spec: data.garment_spec || null,
                     shirt_color: selectedVariant.color || selectedVariant.hex || "",
