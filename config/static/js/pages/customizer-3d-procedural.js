@@ -2523,7 +2523,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const usableHeight = Math.max(1, rect.height - padding * 2);
 
         for (const item of visibleItems) {
-            const normalized = normalizedGarmentPoint(item.surfacePoint || item.position) || {
+            const previewOverride = selectedPreviewDrag?.layerId === item.id
+                ? selectedPreviewDrag.previewNormalized
+                : null;
+            const normalized = previewOverride || normalizedGarmentPoint(item.surfacePoint || item.position) || {
                 x: Number(item.layer.x ?? 0.5),
                 y: Number(item.layer.y ?? 0.5),
             };
@@ -2631,6 +2634,349 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             const action = button.dataset.selectedAction;
             const requiresEditable = ["flip-x", "flip-y"].includes(action);
             button.disabled = !selected || (requiresEditable && Boolean(selected.layer.locked));
+        });
+    }
+
+
+    function selectedPreviewLayout(item, rect) {
+        if (!item || !rect) return null;
+        const previewOverride = selectedPreviewDrag?.layerId === item.id
+            ? selectedPreviewDrag.previewNormalized
+            : null;
+        const normalized = previewOverride || normalizedGarmentPoint(item.surfacePoint || item.position) || {
+            x: Number(item.layer.x ?? 0.5),
+            y: Number(item.layer.y ?? 0.5),
+        };
+        const padding = 18;
+        const usableWidth = Math.max(1, rect.width - padding * 2);
+        const usableHeight = Math.max(1, rect.height - padding * 2);
+        const aspect = Math.max(
+            0.15,
+            Number(item.renderAspect) ||
+                (Number(item.visibleArtworkWidth) / Math.max(1, Number(item.visibleArtworkHeight))) ||
+                2.2
+        );
+        const drawWidth = Math.max(16, Math.min(
+            usableWidth * 0.56,
+            usableWidth * Number(item.layer.width || 0.35) * 0.88
+        ));
+        const drawHeight = Math.min(usableHeight * 0.58, drawWidth / aspect);
+
+        return {
+            centerX: padding + THREE.MathUtils.clamp(normalized.x, 0, 1) * usableWidth,
+            centerY: padding + THREE.MathUtils.clamp(normalized.y, 0, 1) * usableHeight,
+            usableWidth,
+            usableHeight,
+            drawWidth,
+            drawHeight,
+            rotation: THREE.MathUtils.degToRad(Number(item.layer.rotation) || 0),
+            normalized,
+        };
+    }
+
+    function selectedPreviewHitTest(item, layout, x, y, includeHandles) {
+        if (!layout) return null;
+        const dx = x - layout.centerX;
+        const dy = y - layout.centerY;
+        const cosine = Math.cos(layout.rotation);
+        const sine = Math.sin(layout.rotation);
+        const localX = cosine * dx + sine * dy;
+        const localY = -sine * dx + cosine * dy;
+        const halfWidth = layout.drawWidth / 2;
+        const halfHeight = layout.drawHeight / 2;
+
+        if (includeHandles && !item.layer.locked) {
+            const rotateY = -halfHeight - 20;
+            if (Math.hypot(localX, localY - rotateY) <= 16) {
+                return { mode: "rotate", handleType: "rotate" };
+            }
+
+            const grips = [
+                { type: "nw", x: -halfWidth, y: -halfHeight },
+                { type: "n",  x: 0,           y: -halfHeight },
+                { type: "ne", x: halfWidth,   y: -halfHeight },
+                { type: "e",  x: halfWidth,   y: 0 },
+                { type: "se", x: halfWidth,   y: halfHeight },
+                { type: "s",  x: 0,           y: halfHeight },
+                { type: "sw", x: -halfWidth, y: halfHeight },
+                { type: "w",  x: -halfWidth, y: 0 },
+            ];
+            for (const grip of grips) {
+                if (Math.hypot(localX - grip.x, localY - grip.y) <= 15) {
+                    return { mode: "resize", handleType: grip.type };
+                }
+            }
+        }
+
+        if (
+            Math.abs(localX) <= halfWidth + 10 &&
+            Math.abs(localY) <= halfHeight + 10
+        ) {
+            return { mode: "move", handleType: null };
+        }
+        return null;
+    }
+
+    function selectedPreviewPointer(event, canvas) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+            rect: { width: rect.width, height: rect.height },
+        };
+    }
+
+    function applySelectedPreviewDrag(event) {
+        const active = selectedPreviewDrag;
+        const item = active ? layers.get(active.layerId) : null;
+        const canvas = document.getElementById("studio-selected-preview");
+        if (!active || !item || !canvas) return;
+
+        const pointerPosition = selectedPreviewPointer(event, canvas);
+        const x = pointerPosition.x;
+        const y = pointerPosition.y;
+
+        if (active.mode === "move") {
+            const normalized = {
+                x: THREE.MathUtils.clamp(
+                    active.startNormalized.x + (x - active.startPointer.x) / active.usableWidth,
+                    0.02,
+                    0.98
+                ),
+                y: THREE.MathUtils.clamp(
+                    active.startNormalized.y + (y - active.startPointer.y) / active.usableHeight,
+                    0.02,
+                    0.98
+                ),
+            };
+            const side = layerSide(item);
+            const area = areaById(item.layer.area_id, side);
+            const hit = garmentSurfaceHitAtPlacement(normalized.x, normalized.y, side);
+            if (!hit || !isValidPrintSurface(hit, area)) return;
+
+            active.previewNormalized = normalized;
+            active.previewPoint = hit.point.clone();
+            active.previewNormal = hitNormal(hit);
+            active.previewTarget = hit.object;
+            applyLayerVisualMove(
+                active.visual,
+                hit.point.clone().sub(active.startSurfacePoint)
+            );
+        } else if (active.mode === "resize") {
+            const dx = x - active.layout.centerX;
+            const dy = y - active.layout.centerY;
+            const cosine = Math.cos(active.layout.rotation);
+            const sine = Math.sin(active.layout.rotation);
+            const localX = cosine * dx + sine * dy;
+            const localY = -sine * dx + cosine * dy;
+            const type = active.handleType || "";
+            const anchors = {
+                nw: [-active.layout.drawWidth / 2, -active.layout.drawHeight / 2],
+                n:  [0, -active.layout.drawHeight / 2],
+                ne: [active.layout.drawWidth / 2, -active.layout.drawHeight / 2],
+                e:  [active.layout.drawWidth / 2, 0],
+                se: [active.layout.drawWidth / 2, active.layout.drawHeight / 2],
+                s:  [0, active.layout.drawHeight / 2],
+                sw: [-active.layout.drawWidth / 2, active.layout.drawHeight / 2],
+                w:  [-active.layout.drawWidth / 2, 0],
+            };
+            const anchor = anchors[type];
+            if (!anchor) return;
+
+            const ratios = [];
+            if ((type.includes("e") || type.includes("w")) && Math.abs(anchor[0]) > 1) {
+                ratios.push(Math.abs(localX / anchor[0]));
+            }
+            if ((type.includes("n") || type.includes("s")) && Math.abs(anchor[1]) > 1) {
+                ratios.push(Math.abs(localY / anchor[1]));
+            }
+            if (!ratios.length) return;
+
+            const factor = THREE.MathUtils.clamp(
+                ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length,
+                0.18,
+                3
+            );
+            item.layer.width = THREE.MathUtils.clamp(active.startWidth * factor, 0.06, 0.98);
+            item.layer.height = THREE.MathUtils.clamp(active.startHeight * factor, 0.04, 0.78);
+            applyLayerVisualScale(active.visual, item.layer.width / active.startWidth);
+        } else if (active.mode === "rotate") {
+            const currentAngle = Math.atan2(y - active.layout.centerY, x - active.layout.centerX);
+            let angleDelta = currentAngle - active.startAngle;
+            if (angleDelta > Math.PI) angleDelta -= Math.PI * 2;
+            if (angleDelta < -Math.PI) angleDelta += Math.PI * 2;
+            item.layer.rotation = THREE.MathUtils.clamp(
+                active.startRotation + THREE.MathUtils.radToDeg(angleDelta),
+                -180,
+                180
+            );
+            applyLayerVisualRotation(active.visual, item.layer.rotation - active.startRotation);
+        }
+
+        renderSelectedPreview();
+        render();
+    }
+
+    function finishSelectedPreviewDrag(commit = true) {
+        const active = selectedPreviewDrag;
+        if (!active) return;
+        const item = layers.get(active.layerId);
+
+        if (selectedPreviewFrameId) {
+            cancelAnimationFrame(selectedPreviewFrameId);
+            selectedPreviewFrameId = 0;
+        }
+        pendingSelectedPreviewEvent = null;
+
+        if (!item) {
+            selectedPreviewDrag = null;
+            return;
+        }
+
+        if (!commit) {
+            item.layer.width = active.startWidth;
+            item.layer.height = active.startHeight;
+            item.layer.rotation = active.startRotation;
+            restoreLayerVisualState(active.visual);
+            selectedPreviewDrag = null;
+            render();
+            sync();
+            return;
+        }
+
+        if (active.mode === "move") {
+            if (active.previewPoint && active.previewNormal && active.previewTarget) {
+                item.layer.x = active.previewNormalized.x;
+                item.layer.y = active.previewNormalized.y;
+                item.target = active.previewTarget;
+                project(item, active.previewPoint, active.previewNormal);
+            } else {
+                restoreLayerVisualState(active.visual);
+            }
+        } else {
+            const validation = validateLayerPlacement(item, placementForLayer(item));
+            if (!validation.ok) {
+                item.layer.width = active.startWidth;
+                item.layer.height = active.startHeight;
+                item.layer.rotation = active.startRotation;
+                restoreLayerVisualState(active.visual);
+                status(validation.message);
+            } else {
+                project(item, item.surfacePoint || item.position, item.surfaceNormal || item.normal);
+            }
+        }
+
+        selectedPreviewDrag = null;
+        render();
+        sync();
+    }
+
+    function bindSelectedPreviewInteraction() {
+        const canvas = document.getElementById("studio-selected-preview");
+        if (!canvas || canvas.dataset.bound === "1") return;
+        canvas.dataset.bound = "1";
+
+        canvas.addEventListener("pointerdown", event => {
+            if (event.button !== 0 || selectedPreviewDrag) return;
+            const pointerPosition = selectedPreviewPointer(event, canvas);
+            const rect = pointerPosition.rect;
+            const selected = layers.get(selectedId);
+            const side = selected ? layerSide(selected) : active2DSide;
+            const visibleItems = Array.from(layers.values())
+                .filter(item => layerSide(item) === side && item.layer.visible !== false)
+                .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0));
+
+            let match = null;
+            for (let index = visibleItems.length - 1; index >= 0; index -= 1) {
+                const item = visibleItems[index];
+                const layout = selectedPreviewLayout(item, rect);
+                const hit = selectedPreviewHitTest(
+                    item,
+                    layout,
+                    pointerPosition.x,
+                    pointerPosition.y,
+                    item.id === selectedId
+                );
+                if (hit) {
+                    match = { item, layout, hit };
+                    break;
+                }
+            }
+            if (!match) return;
+
+            const item = match.item;
+            if (item.id !== selectedId) {
+                selectedId = item.id;
+                openSelectedPanel();
+            }
+            if (item.layer.locked || item.layer.visible === false) {
+                sync();
+                status("این لایه قفل است؛ برای ویرایش ابتدا قفل را باز کن.");
+                return;
+            }
+
+            const normalized = normalizedGarmentPoint(item.surfacePoint || item.position) || {
+                x: Number(item.layer.x ?? 0.5),
+                y: Number(item.layer.y ?? 0.5),
+            };
+            selectedPreviewDrag = {
+                pointerId: event.pointerId,
+                layerId: item.id,
+                mode: match.hit.mode,
+                handleType: match.hit.handleType,
+                layout: match.layout,
+                visual: captureLayerVisualState(item),
+                startPointer: { x: pointerPosition.x, y: pointerPosition.y },
+                startNormalized: { x: normalized.x, y: normalized.y },
+                previewNormalized: { x: normalized.x, y: normalized.y },
+                usableWidth: match.layout.usableWidth,
+                usableHeight: match.layout.usableHeight,
+                startSurfacePoint: item.surfacePoint.clone(),
+                previewPoint: item.surfacePoint.clone(),
+                previewNormal: item.surfaceNormal.clone(),
+                previewTarget: item.target,
+                startWidth: Number(item.layer.width) || 0.35,
+                startHeight: Number(item.layer.height) || 0.25,
+                startRotation: Number(item.layer.rotation) || 0,
+                startAngle: Math.atan2(
+                    pointerPosition.y - match.layout.centerY,
+                    pointerPosition.x - match.layout.centerX
+                ),
+            };
+
+            canvas.style.cursor = "grabbing";
+            canvas.setPointerCapture(event.pointerId);
+            event.preventDefault();
+            sync();
+            renderSelectedPreview();
+        });
+
+        canvas.addEventListener("pointermove", event => {
+            if (!selectedPreviewDrag || selectedPreviewDrag.pointerId !== event.pointerId) return;
+            event.preventDefault();
+            pendingSelectedPreviewEvent = event;
+            if (selectedPreviewFrameId) return;
+
+            selectedPreviewFrameId = requestAnimationFrame(() => {
+                selectedPreviewFrameId = 0;
+                const latest = pendingSelectedPreviewEvent;
+                pendingSelectedPreviewEvent = null;
+                if (latest && selectedPreviewDrag?.pointerId === latest.pointerId) {
+                    applySelectedPreviewDrag(latest);
+                }
+            });
+        });
+
+        ["pointerup", "pointercancel", "lostpointercapture"].forEach(type => {
+            canvas.addEventListener(type, event => {
+                if (!selectedPreviewDrag || selectedPreviewDrag.pointerId !== event.pointerId) return;
+                const commit = type === "pointerup";
+                if (pendingSelectedPreviewEvent?.pointerId === event.pointerId) {
+                    applySelectedPreviewDrag(pendingSelectedPreviewEvent);
+                }
+                finishSelectedPreviewDrag(commit);
+                canvas.style.cursor = "";
+            });
         });
     }
 
