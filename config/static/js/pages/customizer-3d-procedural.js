@@ -158,7 +158,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const mappedAreas = sideAreas.map(area => ({
             ...area,
             // Use the geometry calculated from the actual FreeSewing cut-piece bounds.
-            geometry: patternSide.geometry,
+            geometry: area.pattern_geometry_fallback || !Array.isArray(area.geometry)
+                ? patternSide.geometry
+                : area.geometry,
         }));
 
         return {
