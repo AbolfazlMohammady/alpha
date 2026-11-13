@@ -1977,7 +1977,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         button.dataset.layerAction = action;
         button.title = title;
         button.setAttribute("aria-label", title);
-        button.setAttribute("aria-pressed", String(Boolean(pressed)));
+        if (action !== "delete") {
+            button.setAttribute("aria-pressed", String(Boolean(pressed)));
+        }
         button.innerHTML = iconMarkup;
         return button;
     }
@@ -2033,7 +2035,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             const image = document.createElement("img");
             image.alt = "";
             image.loading = "lazy";
-            image.src = item.artwork?.image || "";
+            if (item.artwork?.image) {
+                image.src = item.artwork.image;
+            } else {
+                image.hidden = true;
+                thumbnail.classList.add("is-empty");
+            }
             image.addEventListener("error", () => {
                 image.hidden = true;
                 thumbnail.classList.add("is-empty");
