@@ -191,6 +191,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         stage.style.backgroundPosition = "";
         stage.style.backgroundSize = "";
         stage.style.backgroundRepeat = "";
+        // Re-apply the selected Scene tab backdrop after the temporary model preview clears.
+        applySceneBackdrop();
     }
 
     function setLoading(text, visible = true) {
