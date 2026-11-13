@@ -1944,25 +1944,32 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const item = layers.get(selectedId);
         if (!item || item.layer.locked || item.layer.visible === false) return;
 
-        const area = areaById(item.layer.area_id, layerSide(item));
+        const currentArea = areaById(item.layer.area_id, layerSide(item));
         pointerOf(event);
         raycaster.setFromCamera(pointer, camera);
-        const hit = raycaster.intersectObjects(garmentMeshes, false)[0];
-        if (!isValidPrintSurface(hit, area)) {
-            status("لیبل فقط روی بدنه جلو یا پشت تیشرت قابل جابه‌جایی است.");
+
+        // Choose the nearest visible printable surface. When the garment is
+        // rotated, this can be its front or back; the label follows the side
+        // that the pointer is actually touching rather than staying pinned
+        // to the side where it was first created.
+        const hits = raycaster.intersectObjects(garmentMeshes, false);
+        const hit = hits.find(candidate => {
+            const candidateSide = surfaceSide(hitNormal(candidate));
+            const candidateArea = areaForSurfaceSide(candidateSide, currentArea);
+            return Boolean(candidateArea && isValidPrintSurface(candidate, candidateArea));
+        });
+
+        if (!hit) {
+            status("لیبل فقط روی سطح قابل چاپ جلو یا پشت بدنه قابل جابه‌جایی است.");
             return;
         }
 
-        // A label belongs to the side where it was created. When the user
-        // rotates the shirt to the opposite side, dragging must not re-anchor
-        // that front label onto the back surface (or vice versa).
         const hitSide = surfaceSide(hitNormal(hit));
-        if (hitSide !== layerSide(item)) {
-            return;
-        }
+        const targetArea = areaForSurfaceSide(hitSide, currentArea);
+        if (!targetArea) return;
 
         const placement = placementFromPoint(
-            area,
+            targetArea,
             hit.point,
             item.layer.width,
             item.layer.height,
@@ -1974,7 +1981,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             return;
         }
 
+        item.layer.area_id = targetArea.id;
         item.target = hit.object;
+        item.normal = hitNormal(hit);
         project(item, hit.point, hitNormal(hit));
     }
 
