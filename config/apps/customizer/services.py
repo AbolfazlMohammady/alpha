@@ -465,8 +465,9 @@ def validate_design_payload(product, payload, variant=None, request=None, vendor
                     )
 
     garment_type = str(payload.get("garment_type", "tshirt")).strip().lower()
-    if garment_type not in {"tshirt"}:
-        raise ValidationError("نوع لباس انتخاب‌شده معتبر نیست.")
+    supported_garment_types = {"tshirt", "long_sleeve", "hoodie", "mug"}
+    if garment_type not in supported_garment_types:
+        raise ValidationError("نوع محصول سه‌بعدی انتخاب‌شده معتبر نیست.")
 
     garment_model = str(payload.get("garment_model", "")).strip()[:160]
 
