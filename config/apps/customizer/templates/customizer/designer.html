@@ -19,7 +19,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/pages/customizer.css' %}">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d.css' %}">
-<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-layers-panel1">
+<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-scene-backdrop1">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio-ui.css' %}?v=20260930-mobile-tools13">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-mobile-nav.css' %}?v=20260925-1">
 {% endblock %}
@@ -246,13 +246,79 @@
             <header class="studio-layers-panel__header">
                 <div class="studio-layers-panel__heading">
                     <span class="studio-layers-panel__eyebrow">DESIGN STACK</span>
-                    <h2>لایه‌ها</h2>
+                    <h2 id="studio-layers-heading">لایه‌ها</h2>
                 </div>
                 <span class="studio-layers-panel__count" id="studio-layers-count">۰ لایه</span>
             </header>
-            <div class="studio-layers-panel__list" id="studio-layers-list" role="list" aria-label="فهرست لایه‌های طراحی">
+            <div class="studio-layers-panel__tabs" role="tablist" aria-label="بخش‌های استودیو">
+                <button type="button" class="is-active" id="studio-tab-layers" role="tab"
+                    aria-selected="true" aria-controls="studio-layers-list" data-studio-panel-tab="layers">لایه‌ها</button>
+                <button type="button" id="studio-tab-scene" role="tab"
+                    aria-selected="false" aria-controls="studio-scene-panel" data-studio-panel-tab="scene">صحنه</button>
+            </div>
+            <div class="studio-layers-panel__list" id="studio-layers-list" role="tabpanel"
+                aria-labelledby="studio-tab-layers" tabindex="0" aria-label="فهرست لایه‌های طراحی">
                 <div class="studio-layers-panel__empty">هنوز طرحی اضافه نکرده‌ای.</div>
             </div>
+            <section class="studio-scene-panel" id="studio-scene-panel" role="tabpanel"
+                aria-labelledby="studio-tab-scene" tabindex="0" hidden>
+                <header class="studio-scene-panel__intro">
+                    <span class="studio-scene-panel__eyebrow">SCENE SETTINGS</span>
+                    <h3>پس‌زمینه محیط سه‌بعدی</h3>
+                    <p>رنگ یا تصویر پس‌زمینه را همان لحظه تغییر بده.</p>
+                </header>
+
+                <div class="studio-scene-panel__modes" role="group" aria-label="نوع پس‌زمینه">
+                    <button type="button" class="is-active" data-scene-backdrop-mode="color" aria-pressed="true">
+                        <span aria-hidden="true">◉</span> رنگ
+                    </button>
+                    <button type="button" data-scene-backdrop-mode="image" aria-pressed="false">
+                        <span aria-hidden="true">▧</span> تصویر
+                    </button>
+                    <button type="button" data-scene-backdrop-mode="none" aria-pressed="false">
+                        <span aria-hidden="true">◇</span> هیچ‌کدام
+                    </button>
+                </div>
+
+                <div class="studio-scene-panel__controls" id="studio-scene-color-controls">
+                    <div class="studio-scene-panel__section-heading">
+                        <strong>رنگ پس‌زمینه</strong>
+                        <small>برای تغییر سریع، یکی از رنگ‌ها را انتخاب کن.</small>
+                    </div>
+                    <div class="studio-scene-color-palette" role="group" aria-label="رنگ‌های آماده پس‌زمینه">
+                        <button type="button" data-scene-color="#FFFFFF" style="--scene-color:#FFFFFF" aria-label="سفید" title="سفید"></button>
+                        <button type="button" data-scene-color="#F2F2F2" style="--scene-color:#F2F2F2" aria-label="خاکستری خیلی روشن" title="خاکستری خیلی روشن"></button>
+                        <button type="button" data-scene-color="#E7E5E4" style="--scene-color:#E7E5E4" aria-label="خاکستری گرم" title="خاکستری گرم"></button>
+                        <button type="button" data-scene-color="#D6D3D1" style="--scene-color:#D6D3D1" aria-label="طوسی روشن" title="طوسی روشن"></button>
+                        <button type="button" data-scene-color="#C6D2D5" style="--scene-color:#C6D2D5" aria-label="آبی خاکستری" title="آبی خاکستری"></button>
+                        <button type="button" data-scene-color="#DCD4EA" style="--scene-color:#DCD4EA" aria-label="یاسی" title="یاسی"></button>
+                        <button type="button" data-scene-color="#E8D6D0" style="--scene-color:#E8D6D0" aria-label="صورتی ملایم" title="صورتی ملایم"></button>
+                        <button type="button" data-scene-color="#B5B5B5" style="--scene-color:#B5B5B5" aria-label="طوسی" title="طوسی"></button>
+                        <button type="button" class="is-active" data-scene-color="#2B2B2E" style="--scene-color:#2B2B2E" aria-label="ذغالی" title="ذغالی"></button>
+                    </div>
+                    <label class="studio-scene-color-picker" for="studio-scene-color-input">
+                        <span>انتخاب رنگ دلخواه</span>
+                        <input type="color" id="studio-scene-color-input" value="#2b2b2e" aria-label="انتخاب رنگ دلخواه پس‌زمینه">
+                    </label>
+                </div>
+
+                <div class="studio-scene-panel__controls" id="studio-scene-image-controls" hidden>
+                    <label class="studio-scene-upload" id="studio-scene-upload-dropzone" for="studio-scene-image-input">
+                        <input type="file" id="studio-scene-image-input" accept="image/png,image/jpeg,image/webp" hidden>
+                        <span class="studio-scene-upload__icon" aria-hidden="true">＋</span>
+                        <strong>افزودن تصویر پس‌زمینه</strong>
+                        <small>تصویر PNG، JPG یا WEBP را انتخاب کن یا اینجا رها کن.</small>
+                    </label>
+                    <div class="studio-scene-image-file">
+                        <span id="studio-scene-image-name">تصویری انتخاب نشده است</span>
+                        <button type="button" id="studio-scene-image-remove" hidden>حذف تصویر</button>
+                    </div>
+                </div>
+
+                <p class="studio-scene-panel__note" id="studio-scene-status" role="status" aria-live="polite">
+                    تغییرات فقط در همین صفحه اعمال می‌شوند و به سرور یا دیتابیس ارسال نمی‌شوند.
+                </p>
+            </section>
             <footer class="studio-layers-panel__footer">
                 <span class="studio-layers-panel__footer-dot" aria-hidden="true"></span>
                 لایهٔ بالاتر روی لایه‌های پایین‌تر قرار می‌گیرد.
@@ -515,7 +581,7 @@
 <script src="{% static 'js/pages/customizer.js' %}?v=20261003-label-picker3" defer></script>
 {% if designer_has_3d %}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script>
-<script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261113-layers-panel1"></script>
+<script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261113-scene-backdrop1"></script>
 <script src="{% static 'js/pages/customizer-3d-studio-ui.js' %}?v=20261113-clean-stage1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261113-bottom-toolbar1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-mobile-nav.js' %}?v=20261113-garment-toolbar1" defer></script>
