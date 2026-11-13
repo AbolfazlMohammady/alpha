@@ -110,6 +110,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     const layers = new Map();
     const textures = new Map();
     const frontAxis = new THREE.Vector3(0, 0, 1);
+    const garmentModelOptions = Array.from(
+        document.querySelectorAll("[data-garment-type][data-model-url]")
+    );
     const garmentModels = {
         tshirt: {
             key: "tshirt",
@@ -119,6 +122,21 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             model: "Glb/whit_t_shirt.glb",
         },
     };
+
+    for (const option of garmentModelOptions) {
+        const key = String(option.dataset.garmentType || "").trim().toLowerCase();
+        const url = String(option.dataset.modelUrl || "").trim();
+        if (!key || !url) continue;
+
+        garmentModels[key] = {
+            key,
+            label: option.dataset.garmentLabel || option.textContent.trim(),
+            url,
+            template: option.dataset.garmentTemplate || `babaei_${key}_glb_v1`,
+            model: option.dataset.modelPath || url,
+        };
+    }
+
     let garmentType = "tshirt";
     let modelUrl = garmentModels.tshirt.url;
     const compactMedia = window.matchMedia("(max-width: 1023px)");
@@ -1322,38 +1340,61 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         sync();
     }
 
+    function updateGarmentPicker(activeKey, busy = false) {
+        garmentModelOptions.forEach(option => {
+            const active = option.dataset.garmentType === activeKey;
+            option.classList.toggle("is-active", active);
+            option.setAttribute("aria-pressed", String(active));
+            option.disabled = busy;
+        });
+    }
+
     async function switchGarmentType(type) {
         const key = String(type || "").toLowerCase();
         const model = garmentModels[key];
         if (!model?.url) {
-            status("مدل این لباس هنوز برای استودیو تنظیم نشده است.");
+            status("مدل این محصول برای استودیو سه‌بعدی تنظیم نشده است.");
             return false;
         }
-        if (key === garmentType && garment) return true;
+        if (key === garmentType && garment) {
+            updateGarmentPicker(key, false);
+            return true;
+        }
 
         const previousType = garmentType;
         const previousUrl = modelUrl;
+        updateGarmentPicker(previousType, true);
         garmentType = key;
         modelUrl = model.url;
-        const title = document.getElementById("designer-product-title");
-        if (title) title.textContent = model.label;
 
         try {
             await loadGarment(model.url);
             fitCamera(true);
             await reprojectLayersAfterGarmentSwitch();
             render();
+
+            const title = document.getElementById("designer-product-title");
+            if (title) title.textContent = `طراحی ${model.label}`;
             return true;
         } catch (error) {
             garmentType = previousType;
             modelUrl = previousUrl;
             const title = document.getElementById("designer-product-title");
-            if (title) title.textContent = garmentModels[previousType]?.label || "طراحی تیشرت";
+            if (title) title.textContent = `طراحی ${garmentModels[previousType]?.label || "تیشرت"}`;
             console.error("garment type switch failed", error);
-            status("تعویض مدل لباس انجام نشد.");
+            status("تعویض مدل محصول انجام نشد.");
             return false;
+        } finally {
+            updateGarmentPicker(garmentType, false);
         }
     }
+
+    garmentModelOptions.forEach(option => {
+        option.addEventListener("click", () => {
+            void switchGarmentType(option.dataset.garmentType);
+        });
+    });
+    updateGarmentPicker("tshirt", true);
 
     function project(item, point, normal) {
         if (!item?.artwork?.image || !garmentMeshes.length) return;
@@ -2515,10 +2556,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             await loadGarment();
             setColor(currentVariant?.hex || "#ffffff");
             sync();
+            updateGarmentPicker("tshirt", false);
         } catch (error) {
             console.error("GLB customizer model failed to load", error);
             setLoading("بارگذاری مدل سه‌بعدی انجام نشد.", true);
             status("مدل سه‌بعدی تیشرت بارگذاری نشد. مسیر GLB یا دسترسی فایل را بررسی کنید.");
+            updateGarmentPicker("tshirt", false);
         }
     }
 
