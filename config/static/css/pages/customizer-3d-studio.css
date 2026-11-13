@@ -9404,3 +9404,39 @@ body.customizer-page .studio-scene-panel__note {
         height: 29px;
     }
 }
+
+
+/* Stable single-panel states for the 2D / 3D view switcher. */
+.customizer-stage--premium.stage-shell--2d,
+.customizer-stage--premium.stage-shell--3d {
+    display: block !important;
+    position: relative !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+.customizer-stage--premium.stage-shell--2d > .designer-2d-stage:not(.is-hidden),
+.customizer-stage--premium.stage-shell--3d > .designer-3d-stage:not(.is-hidden) {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+}
+.customizer-stage--premium.stage-shell--2d > .designer-3d-stage,
+.customizer-stage--premium.stage-shell--3d > .designer-2d-stage {
+    display: none !important;
+}
+.customizer-stage--premium.stage-shell--2d > .designer-2d-stage #designer-canvas {
+    display: block !important;
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+}
