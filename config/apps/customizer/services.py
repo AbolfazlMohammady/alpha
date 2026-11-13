@@ -287,14 +287,13 @@ def _accessible_artwork_queryset(*, artwork_ids, request):
 
 
 def validate_body_placement(placement: Placement, existing):
-    """Validate a 3D label against the shirt body coordinate space.
+    """Validate a 3D label against the normalized printable product surface.
 
-    The 3D editor uses the whole front/back torso as its simple 2D canvas.
-    PrintArea geometry is intentionally not used here; the UI already limits
-    placement to the actual shirt body surface.
+    The 3D editor uses the selected model's front/back surface as its normalized
+    canvas. PrintArea geometry is intentionally not used in this mode.
     """
     if not (0.0 <= placement.x <= 1.0 and 0.0 <= placement.y <= 1.0):
-        raise ValidationError("لیبل باید داخل بدنه تیشرت قرار بگیرد.")
+        raise ValidationError("لیبل باید داخل سطح قابل چاپ محصول قرار بگیرد.")
     if not (0.01 <= placement.width <= 1.0 and 0.01 <= placement.height <= 1.0):
         raise ValidationError("ابعاد لیبل نامعتبر است.")
     if not -180.0 <= placement.rotation <= 180.0:
@@ -437,9 +436,8 @@ def validate_design_payload(product, payload, variant=None, request=None, vendor
                 continue
 
             if coordinate_space == "garment_body":
-                # The 3D studio treats the shirt body itself as the 2D canvas.
-                # Front and back are separate surfaces, so labels on opposite
-                # sides never collide.
+                # The 3D studio treats the selected product's printable surface
+                # as a normalized 2D canvas. Front and back are separate sides.
                 existing = []
                 for item in area_layers:
                     validate_body_placement(item["placement"], existing)
