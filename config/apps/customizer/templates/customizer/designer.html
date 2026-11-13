@@ -19,7 +19,7 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/pages/customizer.css' %}">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d.css' %}">
-<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-bottom-toolbar1">
+<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261113-layers-panel1">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio-ui.css' %}?v=20260930-mobile-tools13">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-mobile-nav.css' %}?v=20260925-1">
 {% endblock %}
@@ -242,6 +242,22 @@
             </nav>
         </div>
         <div class="desktop-tool-popover" id="desktop-tool-popover" hidden></div>
+        <aside class="studio-layers-panel" id="studio-layers-panel" aria-label="مدیریت لایه‌های طراحی">
+            <header class="studio-layers-panel__header">
+                <div class="studio-layers-panel__heading">
+                    <span class="studio-layers-panel__eyebrow">DESIGN STACK</span>
+                    <h2>لایه‌ها</h2>
+                </div>
+                <span class="studio-layers-panel__count" id="studio-layers-count">۰ لایه</span>
+            </header>
+            <div class="studio-layers-panel__list" id="studio-layers-list" role="list" aria-label="فهرست لایه‌های طراحی">
+                <div class="studio-layers-panel__empty">هنوز طرحی اضافه نکرده‌ای.</div>
+            </div>
+            <footer class="studio-layers-panel__footer">
+                <span class="studio-layers-panel__footer-dot" aria-hidden="true"></span>
+                لایهٔ بالاتر روی لایه‌های پایین‌تر قرار می‌گیرد.
+            </footer>
+        </aside>
         <section class="customizer-stage-wrap customizer-stage-wrap--premium" aria-label="محیط سه‌بعدی طراحی">
             <div class="customizer-stage customizer-stage--premium" id="stage-shell">
                 <div class="designer-3d-stage" id="designer-3d-stage" data-model-url="{% static 'Glb/whit_t_shirt.glb' %}"
@@ -499,7 +515,7 @@
 <script src="{% static 'js/pages/customizer.js' %}?v=20261003-label-picker3" defer></script>
 {% if designer_has_3d %}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"}}</script>
-<script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261113-view-modes1"></script>
+<script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261113-layers-panel1"></script>
 <script src="{% static 'js/pages/customizer-3d-studio-ui.js' %}?v=20261113-clean-stage1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261113-bottom-toolbar1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-mobile-nav.js' %}?v=20261113-garment-toolbar1" defer></script>
