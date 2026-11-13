@@ -3573,11 +3573,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 openSelectedPanel();
                 const selectedLayer = layers.get(selectedId);
                 if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
-                    drag = {
-                        pointerId: event.pointerId,
-                        mode: "move",
-                        layerId: selectedId,
-                    };
+                    drag = beginLayerTransform(event, selectedLayer, "move");
                     controls.enabled = false;
                     canvas.style.touchAction = "none";
                     canvas.setPointerCapture(event.pointerId);
@@ -3621,6 +3617,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                     cancelAnimationFrame(dragFrameId);
                     dragFrameId = 0;
                 }
+                const completedDrag = drag;
+                finishLayerTransform(completedDrag, event, type === "pointerup");
                 drag = null;
                 controls.enabled = true;
                 canvas.style.touchAction = "";
