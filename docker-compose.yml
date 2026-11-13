@@ -41,6 +41,18 @@ services:
     networks:
       - default
 
+  # On-demand Node.js container for generating real FreeSewing SVG patterns.
+  # Run with: docker-compose run --rm --no-deps garment-patterns
+  garment-patterns:
+    image: node:22-bookworm-slim
+    working_dir: /workspace/scripts/garment-patterns
+    profiles:
+      - tools
+    volumes:
+      - .:/workspace
+      - garment_patterns_node_modules:/workspace/scripts/garment-patterns/node_modules
+    command: ["sh", "-lc", "npm install && npm run generate"]
+
   django:
     container_name: django
     build:
@@ -145,3 +157,4 @@ services:
 volumes:
   postgres_data:
   backup_data:
+  garment_patterns_node_modules:
