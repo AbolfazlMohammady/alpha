@@ -1938,6 +1938,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (totalEl) totalEl.textContent = money(total);
 
         renderAreas();
+        if (!document.getElementById("designer-2d-stage")?.classList.contains("is-hidden")) {
+            render2DPreview();
+        }
     }
 
     function layerSide(item) {
@@ -2019,6 +2022,76 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             ctx.restore();
         }
         return canvasBlob(canvas);
+    }
+
+    let active2DSide = "front";
+    let previewRenderToken = 0;
+
+    async function render2DPreview() {
+        const token = ++previewRenderToken;
+        const previewCanvas = document.getElementById("designer-canvas");
+        const loading = document.getElementById("stage-loading");
+        if (!previewCanvas) return;
+        if (loading) {
+            loading.textContent = "در حال آماده‌سازی نمای دوبعدی…";
+            loading.classList.remove("is-hidden");
+        }
+        try {
+            const blob = await build2DPreview(active2DSide);
+            if (token !== previewRenderToken) return;
+            if (!blob) {
+                if (loading) {
+                    loading.textContent = "برای این محصول تصویر الگوی دوبعدی تعریف نشده است.";
+                    loading.classList.remove("is-hidden");
+                }
+                return;
+            }
+            const imageUrl = URL.createObjectURL(blob);
+            try {
+                const image = await imageFromSource(imageUrl);
+                if (token !== previewRenderToken) return;
+                const rect = previewCanvas.getBoundingClientRect();
+                const width = Math.max(1, Math.round(rect.width * (window.devicePixelRatio || 1)));
+                const height = Math.max(1, Math.round(rect.height * (window.devicePixelRatio || 1)));
+                previewCanvas.width = width;
+                previewCanvas.height = height;
+                const context = previewCanvas.getContext("2d");
+                context.clearRect(0, 0, width, height);
+                context.fillStyle = "#f5f3ee";
+                context.fillRect(0, 0, width, height);
+                const scale = Math.min(width / image.width, height / image.height);
+                const drawWidth = image.width * scale;
+                const drawHeight = image.height * scale;
+                context.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+                if (loading) loading.classList.add("is-hidden");
+            } finally {
+                URL.revokeObjectURL(imageUrl);
+            }
+        } catch (error) {
+            console.error("2D garment preview failed", error);
+            if (loading) {
+                loading.textContent = "نمای دوبعدی بارگذاری نشد.";
+                loading.classList.remove("is-hidden");
+            }
+        }
+    }
+
+    function setStudioView(mode) {
+        const shell = document.getElementById("stage-shell");
+        const twoD = document.getElementById("designer-2d-stage");
+        const threeD = document.getElementById("designer-3d-stage");
+        if (!shell || !twoD || !threeD) return;
+        const view = ["2d", "split", "3d"].includes(mode) ? mode : "split";
+        shell.classList.toggle("stage-shell--split", view === "split");
+        twoD.classList.toggle("is-hidden", view === "3d");
+        threeD.classList.toggle("is-hidden", view === "2d");
+        document.querySelectorAll("[data-studio-view]").forEach(button => {
+            const active = button.dataset.studioView === view;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-pressed", String(active));
+        });
+        if (view !== "3d") render2DPreview();
+        if (view !== "2d") requestAnimationFrame(() => resize());
     }
 
     function build3DPreviewAtRotation(rotationY, viewSide = "front") {
@@ -2304,13 +2377,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             });
         });
 
-        document.querySelectorAll("[data-mode]").forEach(button => {
+        document.querySelectorAll("[data-studio-view]").forEach(button => {
+            button.addEventListener("click", () => setStudioView(button.dataset.studioView));
+        });
+        document.querySelectorAll("[data-2d-side]").forEach(button => {
             button.addEventListener("click", () => {
-                const is3d = button.dataset.mode === "3d";
-                document.getElementById("designer-2d-stage")?.classList.toggle("is-hidden", is3d);
-                stage.classList.toggle("is-hidden", !is3d);
-                document.querySelectorAll("[data-mode]").forEach(item => item.classList.toggle("is-active", item === button));
-                if (is3d) resize();
+                active2DSide = button.dataset.twoDSide;
+                document.querySelectorAll("[data-2d-side]").forEach(item => {
+                    const active = item === button;
+                    item.classList.toggle("is-active", active);
+                    item.setAttribute("aria-pressed", String(active));
+                });
+                render2DPreview();
             });
         });
 
