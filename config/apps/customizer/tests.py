@@ -232,6 +232,12 @@ def test_designer_page_and_save_endpoint(client, product, configured_designer, d
     client.force_login(user)
     response = client.get(reverse("customizer:designer", kwargs={"product_ref": str(product.uuid)}))
     assert response.status_code == 200
+    assert b'data-garment-type="mug"' in response.content
+    assert b'data-garment-type="long_sleeve"' in response.content
+    assert b'data-garment-type="hoodie"' in response.content
+    assert b"Glb/mug.glb" in response.content
+    assert b"Glb/long_sleeve_t-_shirt.glb" in response.content
+    assert b"Glb/Hoodie.glb" in response.content
 
     _, area, artwork = configured_designer
     payload = {"variant_id": None, "version": 1, "layers": [{"artwork_id": artwork.id, "area_id": area.id, "x": .5, "y": .5, "width": .3, "height": .3, "rotation": 0}]}
