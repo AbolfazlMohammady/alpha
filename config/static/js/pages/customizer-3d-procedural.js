@@ -1910,21 +1910,23 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         render();
     }
 
+    function cancelLayerDrag() {
+        if (!drag) return;
+        drag = null;
+        pendingDragEvent = null;
+        if (dragFrameId) {
+            cancelAnimationFrame(dragFrameId);
+            dragFrameId = 0;
+        }
+        if (controls) controls.enabled = true;
+    }
+
     function removeLayerById(layerId) {
         const id = Number(layerId);
         const item = layers.get(id);
         if (!item) return;
 
-        const wasActiveDrag = Boolean(drag && selectedId === id);
-        if (wasActiveDrag) {
-            drag = null;
-            pendingDragEvent = null;
-            if (dragFrameId) {
-                cancelAnimationFrame(dragFrameId);
-                dragFrameId = 0;
-            }
-            controls.enabled = true;
-        }
+        if (drag && selectedId === id) cancelLayerDrag();
         if (selectedId === id) selectedId = null;
         disposeLayer(item);
         layers.delete(id);
@@ -1942,9 +1944,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (item.frame) item.frame.visible = item.layer.visible && item.id === selectedId;
         if (item.handles) item.handles.visible = item.layer.visible && item.id === selectedId;
         if (!item.layer.visible && selectedId === item.id) {
+            cancelLayerDrag();
             selectedId = null;
-            drag = null;
-            controls.enabled = true;
         }
         sync();
         render();
@@ -1955,9 +1956,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (!item) return;
 
         item.layer.locked = Boolean(locked);
-        if (item.layer.locked && selectedId === item.id && drag) {
-            drag = null;
-            controls.enabled = true;
+        if (item.layer.locked && selectedId === item.id) {
+            cancelLayerDrag();
         }
         sync();
     }
@@ -2514,12 +2514,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         return Array.from(layers.values())
             .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0))
             .map(item => {
-            const bodyPlacement = placementForLayer(item);
-            const side = layerSide(item);
-            return {
-                ...item.layer,
+                const bodyPlacement = placementForLayer(item);
+                const side = layerSide(item);
+                return {
+                    ...item.layer,
                 type: item.artwork?.is_text ? "text" : "artwork",
-                side,
+                        side,
                 x: bodyPlacement?.x ?? item.layer.x,
                 y: bodyPlacement?.y ?? item.layer.y,
                 color: item.layer.color || "#ffffff",
@@ -2546,9 +2546,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                         image: item.artwork?.image || null,
                         background_removed: item.artwork?.background_removed !== false,
                     },
-                },
-            };
-        });
+                    },
+                };
+            });
     }
 
     function bind() {
