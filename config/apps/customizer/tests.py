@@ -409,4 +409,6 @@ def test_designer_page_provides_pattern_fallback_for_both_sides(product, client)
     }
     assert areas_by_side["front"]
     assert areas_by_side["back"]
+    assert all(area["pattern_geometry_fallback"] for area in areas_by_side["front"])
+    assert all(area["pattern_geometry_fallback"] for area in areas_by_side["back"])
     assert all(not view["background"] for view in views)
