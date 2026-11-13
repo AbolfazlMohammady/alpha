@@ -1,0 +1,19 @@
+{
+  "name": "alpha-garment-pattern-generator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@freesewing/core": "4.10.2",
+    "@freesewing/core-plugins": "4.10.2",
+    "@freesewing/teagan": "4.10.2",
+    "@freesewing/hugo": "4.10.2",
+    "@freesewing/brian": "4.10.2",
+    "@freesewing/plugin-bust": "4.10.2"
+  }
+}
