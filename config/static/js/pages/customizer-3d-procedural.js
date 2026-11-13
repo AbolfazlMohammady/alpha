@@ -1990,6 +1990,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         }
 
         item.layer.area_id = targetArea.id;
+        item.layer.side = hitSide;
         item.target = hit.object;
         item.normal = hitNormal(hit);
         project(item, hit.point, hitNormal(hit));
