@@ -1,0 +1,21 @@
+{
+  "_comment": "Profile M نمونه بر حسب میلی‌متر است؛ برای الگوی سفارشی، مقادیر را با اندازه‌های واقعی مشتری جایگزین کنید.",
+  "units": "metric",
+  "measurements": {
+    "biceps": 335,
+    "chest": 1080,
+    "hips": 980,
+    "hpsToBust": 280,
+    "hpsToWaistBack": 550,
+    "neck": 420,
+    "shoulderToShoulder": 465,
+    "shoulderSlope": 16,
+    "waist": 900,
+    "waistToArmpit": 220,
+    "waistToHips": 145,
+    "shoulderToWrist": 610,
+    "wrist": 180
+  },
+  "seamAllowance": 10,
+  "margin": 24
+}
