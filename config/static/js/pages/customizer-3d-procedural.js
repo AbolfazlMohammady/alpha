@@ -1376,6 +1376,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             fitCamera(true);
             await reprojectLayersAfterGarmentSwitch();
             render();
+            setStudioView("split");
 
             const title = document.getElementById("designer-product-title");
             if (title) title.textContent = `طراحی ${model.label}`;
@@ -2082,6 +2083,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const threeD = document.getElementById("designer-3d-stage");
         if (!shell || !twoD || !threeD) return;
         const view = ["2d", "split", "3d"].includes(mode) ? mode : "split";
+        const switcher = document.getElementById("studio-view-switcher");
+        if (switcher) switcher.hidden = garmentType === "mug";
         shell.classList.toggle("stage-shell--split", view === "split");
         twoD.classList.toggle("is-hidden", view === "3d");
         threeD.classList.toggle("is-hidden", view === "2d");
@@ -2623,6 +2626,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             setColor(currentVariant?.hex || "#ffffff");
             sync();
             updateGarmentPicker("tshirt", false);
+            setStudioView("split");
         } catch (error) {
             console.error("GLB customizer model failed to load", error);
             setLoading("بارگذاری مدل سه‌بعدی انجام نشد.", true);
@@ -2649,7 +2653,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     window.BabaeiCustomizer3D = {
         getPayload: saveLayers,
         isReady: () => Boolean(garment && garmentMeshes.length),
-        setMode: mode => document.querySelector(`[data-mode="${mode}"]`)?.click(),
+        setMode: setStudioView,
         setShirtColor: setColor,
         setVariant: variantId => {
             const variant = variants.find(item => String(item.id) === String(variantId));
