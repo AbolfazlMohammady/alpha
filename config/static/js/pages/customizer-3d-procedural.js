@@ -2637,7 +2637,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             }
         }
 
-        document.querySelectorAll("#studio-selected-actions [data-selected-action]").forEach(button => {
+        document.querySelectorAll("#studio-selected-actions [data-selected-action], .studio-selected-scale-controls [data-selected-action]").forEach(button => {
             const action = button.dataset.selectedAction;
             const requiresEditable = ["flip-x", "flip-y", "scale-up", "scale-down"].includes(action);
             button.disabled = !selected || (requiresEditable && Boolean(selected.layer.locked));
@@ -3809,6 +3809,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     function bindSelectedPanelActions() {
         const actions = document.getElementById("studio-selected-actions");
+        const scaleControls = document.querySelector(".studio-selected-scale-controls");
         if (!actions || actions.dataset.bound === "1") return;
         actions.dataset.bound = "1";
 
@@ -3863,6 +3864,38 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             render();
             render2DPreview();
         });
+
+        if (scaleControls && scaleControls.dataset.bound !== "1") {
+            scaleControls.dataset.bound = "1";
+            scaleControls.addEventListener("click", event => {
+                const button = event.target.closest("[data-selected-action]");
+                if (!button || button.disabled) return;
+
+                const item = layers.get(selectedId);
+                if (!item) return;
+                if (item.layer.locked) {
+                    status("این لایه قفل است؛ برای تغییر آن ابتدا قفل را باز کن.");
+                    return;
+                }
+
+                const factor = button.dataset.selectedAction === "scale-up" ? 1.1 : 0.9;
+                const previousWidth = item.layer.width;
+                const previousHeight = item.layer.height;
+                item.layer.width = THREE.MathUtils.clamp(Number(previousWidth || 0.35) * factor, 0.06, 0.98);
+                item.layer.height = THREE.MathUtils.clamp(Number(previousHeight || 0.25) * factor, 0.04, 0.78);
+
+                const validation = validateLayerPlacement(item, placementForLayer(item));
+                if (!validation.ok) {
+                    item.layer.width = previousWidth;
+                    item.layer.height = previousHeight;
+                    status(validation.message);
+                } else {
+                    project(item, item.surfacePoint || item.position, item.surfaceNormal || item.normal);
+                }
+                sync();
+                render();
+            });
+        }
     }
 
     function bindSceneBackdropPanel() {
