@@ -58,11 +58,7 @@
             popover.hidden = true;
             popover.classList.remove("desktop-tool-popover--left");
             popover.innerHTML = "";
-            // The selected-label tools panel is independent and stays visible
-            // while regular right-side tools are being used.
-            if (currentTool === "label-tools") {
-                closeLeftPopover();
-            }
+            closeLeftPopover();
         };
 
         const open = (title, node, side = "right") => {
@@ -688,42 +684,11 @@
             open("رنگ متن", result.node);
         };
 
-        const openLabelTools = () => {
-            currentTool = "label-tools";
-            log("ACTION: label-tools");
-            const result = clone("#selected-controls", { unhide: true });
-            if (!result) return;
+        // Selected artwork remains editable directly on the canvas.
+        // The floating selected-label tools panel has been removed from desktop UI.
 
-            const originals = result.source.querySelectorAll("[data-action]");
-            result.node.querySelectorAll("[data-action]").forEach((button, index) => {
-                button.addEventListener("click", event => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    originals[index]?.click();
-                });
-            });
-
-            leftPopover.innerHTML = "";
-            const title = document.createElement("div");
-            title.className = "desktop-tool-popover__title";
-            const titleText = document.createElement("span");
-            titleText.textContent = "ابزارهای لیبل";
-            title.append(titleText);
-            leftPopover.append(title, result.node);
-            leftPopover.hidden = false;
-            log("LEFT LABEL TOOLS OPEN", {
-                hidden: leftPopover.hidden,
-                display: getComputedStyle(leftPopover).display,
-            });
-        };
-
-        document.addEventListener("babaei:selection-changed", event => {
-            const selected = Boolean(event.detail?.selected);
-            if (selected) {
-                openLabelTools();
-            }
-            // Keep the desktop selected-item tools visible even when nothing is selected.
-            // The controls themselves remain disabled/empty until a layer is selected.
+        document.addEventListener("babaei:selection-changed", () => {
+            closeLeftPopover();
         });
 
         const buttons = dock.querySelectorAll("[data-desktop-tool]");
@@ -754,7 +719,6 @@
                     else if (tool === "garment") openGarmentTypes();
                     else if (tool === "size") openButtons("#premium-size-list", "انتخاب سایز");
                     else if (tool === "text-font") openTextFont();
-                    else if (tool === "label-tools") openLabelTools();
                     else if (tool === "save") {
                         const save = document.getElementById("add-to-cart-design");
                         log("SAVE TARGET", { found: !!save });
@@ -798,11 +762,6 @@
                 return state;
             },
         };
-
-        // Desktop selected-item tools stay visible on the left; they are the direct editing surface.
-        if (window.innerWidth >= 821) {
-            openLabelTools();
-        }
 
         log("READY: desktop tools fully bound");
         log("DEBUG: run BabaeiDesktopToolsDebug.inspect() in console");
