@@ -227,6 +227,43 @@ def test_variant_is_required_if_product_has_variants(product, configured_designe
         validate_design_payload(product, payload)
 
 
+@pytest.mark.parametrize(
+    ("garment_type", "garment_model"),
+    [
+        ("mug", "Glb/mug.glb"),
+        ("long_sleeve", "Glb/long_sleeve_t-_shirt.glb"),
+        ("hoodie", "Glb/Hoodie.glb"),
+        ("tshirt", "Glb/whit_t_shirt.glb"),
+    ],
+)
+def test_supported_3d_product_models_are_preserved_in_design_payload(
+    product, configured_designer, garment_type, garment_model
+):
+    _, area, artwork = configured_designer
+    payload = {
+        "version": 2,
+        "coordinate_space": "garment_body",
+        "garment_type": garment_type,
+        "garment_model": garment_model,
+        "layers": [
+            {
+                "artwork_id": artwork.id,
+                "area_id": area.id,
+                "x": 0.5,
+                "y": 0.5,
+                "width": 0.3,
+                "height": 0.3,
+                "rotation": 0,
+            }
+        ],
+    }
+
+    normalized, _, _ = validate_design_payload(product, payload)
+
+    assert normalized["garment_type"] == garment_type
+    assert normalized["garment_model"] == garment_model
+
+
 def test_designer_page_and_save_endpoint(client, product, configured_designer, django_user_model):
     user = django_user_model.objects.create_user(phone="+989121234584", password="test-pass-123")
     client.force_login(user)
