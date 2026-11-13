@@ -7768,11 +7768,11 @@ body.customizer-page.customizer-mobile-sheet-open .designer-3d-hint {
     }
 }
 
-/* Desktop garment selector: a clean horizontal row, now including hoodie. */
+/* Desktop model selector: a balanced 2×2 grid beside the right tool rail. */
 @media (min-width: 821px) {
     .garment-type-popover {
         min-width: 430px !important;
-        grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+        grid-template-columns: repeat(2,minmax(0,1fr)) !important;
         gap: 9px !important;
     }
 
