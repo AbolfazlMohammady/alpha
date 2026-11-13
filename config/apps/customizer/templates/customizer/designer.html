@@ -250,16 +250,46 @@
                 </div>
                 <span class="studio-layers-panel__count" id="studio-layers-count">۰ لایه</span>
             </header>
+            <div class="studio-layers-panel__list" id="studio-layers-list" role="list"
+                tabindex="0" aria-label="فهرست لایه‌های طراحی">
+                <div class="studio-layers-panel__empty">هنوز طرحی اضافه نکرده‌ای.</div>
+            </div>
             <div class="studio-layers-panel__tabs" role="tablist" aria-label="بخش‌های استودیو">
-                <button type="button" class="is-active" id="studio-tab-layers" role="tab"
-                    aria-selected="true" aria-controls="studio-layers-list" data-studio-panel-tab="layers">لایه‌ها</button>
+                <button type="button" class="is-active" id="studio-tab-selected" role="tab"
+                    aria-selected="true" aria-controls="studio-selected-panel" data-studio-panel-tab="selected">انتخاب‌شده</button>
                 <button type="button" id="studio-tab-scene" role="tab"
                     aria-selected="false" aria-controls="studio-scene-panel" data-studio-panel-tab="scene">صحنه</button>
             </div>
-            <div class="studio-layers-panel__list" id="studio-layers-list" role="tabpanel"
-                aria-labelledby="studio-tab-layers" tabindex="0" aria-label="فهرست لایه‌های طراحی">
-                <div class="studio-layers-panel__empty">هنوز طرحی اضافه نکرده‌ای.</div>
-            </div>
+            <section class="studio-selected-panel" id="studio-selected-panel" role="tabpanel"
+                aria-labelledby="studio-tab-selected" tabindex="0">
+                <header class="studio-selected-panel__header">
+                    <div>
+                        <span class="studio-selected-panel__eyebrow">SELECTED DESIGN</span>
+                        <h3>نمای دوبعدی</h3>
+                    </div>
+                    <span class="studio-selected-panel__side" id="studio-selected-side">—</span>
+                </header>
+                <div class="studio-selected-preview-wrap">
+                    <canvas id="studio-selected-preview" aria-label="پیش‌نمایش دوبعدی لایه‌های انتخاب‌شده"></canvas>
+                    <div class="studio-selected-preview-empty" id="studio-selected-preview-empty">برای ویرایش، یک لایه را انتخاب کن.</div>
+                </div>
+                <div class="studio-selected-layer-info" id="studio-selected-layer-info">
+                    <strong id="studio-selected-layer-name">لایه‌ای انتخاب نشده</strong>
+                    <small id="studio-selected-layer-meta">از فهرست بالا یک طرح انتخاب کن.</small>
+                </div>
+                <div class="studio-selected-actions" id="studio-selected-actions" role="group" aria-label="عملیات لایه انتخاب‌شده">
+                    <button type="button" data-selected-action="duplicate" title="تکثیر لایه" aria-label="تکثیر لایه" disabled>⧉</button>
+                    <button type="button" data-selected-action="flip-x" title="قرینه افقی" aria-label="قرینه افقی" disabled>⇆</button>
+                    <button type="button" data-selected-action="flip-y" title="قرینه عمودی" aria-label="قرینه عمودی" disabled>⇅</button>
+                    <span class="studio-selected-actions__separator" aria-hidden="true"></span>
+                    <button type="button" data-selected-action="bring-forward" title="انتقال به جلو" aria-label="انتقال به جلو" disabled>↑</button>
+                    <button type="button" data-selected-action="send-back" title="انتقال به عقب" aria-label="انتقال به عقب" disabled>↓</button>
+                    <button type="button" class="is-danger" data-selected-action="delete" title="حذف لایه" aria-label="حذف لایه" disabled>⌫</button>
+                </div>
+                <p class="studio-selected-panel__hint" id="studio-selected-panel-hint">
+                    برای جابه‌جایی، اندازه و چرخش، دستگیره‌های دور لیبل را روی لباس بکش.
+                </p>
+            </section>
             <section class="studio-scene-panel" id="studio-scene-panel" role="tabpanel"
                 aria-labelledby="studio-tab-scene" tabindex="0" hidden>
                 <header class="studio-scene-panel__intro">
