@@ -134,6 +134,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             url,
             template: option.dataset.garmentTemplate || `babaei_${key}_glb_v1`,
             model: option.dataset.modelPath || url,
+            targetSize: Number(option.dataset.garmentTargetSize) || 2.72,
         };
     }
 
@@ -292,8 +293,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const center = box.getCenter(new THREE.Vector3());
         const maxSize = Math.max(size.x, size.y, size.z) || 1;
 
-        const targetHeight = 2.72;
-        rootObject.scale.setScalar(targetHeight / maxSize);
+        // Garments keep the established 2.72 display size. The mug has a
+        // wider, more compact silhouette, so it uses a smaller target size to
+        // match the visual footprint of the other product models.
+        const targetSize = garmentModels[garmentType]?.targetSize || 2.72;
+        rootObject.scale.setScalar(targetSize / maxSize);
         garmentBaseScale.copy(rootObject.scale);
 
         // Responsive proportions must be reversible because the user can
