@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?><svg
  xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:lang="en" xmlns:freesewing="http://freesewing.org/namespaces/freesewing" freesewing="4.10.2" width="1982.87mm" height="2026.81mm" viewBox="0 0 1982.87 2026.81"
 >
-<style type="text/css"> <![CDATA[ 
-
-]]>
-</style>
+<style type="text/css"><![CDATA[
+svg { shape-rendering: geometricPrecision; }
+.fabric:not(.sa) { fill: #fffefa; stroke: #292d35; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+.fabric.sa { fill: none; stroke: #b89a61; stroke-width: 1.05; stroke-dasharray: 6 4; stroke-linejoin: round; }
+text, .text, .note, .help, .mark, .logo, .scalebox { display: none !important; }
+]]></style>
 <defs>
  button="
 <g id="button"
