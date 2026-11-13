@@ -272,6 +272,10 @@ def test_designer_page_and_save_endpoint(client, product, configured_designer, d
     assert b'data-garment-type="mug"' in response.content
     assert b'data-garment-type="long_sleeve"' in response.content
     assert b'data-garment-type="hoodie"' in response.content
+    assert b'id="garment-model-registry" hidden inert' in response.content
+    assert b'data-desktop-tool="garment"' in response.content
+    assert b'data-mobile-action="garment"' in response.content
+    assert b'class="garment-picker"' not in response.content
     assert b"Glb/mug.glb" in response.content
     assert b"Glb/long_sleeve_t-_shirt.glb" in response.content
     assert b"Glb/Hoodie.glb" in response.content
