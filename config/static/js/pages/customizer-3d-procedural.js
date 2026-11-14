@@ -4248,30 +4248,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 return;
             }
 
+            // Empty garment clicks are intentionally left to OrbitControls.
+            // A label drag begins only in the decal-hit branch above; clicking
+            // or dragging blank fabric must rotate/pan the garment, never move a label.
             if (event.button === 1 || event.altKey) return;
-
-            const selectedLayer = layers.get(selectedId);
-            if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
-                const fallbackArea = areaById(selectedLayer.layer.area_id, layerSide(selectedLayer));
-                const printableSurfaceHit = visibleGarmentHits.find(hit => {
-                    const candidateArea = areaForSurfaceSide(surfaceSide(hitNormal(hit)), fallbackArea);
-                    return is3DPrintableArea(candidateArea) && isValidPrintSurface(hit, candidateArea);
-                });
-
-                if (printableSurfaceHit) {
-                    drag = beginLayerTransform(event, selectedLayer, "move");
-                    if (drag) {
-                        controls.enabled = false;
-                        canvas.style.touchAction = "none";
-                        canvas.setPointerCapture(event.pointerId);
-                        sync();
-                        return;
-                    }
-                }
-            }
-
-            // A blank click does not move a label. A real pointer movement is
-            // required; once it starts, previewLayerMove projects onto the live surface hit.
         });
 
         canvas.addEventListener("pointermove", event => {
