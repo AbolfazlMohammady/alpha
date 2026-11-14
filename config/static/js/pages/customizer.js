@@ -362,6 +362,9 @@
     }
 
     async function renderCanvas() {
+        // The 3D Studio renderer owns #designer-canvas in premium mode.
+        // Do not let the legacy renderer resize/clear that shared canvas.
+        if (has3DStudio) return;
         const token = ++renderToken;
         const view = activeView();
         if (!view) return;
@@ -510,42 +513,44 @@
         return true;
     }
 
-    canvas.addEventListener("pointerdown", (event) => {
-        const layer = hitTestLayer(canvasPoint(event));
-        if (!layer) {
-            selectedLayerId = null;
+    if (!has3DStudio) {
+        canvas.addEventListener("pointerdown", (event) => {
+            const layer = hitTestLayer(canvasPoint(event));
+            if (!layer) {
+                selectedLayerId = null;
+                renderSelection();
+                renderCanvas();
+                return;
+            }
+            selectedLayerId = layer.id;
+            activeAreaId = layer.area_id;
+            dragState = { pointerId: event.pointerId, layer };
+            canvas.setPointerCapture(event.pointerId);
+            canvas.style.cursor = "grabbing";
             renderSelection();
             renderCanvas();
-            return;
-        }
-        selectedLayerId = layer.id;
-        activeAreaId = layer.area_id;
-        dragState = { pointerId: event.pointerId, layer };
-        canvas.setPointerCapture(event.pointerId);
-        canvas.style.cursor = "grabbing";
-        renderSelection();
-        renderCanvas();
-    });
-
-    canvas.addEventListener("pointermove", (event) => {
-        if (!dragState || dragState.pointerId !== event.pointerId) return;
-        updateLayerPosition(dragState.layer, canvasPoint(event));
-        renderCanvas();
-    });
-
-    ["pointerup", "pointercancel"].forEach((type) => canvas.addEventListener(type, (event) => {
-        if (!dragState || dragState.pointerId !== event.pointerId) return;
-        dragState = null;
-        canvas.style.cursor = "default";
-        renderAll();
-    }));
-
-    canvas.addEventListener("wheel", (event) => {
-        event.preventDefault();
-        stageZoom = clamp(stageZoom + (event.deltaY < 0 ? .08 : -.08), .7, 1.5);
-        zoomLabel.textContent = `${Math.round(stageZoom * 100)}%`;
-        renderCanvas();
-    }, { passive: false });
+        });
+    
+        canvas.addEventListener("pointermove", (event) => {
+            if (!dragState || dragState.pointerId !== event.pointerId) return;
+            updateLayerPosition(dragState.layer, canvasPoint(event));
+            renderCanvas();
+        });
+    
+        ["pointerup", "pointercancel"].forEach((type) => canvas.addEventListener(type, (event) => {
+            if (!dragState || dragState.pointerId !== event.pointerId) return;
+            dragState = null;
+            canvas.style.cursor = "default";
+            renderAll();
+        }));
+    
+        canvas.addEventListener("wheel", (event) => {
+            event.preventDefault();
+            stageZoom = clamp(stageZoom + (event.deltaY < 0 ? .08 : -.08), .7, 1.5);
+            zoomLabel.textContent = `${Math.round(stageZoom * 100)}%`;
+            renderCanvas();
+        }, { passive: false });
+    }
 
     if (!has3DStudio) {
         document.querySelectorAll("[data-action]").forEach((button) => button.addEventListener("click", () => {
