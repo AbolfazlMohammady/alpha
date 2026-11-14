@@ -9618,3 +9618,13 @@ body.customizer-page .studio-scene-panel__note {
         opacity: .58;
     }
 }
+
+
+/* Direct 2D artwork movement: let Pointer Events own the gesture instead of browser panning. */
+.designer-2d-stage #designer-canvas {
+    touch-action: none;
+    cursor: grab;
+}
+.designer-2d-stage #designer-canvas:active {
+    cursor: grabbing;
+}
