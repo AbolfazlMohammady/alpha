@@ -1,11 +1,10 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg
- xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:lang="en" xmlns:freesewing="http://freesewing.org/namespaces/freesewing" freesewing="4.10.2" width="1982.87mm" height="2026.81mm" viewBox="0 0 1982.87 2026.81"
->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1334.48mm" height="2162.04mm" viewBox="0 0 1334.48 2162.04">
 <style type="text/css"><![CDATA[
 svg { shape-rendering: geometricPrecision; }
 .fabric:not(.sa) { fill: #fffefa; stroke: #292d35; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
 .fabric.sa { fill: none; stroke: #b89a61; stroke-width: 1.05; stroke-dasharray: 6 4; stroke-linejoin: round; }
-text, .text, .note, .help, .mark, .logo, .scalebox { display: none !important; }
+text:not(.pattern-piece-label), .text, .note, .help, .mark, .logo, .scalebox { display: none !important; }
+.pattern-piece-label { display: block !important; fill: #77747b; font: 18px Arial, sans-serif; letter-spacing: .3px; }
 ]]></style>
 <defs>
  button="
@@ -116,29 +115,23 @@ transform="scale(1)">
   <path d="M 0,0 L 5,5 M 5,0 L 0,5" class="note" transform="scale(1)" />
 </marker>"
 </defs>
-
-
-<!-- Start of group #fs-container -->
-<g id="fs-container">
-
-<!-- Start of group #fs-stack-hugo.front -->
-<g id="fs-stack-hugo.front"  transform="translate(633.1749139256967, 685.3435344534645)">
+<g id="babaei-preview-layout"><g transform="translate(970.77, -632.97)"><g transform="scale(-1, 1)"><g transform="translate(633.1749139256967, 685.3435344534645)">
 
 <!-- Start of group #fs-stack-hugo.front-part-hugo.front -->
-<g id="fs-stack-hugo.front-part-hugo.front"  transform="translate(-91.875, 0)">
-<path  class="contrast help" id="fs-1" d="M 0,280 L 291.6,280" />
-<path  class="contrast help" id="fs-2" d="M 0,550 L 291.6,550" />
-<path  class="fabric" id="fs-3" d="M 0,625.5 L 274.4,625.5 C 274.4,550 291.6,350.9 291.6,350.9 C 275.66,350.9 258.44,336.29 250.45,328.3 L 82.26,22.66 C 64.51,53.12 32.34,69.3 0,69.3 z" />
-<path  class="note help" id="fs-4" d="M 137.2,625.5 L 163.13,580.59 C 163.13,580.59 137.2,565.62 137.2,444 L 0,444" />
-<path  class="fabric sa" id="fs-5" d="M 0,635.5 L 274.4,635.5 L 284.4,625.5 C 284.4,550 301.43,352.9 301.6,350.9 L 291.6,340.9 C 290.31,340.9 289,340.75 287.69,340.48 C 280.05,338.93 272.51,333.97 266.5,329.22 C 262.88,326.36 259.79,323.5 257.52,321.23 L 259.21,323.48 L 91.02,17.84 L 73.62,17.63 C 57.74,44.89 28.92,59.3 0,59.3 L 0,69.3M 0,625.5 L 0,635.5" />
-<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine" id="fs-6" d="M 0,280 L 291.6,280" />
-<text><textPath xlink:href="#fs-6"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine</tspan></textPath>
+<g id="hugo.front-left-fs-stack-hugo.front-part-hugo.front"  transform="translate(-91.875, 0)">
+<path  class="contrast help" id="hugo.front-left-fs-1" d="M 0,280 L 291.6,280" />
+<path  class="contrast help" id="hugo.front-left-fs-2" d="M 0,550 L 291.6,550" />
+<path  class="fabric" id="hugo.front-left-fs-3" d="M 0,625.5 L 274.4,625.5 C 274.4,550 291.6,350.9 291.6,350.9 C 275.66,350.9 258.44,336.29 250.45,328.3 L 82.26,22.66 C 64.51,53.12 32.34,69.3 0,69.3 z" />
+<path  class="note help" id="hugo.front-left-fs-4" d="M 137.2,625.5 L 163.13,580.59 C 163.13,580.59 137.2,565.62 137.2,444 L 0,444" />
+<path  class="fabric sa" id="hugo.front-left-fs-5" d="M 0,635.5 L 274.4,635.5 L 284.4,625.5 C 284.4,550 301.43,352.9 301.6,350.9 L 291.6,340.9 C 290.31,340.9 289,340.75 287.69,340.48 C 280.05,338.93 272.51,333.97 266.5,329.22 C 262.88,326.36 259.79,323.5 257.52,321.23 L 259.21,323.48 L 91.02,17.84 L 73.62,17.63 C 57.74,44.89 28.92,59.3 0,59.3 L 0,69.3M 0,625.5 L 0,635.5" />
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine" id="hugo.front-left-fs-6" d="M 0,280 L 291.6,280" />
+<text><textPath xlink:href="#hugo.front-left-fs-6"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine</tspan></textPath>
 </text>
-<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine" id="fs-7" d="M 0,550 L 291.6,550" />
-<text><textPath xlink:href="#fs-7"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine</tspan></textPath>
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine" id="hugo.front-left-fs-7" d="M 0,550 L 291.6,550" />
+<text><textPath xlink:href="#hugo.front-left-fs-7"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine</tspan></textPath>
 </text>
-<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="fs-8" d="M 0,97.11 L 15,97.11 L 15,597.69 L 0,597.69" />
-<text><textPath xlink:href="#fs-8"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
+<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="hugo.front-left-fs-8" d="M 0,97.11 L 15,97.11 L 15,597.69 L 0,597.69" />
+<text><textPath xlink:href="#hugo.front-left-fs-8"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
 </text>
 <text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="350.9"><tspan>1 </tspan>
 </text>
@@ -154,26 +147,56 @@ transform="scale(1)">
 <use x="166.35" y="175.48" xlink:href="#notch"  transform="translate(166.35, 175.48) scale(1) translate(-166.35, -175.48)"></use>
 </g>
 <!-- end of group #fs-stack-hugo.front-part-hugo.front -->
-</g>
-<!-- end of group #fs-stack-hugo.front -->
+</g></g></g>
+<g transform="translate(-295.56999999999994, -632.97)"><g transform="translate(633.1749139256967, 685.3435344534645)">
 
-<!-- Start of group #fs-stack-hugo.back -->
-<g id="fs-stack-hugo.back"  transform="translate(633.2108901874384, 19.473050544867945)">
+<!-- Start of group #fs-stack-hugo.front-part-hugo.front -->
+<g id="hugo.front-right-fs-stack-hugo.front-part-hugo.front"  transform="translate(-91.875, 0)">
+<path  class="contrast help" id="hugo.front-right-fs-1" d="M 0,280 L 291.6,280" />
+<path  class="contrast help" id="hugo.front-right-fs-2" d="M 0,550 L 291.6,550" />
+<path  class="fabric" id="hugo.front-right-fs-3" d="M 0,625.5 L 274.4,625.5 C 274.4,550 291.6,350.9 291.6,350.9 C 275.66,350.9 258.44,336.29 250.45,328.3 L 82.26,22.66 C 64.51,53.12 32.34,69.3 0,69.3 z" />
+<path  class="note help" id="hugo.front-right-fs-4" d="M 137.2,625.5 L 163.13,580.59 C 163.13,580.59 137.2,565.62 137.2,444 L 0,444" />
+<path  class="fabric sa" id="hugo.front-right-fs-5" d="M 0,635.5 L 274.4,635.5 L 284.4,625.5 C 284.4,550 301.43,352.9 301.6,350.9 L 291.6,340.9 C 290.31,340.9 289,340.75 287.69,340.48 C 280.05,338.93 272.51,333.97 266.5,329.22 C 262.88,326.36 259.79,323.5 257.52,321.23 L 259.21,323.48 L 91.02,17.84 L 73.62,17.63 C 57.74,44.89 28.92,59.3 0,59.3 L 0,69.3M 0,625.5 L 0,635.5" />
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine" id="hugo.front-right-fs-6" d="M 0,280 L 291.6,280" />
+<text><textPath xlink:href="#hugo.front-right-fs-6"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine</tspan></textPath>
+</text>
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine" id="hugo.front-right-fs-7" d="M 0,550 L 291.6,550" />
+<text><textPath xlink:href="#hugo.front-right-fs-7"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine</tspan></textPath>
+</text>
+<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="hugo.front-right-fs-8" d="M 0,97.11 L 15,97.11 L 15,597.69 L 0,597.69" />
+<text><textPath xlink:href="#hugo.front-right-fs-8"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
+</text>
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="350.9"><tspan>1 </tspan>
+</text>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="354.9"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" class="text-lg fill-current font-bold left" x="145.8" y="366.9"><tspan>front </tspan>
+</text>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="374.9"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="382.9"><tspan>plugin-annotations:cut,1,plugin-annotations:onFold,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="145.8" dy="8"> </tspan>
+</text>
+<use x="145.8" y="420.9" xlink:href="#logo"  transform="translate(145.8, 420.9) scale(1) translate(-145.8, -420.9)"></use>
+<use x="166.35" y="175.48" xlink:href="#notch"  transform="translate(166.35, 175.48) scale(1) translate(-166.35, -175.48)"></use>
+</g>
+<!-- end of group #fs-stack-hugo.front-part-hugo.front -->
+</g></g>
+<g transform="translate(1630.01, 46)"><g transform="scale(-1, 1)"><g transform="translate(633.2108901874384, 19.473050544867945)">
 
 <!-- Start of group #fs-stack-hugo.back-part-hugo.back -->
-<g id="fs-stack-hugo.back-part-hugo.back"  transform="translate(-91.875, 0)">
-<path  class="contrast help" id="fs-9" d="M 0,280 L 291.6,280" />
-<path  class="contrast help" id="fs-10" d="M 0,550 L 291.6,550" />
-<path  class="fabric" id="fs-11" d="M 0,625.5 L 274.4,625.5 C 274.4,550 291.6,350.9 291.6,350.9 C 275.66,350.9 258.44,336.29 250.45,328.3 L 67.67,14.23 C 40.35,21 0,21 0,21 z" />
-<path  class="fabric sa" id="fs-12" d="M 0,635.5 L 274.4,635.5 L 284.4,625.5 C 284.4,550 301.43,352.9 301.6,350.9 L 291.6,340.9 C 290.31,340.9 289,340.75 287.69,340.48 C 280.05,338.93 272.51,333.97 266.5,329.22 C 262.88,326.36 259.79,323.5 257.52,321.23 L 259.09,323.27 L 76.31,9.2 L 65.26,4.53 C 59.25,6.02 52.67,7.15 46.09,8.03 C 23.91,10.98 1.73,10.99 -0.04,11 L 0,21M 0,625.5 L 0,635.5" />
-<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine" id="fs-13" d="M 0,280 L 291.6,280" />
-<text><textPath xlink:href="#fs-13"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine</tspan></textPath>
+<g id="hugo.back-left-fs-stack-hugo.back-part-hugo.back"  transform="translate(-91.875, 0)">
+<path  class="contrast help" id="hugo.back-left-fs-9" d="M 0,280 L 291.6,280" />
+<path  class="contrast help" id="hugo.back-left-fs-10" d="M 0,550 L 291.6,550" />
+<path  class="fabric" id="hugo.back-left-fs-11" d="M 0,625.5 L 274.4,625.5 C 274.4,550 291.6,350.9 291.6,350.9 C 275.66,350.9 258.44,336.29 250.45,328.3 L 67.67,14.23 C 40.35,21 0,21 0,21 z" />
+<path  class="fabric sa" id="hugo.back-left-fs-12" d="M 0,635.5 L 274.4,635.5 L 284.4,625.5 C 284.4,550 301.43,352.9 301.6,350.9 L 291.6,340.9 C 290.31,340.9 289,340.75 287.69,340.48 C 280.05,338.93 272.51,333.97 266.5,329.22 C 262.88,326.36 259.79,323.5 257.52,321.23 L 259.09,323.27 L 76.31,9.2 L 65.26,4.53 C 59.25,6.02 52.67,7.15 46.09,8.03 C 23.91,10.98 1.73,10.99 -0.04,11 L 0,21M 0,625.5 L 0,635.5" />
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine" id="hugo.back-left-fs-13" d="M 0,280 L 291.6,280" />
+<text><textPath xlink:href="#hugo.back-left-fs-13"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine</tspan></textPath>
 </text>
-<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine" id="fs-14" d="M 0,550 L 291.6,550" />
-<text><textPath xlink:href="#fs-14"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine</tspan></textPath>
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine" id="hugo.back-left-fs-14" d="M 0,550 L 291.6,550" />
+<text><textPath xlink:href="#hugo.back-left-fs-14"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine</tspan></textPath>
 </text>
-<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="fs-15" d="M 0,51.23 L 15,51.23 L 15,595.28 L 0,595.28" />
-<text><textPath xlink:href="#fs-15"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
+<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="hugo.back-left-fs-15" d="M 0,51.23 L 15,51.23 L 15,595.28 L 0,595.28" />
+<text><textPath xlink:href="#hugo.back-left-fs-15"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
 </text>
 <text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="350.9"><tspan>2 </tspan>
 </text>
@@ -189,21 +212,50 @@ transform="scale(1)">
 <use x="159.06" y="171.27" xlink:href="#bnotch"  transform="translate(159.06, 171.27) scale(1) translate(-159.06, -171.27)"></use>
 </g>
 <!-- end of group #fs-stack-hugo.back-part-hugo.back -->
-</g>
-<!-- end of group #fs-stack-hugo.back -->
+</g></g></g>
+<g transform="translate(363.6700000000001, 46)"><g transform="translate(633.2108901874384, 19.473050544867945)">
 
-<!-- Start of group #fs-stack-hugo.sleeve -->
-<g id="fs-stack-hugo.sleeve"  transform="translate(258.64995696284836, 398.3304320313436)">
+<!-- Start of group #fs-stack-hugo.back-part-hugo.back -->
+<g id="hugo.back-right-fs-stack-hugo.back-part-hugo.back"  transform="translate(-91.875, 0)">
+<path  class="contrast help" id="hugo.back-right-fs-9" d="M 0,280 L 291.6,280" />
+<path  class="contrast help" id="hugo.back-right-fs-10" d="M 0,550 L 291.6,550" />
+<path  class="fabric" id="hugo.back-right-fs-11" d="M 0,625.5 L 274.4,625.5 C 274.4,550 291.6,350.9 291.6,350.9 C 275.66,350.9 258.44,336.29 250.45,328.3 L 67.67,14.23 C 40.35,21 0,21 0,21 z" />
+<path  class="fabric sa" id="hugo.back-right-fs-12" d="M 0,635.5 L 274.4,635.5 L 284.4,625.5 C 284.4,550 301.43,352.9 301.6,350.9 L 291.6,340.9 C 290.31,340.9 289,340.75 287.69,340.48 C 280.05,338.93 272.51,333.97 266.5,329.22 C 262.88,326.36 259.79,323.5 257.52,321.23 L 259.09,323.27 L 76.31,9.2 L 65.26,4.53 C 59.25,6.02 52.67,7.15 46.09,8.03 C 23.91,10.98 1.73,10.99 -0.04,11 L 0,21M 0,625.5 L 0,635.5" />
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine" id="hugo.back-right-fs-13" d="M 0,280 L 291.6,280" />
+<text><textPath xlink:href="#hugo.back-right-fs-13"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine</tspan></textPath>
+</text>
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine" id="hugo.back-right-fs-14" d="M 0,550 L 291.6,550" />
+<text><textPath xlink:href="#hugo.back-right-fs-14"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine</tspan></textPath>
+</text>
+<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="hugo.back-right-fs-15" d="M 0,51.23 L 15,51.23 L 15,595.28 L 0,595.28" />
+<text><textPath xlink:href="#hugo.back-right-fs-15"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
+</text>
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="350.9"><tspan>2 </tspan>
+</text>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="354.9"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" class="text-lg fill-current font-bold left" x="145.8" y="366.9"><tspan>back </tspan>
+</text>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="374.9"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="382.9"><tspan>plugin-annotations:cut,1,plugin-annotations:onFold,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="145.8" dy="8"> </tspan>
+</text>
+<use x="145.8" y="420.9" xlink:href="#logo"  transform="translate(145.8, 420.9) scale(1) translate(-145.8, -420.9)"></use>
+<use x="159.06" y="171.27" xlink:href="#bnotch"  transform="translate(159.06, 171.27) scale(1) translate(-159.06, -171.27)"></use>
+</g>
+<!-- end of group #fs-stack-hugo.back-part-hugo.back -->
+</g></g>
+<g transform="translate(12, 732.97)"><g transform="translate(258.64995696284836, 398.3304320313436)">
 
 <!-- Start of group #fs-stack-hugo.sleeve-part-hugo.sleeve -->
-<g id="fs-stack-hugo.sleeve-part-hugo.sleeve"  transform="translate(0, 0)">
-<path  class="fabric" id="fs-16" d="M 20.35,-369.34 C 13.92,-358.16 6.87,-350 0,-350 C -8.59,-350 -16.76,-351.04 -24.44,-352.99 C -24.44,-352.99 -45.36,-270.33 -84.26,-193.93 C -123.15,-117.52 -193.33,-29.62 -225.02,0 L -108,418.4 L 108,418.4 L 225.02,0 C 197.11,-18.48 125.4,-105.96 83.1,-194.37 C 48.38,-266.94 20.35,-369.34 20.35,-369.34 z" />
-<path  class="fabric sa" id="fs-17" d="M 11.69,-374.33 C 7.94,-367.82 4.58,-360.17 -0.05,-360 C -7.73,-360 -15.08,-360.93 -21.98,-362.68 L -34.11,-355.51 C -34.59,-353.7 -52.73,-281.95 -87.35,-210.21 C -89.27,-206.23 -91.24,-202.24 -93.26,-198.27 C -99.48,-186.08 -106.62,-173.38 -114.29,-160.69 C -127.56,-138.74 -142.4,-116.78 -157.23,-96.4 C -185.96,-56.95 -214.65,-23.38 -231.85,-7.31 L -234.65,2.69 L -117.63,421.09 L -108,428.4 L 108,428.4 L 117.63,421.09 L 234.65,2.69 L 230.54,-8.34 C 214.34,-19.07 183.13,-53.97 151.74,-98.45 C 130.31,-128.81 108.87,-163.67 92.12,-198.69 C 84.56,-214.48 77.36,-231.61 70.71,-248.73 C 47.07,-309.62 30.41,-370.51 29.99,-372.02 z" />
-<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-18" d="M 0,379.98 L 0,-311.58" />
-<text><textPath xlink:href="#fs-18"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+<g id="hugo.sleeve-left-fs-stack-hugo.sleeve-part-hugo.sleeve"  transform="translate(0, 0)">
+<path  class="fabric" id="hugo.sleeve-left-fs-16" d="M 20.35,-369.34 C 13.92,-358.16 6.87,-350 0,-350 C -8.59,-350 -16.76,-351.04 -24.44,-352.99 C -24.44,-352.99 -45.36,-270.33 -84.26,-193.93 C -123.15,-117.52 -193.33,-29.62 -225.02,0 L -108,418.4 L 108,418.4 L 225.02,0 C 197.11,-18.48 125.4,-105.96 83.1,-194.37 C 48.38,-266.94 20.35,-369.34 20.35,-369.34 z" />
+<path  class="fabric sa" id="hugo.sleeve-left-fs-17" d="M 11.69,-374.33 C 7.94,-367.82 4.58,-360.17 -0.05,-360 C -7.73,-360 -15.08,-360.93 -21.98,-362.68 L -34.11,-355.51 C -34.59,-353.7 -52.73,-281.95 -87.35,-210.21 C -89.27,-206.23 -91.24,-202.24 -93.26,-198.27 C -99.48,-186.08 -106.62,-173.38 -114.29,-160.69 C -127.56,-138.74 -142.4,-116.78 -157.23,-96.4 C -185.96,-56.95 -214.65,-23.38 -231.85,-7.31 L -234.65,2.69 L -117.63,421.09 L -108,428.4 L 108,428.4 L 117.63,421.09 L 234.65,2.69 L 230.54,-8.34 C 214.34,-19.07 183.13,-53.97 151.74,-98.45 C 130.31,-128.81 108.87,-163.67 92.12,-198.69 C 84.56,-214.48 77.36,-231.61 70.71,-248.73 C 47.07,-309.62 30.41,-370.51 29.99,-372.02 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="hugo.sleeve-left-fs-18" d="M 0,379.98 L 0,-311.58" />
+<text><textPath xlink:href="#hugo.sleeve-left-fs-18"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
 </text>
-<path  class="scalebox imperial fill-current" id="fs-19" d="M -50.8,114.6 L -50.8,165.4 L 50.8,165.4 L 50.8,114.6 L -50.8,114.6 z" />
-<path  class="scalebox metric fill-bg" id="fs-20" d="M -50,115 L -50,165 L 50,165 L 50,115 L -50,115 z" />
+<path  class="scalebox imperial fill-current" id="hugo.sleeve-left-fs-19" d="M -50.8,114.6 L -50.8,165.4 L 50.8,165.4 L 50.8,114.6 L -50.8,114.6 z" />
+<path  class="scalebox metric fill-bg" id="hugo.sleeve-left-fs-20" d="M -50,115 L -50,165 L 50,165 L 50,115 L -50,115 z" />
 <text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="0"><tspan>3 </tspan>
 </text>
 <text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="4"><tspan>Friday, Nov 13, 2026 </tspan>
@@ -232,20 +284,57 @@ transform="scale(1)">
 <use x="0" y="-350" xlink:href="#notch"  transform="translate(0, -350) scale(1) translate(0, 350)"></use>
 </g>
 <!-- end of group #fs-stack-hugo.sleeve-part-hugo.sleeve -->
-</g>
-<!-- end of group #fs-stack-hugo.sleeve -->
+</g></g>
+<g transform="translate(998.6, 732.97)"><g transform="scale(-1, 1)"><g transform="translate(258.64995696284836, 398.3304320313436)">
 
-<!-- Start of group #fs-stack-hugo.pocket -->
-<g id="fs-stack-hugo.pocket"  transform="translate(982.8108901874384, -78)">
+<!-- Start of group #fs-stack-hugo.sleeve-part-hugo.sleeve -->
+<g id="hugo.sleeve-right-fs-stack-hugo.sleeve-part-hugo.sleeve"  transform="translate(0, 0)">
+<path  class="fabric" id="hugo.sleeve-right-fs-16" d="M 20.35,-369.34 C 13.92,-358.16 6.87,-350 0,-350 C -8.59,-350 -16.76,-351.04 -24.44,-352.99 C -24.44,-352.99 -45.36,-270.33 -84.26,-193.93 C -123.15,-117.52 -193.33,-29.62 -225.02,0 L -108,418.4 L 108,418.4 L 225.02,0 C 197.11,-18.48 125.4,-105.96 83.1,-194.37 C 48.38,-266.94 20.35,-369.34 20.35,-369.34 z" />
+<path  class="fabric sa" id="hugo.sleeve-right-fs-17" d="M 11.69,-374.33 C 7.94,-367.82 4.58,-360.17 -0.05,-360 C -7.73,-360 -15.08,-360.93 -21.98,-362.68 L -34.11,-355.51 C -34.59,-353.7 -52.73,-281.95 -87.35,-210.21 C -89.27,-206.23 -91.24,-202.24 -93.26,-198.27 C -99.48,-186.08 -106.62,-173.38 -114.29,-160.69 C -127.56,-138.74 -142.4,-116.78 -157.23,-96.4 C -185.96,-56.95 -214.65,-23.38 -231.85,-7.31 L -234.65,2.69 L -117.63,421.09 L -108,428.4 L 108,428.4 L 117.63,421.09 L 234.65,2.69 L 230.54,-8.34 C 214.34,-19.07 183.13,-53.97 151.74,-98.45 C 130.31,-128.81 108.87,-163.67 92.12,-198.69 C 84.56,-214.48 77.36,-231.61 70.71,-248.73 C 47.07,-309.62 30.41,-370.51 29.99,-372.02 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="hugo.sleeve-right-fs-18" d="M 0,379.98 L 0,-311.58" />
+<text><textPath xlink:href="#hugo.sleeve-right-fs-18"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+</text>
+<path  class="scalebox imperial fill-current" id="hugo.sleeve-right-fs-19" d="M -50.8,114.6 L -50.8,165.4 L 50.8,165.4 L 50.8,114.6 L -50.8,114.6 z" />
+<path  class="scalebox metric fill-bg" id="hugo.sleeve-right-fs-20" d="M -50,115 L -50,165 L 50,165 L 50,115 L -50,115 z" />
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="0"><tspan>3 </tspan>
+</text>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="4"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" class="text-lg fill-current font-bold left" x="0" y="16"><tspan>sleeve </tspan>
+</text>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="24"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="32"><tspan>plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="0" dy="8"> </tspan>
+</text>
+<text  class="text-xs bold" x="-45" y="125"><tspan>FreeSewing </tspan>
+</text>
+<text  class="text bold" x="-45" y="135"><tspan>Hugo hoodie v4.10.2 </tspan>
+</text>
+<text  class="text-xs" x="-45" y="147"><tspan>plugin-annotations:supportFreeSewingBecomeAPatron </tspan>
+</text>
+<text  class="text-sm fill-note bold" x="-45" y="152"><tspan>FreeSewing.org/patrons/join </tspan>
+</text>
+<text  class="text-xs center" x="0" y="160"><tspan>plugin-annotations:theWhiteInsideOfThisBoxShouldMeasure 10cm x 5cm </tspan>
+</text>
+<text  class="text-xs center" x="0" y="164"><tspan>plugin-annotations:theBlackOutsideOfThisBoxShouldMeasure 4&#8220; x 2&#8220; </tspan>
+</text>
+<use x="0" y="70" xlink:href="#logo"  transform="translate(0, 70) scale(1) translate(0, -70)"></use>
+<use x="-86.22" y="-190.1" xlink:href="#notch"  transform="translate(-86.22, -190.1) scale(1) translate(86.22, 190.1)"></use>
+<use x="81.27" y="-198.24" xlink:href="#bnotch"  transform="translate(81.27, -198.24) scale(1) translate(-81.27, 198.24)"></use>
+<use x="0" y="-350" xlink:href="#notch"  transform="translate(0, -350) scale(1) translate(0, 350)"></use>
+</g>
+<!-- end of group #fs-stack-hugo.sleeve-part-hugo.sleeve -->
+</g></g></g>
+<g transform="translate(47.789999999999964, 400.97)"><g transform="translate(982.8108901874384, -78)">
 
 <!-- Start of group #fs-stack-hugo.pocket-part-hugo.pocket -->
-<g id="fs-stack-hugo.pocket-part-hugo.pocket"  transform="translate(-91.875, 0)">
-<path  class="fabric" id="fs-21" d="M 137.2,625.5 L 163.13,580.59 C 163.13,580.59 137.2,565.62 137.2,444 L 0,444 L 0,625.5 L 137.2,625.5 z" />
-<path  class="fabric" id="fs-21" d="M 137.2,625.5 L 163.13,580.59 C 163.13,580.59 137.2,565.62 137.2,444 L 0,444 L 0,625.5 L 137.2,625.5 z" />
-<path  class=" fabric help note dashed" id="fs-22" d="M 150.31,602.79 L 146.51,600.49 C 144.74,599.02 111.27,588.15 111.27,444" />
-<path  class="fabric sa" id="fs-23" d="M 0,635.5 L 137.2,635.5 L 145.86,630.5 L 171.79,585.59 L 169.54,572.91 C 168.08,571.7 147.2,556.93 147.2,444 L 137.2,434 L 0,434 L 0,444M 0,625.5 L 0,635.5" />
-<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="fs-24" d="M 0,616.42 L 15,616.42 L 15,453.08 L 0,453.08" />
-<text><textPath xlink:href="#fs-24"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
+<g id="hugo.pocket-piece-fs-stack-hugo.pocket-part-hugo.pocket"  transform="translate(-91.875, 0)">
+<path  class="fabric" id="hugo.pocket-piece-fs-21" d="M 137.2,625.5 L 163.13,580.59 C 163.13,580.59 137.2,565.62 137.2,444 L 0,444 L 0,625.5 L 137.2,625.5 z" />
+<path  class="fabric" id="hugo.pocket-piece-fs-21" d="M 137.2,625.5 L 163.13,580.59 C 163.13,580.59 137.2,565.62 137.2,444 L 0,444 L 0,625.5 L 137.2,625.5 z" />
+<path  class=" fabric help note dashed" id="hugo.pocket-piece-fs-22" d="M 150.31,602.79 L 146.51,600.49 C 144.74,599.02 111.27,588.15 111.27,444" />
+<path  class="fabric sa" id="hugo.pocket-piece-fs-23" d="M 0,635.5 L 137.2,635.5 L 145.86,630.5 L 171.79,585.59 L 169.54,572.91 C 168.08,571.7 147.2,556.93 147.2,444 L 137.2,434 L 0,434 L 0,444M 0,625.5 L 0,635.5" />
+<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="hugo.pocket-piece-fs-24" d="M 0,616.42 L 15,616.42 L 15,453.08 L 0,453.08" />
+<text><textPath xlink:href="#hugo.pocket-piece-fs-24"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
 </text>
 <text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 68.60000000000004 534.75)" x="68.6" y="534.75"><tspan>4 </tspan>
 </text>
@@ -259,17 +348,14 @@ transform="scale(1)">
 </text>
 </g>
 <!-- end of group #fs-stack-hugo.pocket-part-hugo.pocket -->
-</g>
-<!-- end of group #fs-stack-hugo.pocket -->
-
-<!-- Start of group #fs-stack-hugo.pocketFacing -->
-<g id="fs-stack-hugo.pocketFacing"  transform="translate(1420.5148418386848, -330.711435497009)">
+</g></g>
+<g transform="translate(-1495.79, 1540.41)"><g transform="translate(1420.5148418386848, -330.711435497009)">
 
 <!-- Start of group #fs-stack-hugo.pocketFacing-part-hugo.pocketFacing -->
-<g id="fs-stack-hugo.pocketFacing-part-hugo.pocketFacing"  transform="translate(-91.875, 0)">
-<path  class=" fabric help note dashed" id="fs-25" d="M 150.31,602.79 L 146.51,600.49 C 144.74,599.02 111.27,588.15 111.27,444" />
-<path  class="fabric" id="fs-26" d="M 150.31,602.79 L 146.51,600.49 C 144.74,599.02 111.27,588.15 111.27,444 L 137.2,444 C 137.2,565.62 163.13,580.59 163.13,580.59 L 150.31,602.79 z" />
-<path  class="fabric sa" id="fs-27" d="M 111.27,434 L 137.2,434 L 147.2,444 C 147.2,504.94 153.32,538.02 159.63,555.88 C 164.41,569.39 168.95,572.42 169.54,572.91 L 171.79,585.59 L 158.97,607.79 L 150.31,602.79M 111.27,444 L 111.27,434" />
+<g id="hugo.pocketFacing-piece-fs-stack-hugo.pocketFacing-part-hugo.pocketFacing"  transform="translate(-91.875, 0)">
+<path  class=" fabric help note dashed" id="hugo.pocketFacing-piece-fs-25" d="M 150.31,602.79 L 146.51,600.49 C 144.74,599.02 111.27,588.15 111.27,444" />
+<path  class="fabric" id="hugo.pocketFacing-piece-fs-26" d="M 150.31,602.79 L 146.51,600.49 C 144.74,599.02 111.27,588.15 111.27,444 L 137.2,444 C 137.2,565.62 163.13,580.59 163.13,580.59 L 150.31,602.79 z" />
+<path  class="fabric sa" id="hugo.pocketFacing-piece-fs-27" d="M 111.27,434 L 137.2,434 L 147.2,444 C 147.2,504.94 153.32,538.02 159.63,555.88 C 164.41,569.39 168.95,572.42 169.54,572.91 L 171.79,585.59 L 158.97,607.79 L 150.31,602.79M 111.27,444 L 111.27,434" />
 <text  class="text-4xl fill-note font-bold center" transform="matrix(0.666, 0, 0, 0.666, 45.824799999999996, 188.91725676083178) rotate(0 137.20000000000002 565.6205292240473)" x="137.2" y="565.62"><tspan>5 </tspan>
 </text>
 <text  class="text-sm fill-current center" transform="matrix(0.666, 0, 0, 0.666, 45.824799999999996, 188.91725676083178) rotate(0 137.20000000000002 565.6205292240473)" x="137.2" y="569.62"><tspan>Friday, Nov 13, 2026 </tspan>
@@ -282,18 +368,15 @@ transform="scale(1)">
 </text>
 </g>
 <!-- end of group #fs-stack-hugo.pocketFacing-part-hugo.pocketFacing -->
-</g>
-<!-- end of group #fs-stack-hugo.pocketFacing -->
-
-<!-- Start of group #fs-stack-library.hoodSide -->
-<g id="fs-stack-library.hoodSide"  transform="translate(561.4943817447962, 1378.8435344534646)">
+</g></g>
+<g transform="translate(-388.78, 274.8600000000001)"><g transform="translate(561.4943817447962, 1378.8435344534646)">
 
 <!-- Start of group #fs-stack-library.hoodSide-part-library.hoodSide -->
-<g id="fs-stack-library.hoodSide-part-library.hoodSide"  transform="translate(0, 0)">
-<path  class="fabric" id="fs-28" d="M 220.98,319.05 C 220.98,290.55 197.72,298.76 192.48,270.75 C 187.23,242.74 163.21,123.49 220.98,54.15 C 220.98,54.15 158.03,0 95.08,0 C -94.44,0 28.5,270.75 28.5,270.75 C 110.49,270.75 110.49,319.05 220.98,319.05 z" />
-<path  class="fabric sa" id="fs-29" d="M 220.98,329.05 C 133.04,329.05 113.74,299.38 69.66,286.24 C 58.35,282.87 45.25,280.75 28.5,280.75 L 19.36,274.8 C 18.7,273.32 -54.09,108.42 -0.55,31.63 C 16.69,6.9 46.19,-10 95.08,-10 C 128.74,-10 162.05,4.1 186.91,18.42 C 210.68,32.11 226.59,45.81 227.38,46.47 L 228.66,60.55 C 209.42,83.64 199.99,112.67 195.83,141.61 C 193.84,155.45 193.07,169.3 193.07,182.54 C 193.07,206.49 195.59,228.46 198.11,244.93 C 199.75,255.6 201.38,264.01 202.36,269.24 C 205.56,286.29 217.62,287.33 223.83,295.35 C 227.89,300.61 230.98,307.55 230.98,319.05 z" />
-<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-30" d="M 95.08,271.18 L 95.08,14.27" />
-<text><textPath xlink:href="#fs-30"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+<g id="library.hoodSide-piece-fs-stack-library.hoodSide-part-library.hoodSide"  transform="translate(0, 0)">
+<path  class="fabric" id="library.hoodSide-piece-fs-28" d="M 220.98,319.05 C 220.98,290.55 197.72,298.76 192.48,270.75 C 187.23,242.74 163.21,123.49 220.98,54.15 C 220.98,54.15 158.03,0 95.08,0 C -94.44,0 28.5,270.75 28.5,270.75 C 110.49,270.75 110.49,319.05 220.98,319.05 z" />
+<path  class="fabric sa" id="library.hoodSide-piece-fs-29" d="M 220.98,329.05 C 133.04,329.05 113.74,299.38 69.66,286.24 C 58.35,282.87 45.25,280.75 28.5,280.75 L 19.36,274.8 C 18.7,273.32 -54.09,108.42 -0.55,31.63 C 16.69,6.9 46.19,-10 95.08,-10 C 128.74,-10 162.05,4.1 186.91,18.42 C 210.68,32.11 226.59,45.81 227.38,46.47 L 228.66,60.55 C 209.42,83.64 199.99,112.67 195.83,141.61 C 193.84,155.45 193.07,169.3 193.07,182.54 C 193.07,206.49 195.59,228.46 198.11,244.93 C 199.75,255.6 201.38,264.01 202.36,269.24 C 205.56,286.29 217.62,287.33 223.83,295.35 C 227.89,300.61 230.98,307.55 230.98,319.05 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="library.hoodSide-piece-fs-30" d="M 95.08,271.18 L 95.08,14.27" />
+<text><textPath xlink:href="#library.hoodSide-piece-fs-30"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
 </text>
 <text  class="text-4xl fill-note font-bold center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 95.08344631036059 67.6875)" x="95.08" y="67.69"><tspan>6 </tspan>
 </text>
@@ -310,18 +393,15 @@ transform="scale(1)">
 <use x="95.08" y="180.32" xlink:href="#logo"  transform="translate(95.08, 180.32) scale(1) translate(-95.08, -180.32)"></use>
 </g>
 <!-- end of group #fs-stack-library.hoodSide-part-library.hoodSide -->
-</g>
-<!-- end of group #fs-stack-library.hoodSide -->
-
-<!-- Start of group #fs-stack-library.hoodCenter -->
-<g id="fs-stack-library.hoodCenter"  transform="translate(900.9358901874384, 34)">
+</g></g>
+<g transform="translate(-431.2500000000001, 1619.7)"><g transform="translate(900.9358901874384, 34)">
 
 <!-- Start of group #fs-stack-library.hoodCenter-part-library.hoodCenter -->
-<g id="fs-stack-library.hoodCenter-part-library.hoodCenter"  transform="translate(0, 0)">
-<path  class="fabric" id="fs-31" d="M 0,0 L 0,57 L 480.98,57 L 480.98,0 L 0,0 z" />
-<path  class="fabric sa" id="fs-32" d="M -10,0 L -10,57 L 0,67 L 480.98,67 L 490.98,57 L 490.98,0 L 480.98,-10 L 0,-10 z" />
-<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-33" d="M 24.05,28.5 L 456.93,28.5" />
-<text><textPath xlink:href="#fs-33"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+<g id="library.hoodCenter-piece-fs-stack-library.hoodCenter-part-library.hoodCenter"  transform="translate(0, 0)">
+<path  class="fabric" id="library.hoodCenter-piece-fs-31" d="M 0,0 L 0,57 L 480.98,57 L 480.98,0 L 0,0 z" />
+<path  class="fabric sa" id="library.hoodCenter-piece-fs-32" d="M -10,0 L -10,57 L 0,67 L 480.98,67 L 490.98,57 L 490.98,0 L 480.98,-10 L 0,-10 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="library.hoodCenter-piece-fs-33" d="M 24.05,28.5 L 456.93,28.5" />
+<text><textPath xlink:href="#library.hoodCenter-piece-fs-33"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
 </text>
 <text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 240.48769011133743 28.5)" x="240.49" y="28.5"><tspan>7 </tspan>
 </text>
@@ -335,68 +415,15 @@ transform="scale(1)">
 </text>
 </g>
 <!-- end of group #fs-stack-library.hoodCenter-part-library.hoodCenter -->
-</g>
-<!-- end of group #fs-stack-library.hoodCenter -->
-
-<!-- Start of group #fs-stack-hugo.waistband -->
-<g id="fs-stack-hugo.waistband"  transform="translate(34, 884.7263692674937)">
-
-<!-- Start of group #fs-stack-hugo.waistband-part-hugo.waistband -->
-<g id="fs-stack-hugo.waistband-part-hugo.waistband"  transform="translate(0, 0)">
-<path  class="various" id="fs-34" d="M 0,0 L 0,1108.08 L 139,1108.08 L 139,0 z" />
-<path  class="various sa" id="fs-35" d="M -10,0 L -10,1108.08 L 0,1118.08 L 139,1118.08 L 149,1108.08 L 149,0 L 139,-10 L 0,-10 z" />
-<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-36" d="M 14.65,23.49 L 124.35,23.49" />
-<text><textPath xlink:href="#fs-36"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
-</text>
-<text  class="text-4xl fill-note font-bold center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 69.50000000000031 554.0400000000001)" x="69.5" y="554.04"><tspan>8 </tspan>
-</text>
-<text  class="text-sm fill-current center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 69.50000000000031 554.0400000000001)" x="69.5" y="558.04"><tspan>Friday, Nov 13, 2026 </tspan>
-</text>
-<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 69.50000000000031 554.0400000000001)" class="text-lg fill-current font-bold center" x="69.5" y="570.04"><tspan>waistband </tspan>
-</text>
-<text  class="fill-note center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 69.50000000000031 554.0400000000001)" x="69.5" y="578.04"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
-</text>
-<text  class="text-md fill-current center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 69.50000000000031 554.0400000000001)" x="69.5" y="586.04"><tspan>plugin-annotations:cut,1,plugin-annotations:from,plugin-annotations:ribbing,</tspan><tspan x="69.5" dy="8"> </tspan>
-</text>
-</g>
-<!-- end of group #fs-stack-hugo.waistband-part-hugo.waistband -->
-</g>
-<!-- end of group #fs-stack-hugo.waistband -->
-
-<!-- Start of group #fs-stack-hugo.cuff -->
-<g id="fs-stack-hugo.cuff"  transform="translate(900.9358901874384, 159)">
-
-<!-- Start of group #fs-stack-hugo.cuff-part-hugo.cuff -->
-<g id="fs-stack-hugo.cuff-part-hugo.cuff"  transform="translate(0, 0)">
-<path  class="various" id="fs-37" d="M 0,0 L 0,139 L 205.2,139 L 205.2,0 L 0,0 z" />
-<path  class="various sa" id="fs-38" d="M -10,0 L -10,139 L 0,149 L 205.2,149 L 215.2,139 L 215.2,0 L 205.2,-10 L 0,-10 z" />
-<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-39" d="M 20,132.05 L 20,6.95" />
-<text><textPath xlink:href="#fs-39"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
-</text>
-<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 102.59999999999997 69.49999999999997)" x="102.6" y="69.5"><tspan>9 </tspan>
-</text>
-<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 102.59999999999997 69.49999999999997)" x="102.6" y="73.5"><tspan>Friday, Nov 13, 2026 </tspan>
-</text>
-<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 102.59999999999997 69.49999999999997)" class="text-lg fill-current font-bold left" x="102.6" y="85.5"><tspan>cuff </tspan>
-</text>
-<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 102.59999999999997 69.49999999999997)" x="102.6" y="93.5"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
-</text>
-<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 102.59999999999997 69.49999999999997)" x="102.6" y="101.5"><tspan>plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:ribbing,</tspan><tspan x="102.6" dy="8"> </tspan>
-</text>
-</g>
-<!-- end of group #fs-stack-hugo.cuff-part-hugo.cuff -->
-</g>
-<!-- end of group #fs-stack-hugo.cuff -->
-
-<!-- Start of group #fs-stack-hugo.neckBinding -->
-<g id="fs-stack-hugo.neckBinding"  transform="translate(1449.9112704101133, 34)">
+</g></g>
+<g transform="translate(-1403.91, 2042.75)"><g transform="translate(1449.9112704101133, 34)">
 
 <!-- Start of group #fs-stack-hugo.neckBinding-part-hugo.neckBinding -->
-<g id="fs-stack-hugo.neckBinding-part-hugo.neckBinding"  transform="translate(0, 0)">
-<path  class="fabric" id="fs-40" d="M 0,0 L 0,11.29 L 498.95,11.29 L 498.95,0 L 0,0 z" />
-<path  class="fabric sa" id="fs-41" d="M -10,0 L -10,11.29 L 0,21.29 L 498.95,21.29 L 508.95,11.29 L 508.95,0 L 498.95,-10 L 0,-10 z" />
-<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-42" d="M 51.89,6.77 L 447.06,6.77" />
-<text><textPath xlink:href="#fs-42"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+<g id="hugo.neckBinding-piece-fs-stack-hugo.neckBinding-part-hugo.neckBinding"  transform="translate(0, 0)">
+<path  class="fabric" id="hugo.neckBinding-piece-fs-40" d="M 0,0 L 0,11.29 L 498.95,11.29 L 498.95,0 L 0,0 z" />
+<path  class="fabric sa" id="hugo.neckBinding-piece-fs-41" d="M -10,0 L -10,11.29 L 0,21.29 L 498.95,21.29 L 508.95,11.29 L 508.95,0 L 498.95,-10 L 0,-10 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="hugo.neckBinding-piece-fs-42" d="M 51.89,6.77 L 447.06,6.77" />
+<text><textPath xlink:href="#hugo.neckBinding-piece-fs-42"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
 </text>
 <text  class="text-4xl fill-note font-bold left" transform="matrix(0.4, 0, 0, 0.4, 149.686365309661, 20.319416105383848) rotate(0 249.47727551610168 33.86569350897308)" x="249.48" y="33.87"><tspan>10 </tspan>
 </text>
@@ -410,8 +437,12 @@ transform="scale(1)">
 </text>
 </g>
 <!-- end of group #fs-stack-hugo.neckBinding-part-hugo.neckBinding -->
-</g>
-<!-- end of group #fs-stack-hugo.neckBinding -->
-</g>
-<!-- end of group #fs-container -->
+</g></g><text class="pattern-piece-label" x="337.6" y="56" text-anchor="middle">Front</text>
+<text class="pattern-piece-label" x="996.84" y="56" text-anchor="middle">Back</text>
+<text class="pattern-piece-label" x="505.3" y="1582.7" text-anchor="middle">Sleeves</text>
+<text class="pattern-piece-label" x="1116.495" y="981.47" text-anchor="middle">pocket</text>
+<text class="pattern-piece-label" x="66.26" y="1840.49" text-anchor="middle">pocketFacing</text>
+<text class="pattern-piece-label" x="278.105" y="2005.75" text-anchor="middle">hoodSide</text>
+<text class="pattern-piece-label" x="710.18" y="1743.7" text-anchor="middle">hoodCenter</text>
+<text class="pattern-piece-label" x="295.475" y="2121.04" text-anchor="middle">neckBinding</text></g>
 </svg>
