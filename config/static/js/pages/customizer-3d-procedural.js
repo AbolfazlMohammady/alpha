@@ -3623,6 +3623,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     let previewLayerHitRegions = [];
     let previewPageTransform = null;
     let previewBaseCanvas = null;
+    let active2DDrag = null;
+    let active2DDragFrameId = 0;
+    let pending2DDragEvent = null;
     const previewImageCache = new Map();
     const patternImageCache = new Map();
 
@@ -3740,17 +3743,26 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const areaWidth = Math.max(maxX - minX, 0.0001);
         const areaHeight = Math.max(maxY - minY, 0.0001);
 
-        // surfacePoint is normalized against the GLB's full local bounds. The
-        // generated SVG's area geometry is page-relative. Mixing those two
-        // coordinate systems (the old areaRelativePlacement path) clamped valid
-        // points to the print-zone edges, making graphics appear outside panels.
-        const garmentPoint = normalizedGarmentPoint(item.surfacePoint || item.position);
+        // GLB normalized coordinates describe the whole model; SVG geometry
+        // describes the print panel on the pattern page. Convert through the
+        // same printable-body zone in both directions.
+        const garmentPoint = active2DDrag?.layerId === item.id
+            ? active2DDrag.previewNormalized
+            : normalizedGarmentPoint(item.surfacePoint || item.position);
         const placement = garmentPoint || {
             x: Number(item.layer.x == null ? 0.5 : item.layer.x),
             y: Number(item.layer.y == null ? 0.5 : item.layer.y),
         };
-        const relativeX = THREE.MathUtils.clamp(Number(placement.x), 0, 1);
-        const relativeY = THREE.MathUtils.clamp(Number(placement.y), 0, 1);
+        const zone = printableBodyZone();
+        const zoneWidth = Math.max(zone.maxX - zone.minX, 1e-6);
+        const zoneHeight = Math.max(zone.maxY - zone.minY, 1e-6);
+        const relativeX = THREE.MathUtils.clamp((Number(placement.x) - zone.minX) / zoneWidth, 0, 1);
+        const relativeY = THREE.MathUtils.clamp((Number(placement.y) - zone.minY) / zoneHeight, 0, 1);
+        const printBounds = { minX, maxX, minY, maxY };
+        const printPolygon = geometry.map(point => ({
+            x: Number(point.x),
+            y: Number(point.y),
+        }));
         const clipPoints = geometry.map(point => ({
             x: layout.x + Number(point.x) * layout.width,
             y: layout.y + Number(point.y) * layout.height,
@@ -3765,6 +3777,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             height: Math.max(1, Number(item.layer.height || 0.25) * areaHeight * layout.height),
             rotation: Number(item.layer.rotation || 0) * Math.PI / 180,
             clipPoints,
+            printBounds,
+            printPolygon,
             item,
         };
     }
@@ -4010,20 +4024,137 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         }
     }
 
+    function twoDCanvasPoint(event, canvas) {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width < 1 || rect.height < 1) return null;
+        return {
+            x: (event.clientX - rect.left) * (canvas.width / rect.width),
+            y: (event.clientY - rect.top) * (canvas.height / rect.height),
+        };
+    }
+
+    function normalizedPointFromPatternPointer(point, region, layout) {
+        if (!point || !region?.printBounds || !layout) return null;
+        const pagePoint = {
+            x: (point.x - layout.x) / layout.width,
+            y: (point.y - layout.y) / layout.height,
+        };
+        if (!pointInPolygon(pagePoint, region.printPolygon)) return null;
+
+        const bounds = region.printBounds;
+        const relativeX = (pagePoint.x - bounds.minX) / Math.max(bounds.maxX - bounds.minX, 1e-6);
+        const relativeY = (pagePoint.y - bounds.minY) / Math.max(bounds.maxY - bounds.minY, 1e-6);
+        const zone = printableBodyZone();
+        return {
+            x: THREE.MathUtils.clamp(
+                zone.minX + relativeX * (zone.maxX - zone.minX),
+                zone.minX,
+                zone.maxX
+            ),
+            y: THREE.MathUtils.clamp(
+                zone.minY + relativeY * (zone.maxY - zone.minY),
+                zone.minY,
+                zone.maxY
+            ),
+        };
+    }
+
+    function apply2DCanvasDrag(event) {
+        const active = active2DDrag;
+        const item = active ? layers.get(active.layerId) : null;
+        const canvas = document.getElementById("designer-canvas");
+        if (!active || !item || !canvas || item.layer.locked) return;
+
+        const pointerPoint = twoDCanvasPoint(event, canvas);
+        const candidate = normalizedPointFromPatternPointer(pointerPoint, active.region, active.layout);
+        if (!candidate) return;
+
+        const side = active.side;
+        const area = areaForSurfaceSide(side, areaById(item.layer.area_id, side));
+        const hit = garmentSurfaceHitAtPlacement(candidate.x, candidate.y, side);
+        if (!hit || !isValidPrintSurface(hit, area)) return;
+
+        const normal = hitNormal(hit);
+        const normalized = normalizedGarmentPoint(hit.point);
+        if (!normalized) return;
+
+        const validation = validateLayerPlacement(
+            item,
+            placementForLayer(item, { x: normalized.x, y: normalized.y })
+        );
+        if (!validation.ok) return;
+
+        active.previewNormalized = normalized;
+        active.previewPoint = hit.point.clone();
+        active.previewNormal = normal.clone();
+        active.previewTarget = hit.object;
+        active.moved = true;
+
+        // The 2D artwork is redrawn at the live preview point; the committed
+        // Three.js decal is updated once, on pointerup, to avoid flicker.
+        render2DPreview();
+    }
+
+    function finish2DCanvasDrag(commit = true, finalEvent = null) {
+        const active = active2DDrag;
+        if (!active) return;
+
+        if (active2DDragFrameId) {
+            cancelAnimationFrame(active2DDragFrameId);
+            active2DDragFrameId = 0;
+        }
+        const pending = pending2DDragEvent;
+        pending2DDragEvent = null;
+        if (commit && finalEvent) apply2DCanvasDrag(finalEvent);
+        else if (commit && pending) apply2DCanvasDrag(pending);
+
+        const item = layers.get(active.layerId);
+        active2DDrag = null;
+
+        const canvas = document.getElementById("designer-canvas");
+        if (canvas) canvas.style.cursor = "";
+
+        if (!item) {
+            render2DPreview();
+            return;
+        }
+
+        if (commit && active.moved && active.previewPoint && active.previewNormal && active.previewTarget) {
+            item.layer.x = active.previewNormalized.x;
+            item.layer.y = active.previewNormalized.y;
+            item.layer.side = active.side;
+            item.target = active.previewTarget;
+            item.surfacePoint = active.previewPoint.clone();
+            item.position = active.previewPoint.clone();
+            item.surfaceNormal = active.previewNormal.clone();
+            item.normal = active.previewNormal.clone();
+            project(item, active.previewPoint, active.previewNormal);
+            render();
+            sync();
+        } else {
+            // No valid drag target or pointer cancellation: restore the committed position.
+            render2DPreview();
+            if (!commit) refresh2DSelectionOverlay();
+        }
+    }
+
     function bind2DCanvasSelection() {
         const previewCanvas = document.getElementById("designer-canvas");
         if (!previewCanvas || previewCanvas.dataset.selectionBound === "1") return;
         previewCanvas.dataset.selectionBound = "1";
+
         previewCanvas.addEventListener("pointerdown", event => {
-            if (!previewPageTransform || !previewLayerHitRegions.length) return;
-            const rect = previewCanvas.getBoundingClientRect();
-            if (rect.width < 1 || rect.height < 1) return;
-            const x = (event.clientX - rect.left) * (previewCanvas.width / rect.width);
-            const y = (event.clientY - rect.top) * (previewCanvas.height / rect.height);
+            if (event.button !== 0 || active2DDrag || !previewPageTransform || !previewLayerHitRegions.length) return;
+            const point = twoDCanvasPoint(event, previewCanvas);
+            if (!point) return;
+
             const hit = [...previewLayerHitRegions].reverse().find(region =>
-                pointInsidePreviewRegion(x, y, region)
+                pointInsidePreviewRegion(point.x, point.y, region)
             );
             if (!hit) return;
+
+            const item = layers.get(hit.layerId);
+            if (!item) return;
 
             active2DSide = hit.side;
             document.querySelectorAll("[data-2d-side]").forEach(button => {
@@ -4031,7 +4162,68 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 button.classList.toggle("is-active", active);
                 button.setAttribute("aria-pressed", String(active));
             });
+
             selectLayer(hit.layerId);
+            if (item.layer.locked || item.layer.visible === false) {
+                status("این لایه قفل است؛ برای جابه‌جایی ابتدا قفل آن را باز کن.");
+                event.preventDefault();
+                return;
+            }
+
+            const normalized = normalizedGarmentPoint(item.surfacePoint || item.position) || {
+                x: Number(item.layer.x ?? 0.5),
+                y: Number(item.layer.y ?? 0.5),
+            };
+            active2DDrag = {
+                pointerId: event.pointerId,
+                layerId: item.id,
+                side: hit.side,
+                region: hit,
+                layout: previewPageTransform,
+                startNormalized: { x: normalized.x, y: normalized.y },
+                previewNormalized: { x: normalized.x, y: normalized.y },
+                previewPoint: item.surfacePoint?.clone() || item.position?.clone() || null,
+                previewNormal: item.surfaceNormal?.clone() || item.normal?.clone() || null,
+                previewTarget: item.target || null,
+                moved: false,
+            };
+
+            previewCanvas.style.cursor = "grabbing";
+            try {
+                previewCanvas.setPointerCapture(event.pointerId);
+            } catch (error) {
+                console.warn("2D pointer capture unavailable", error);
+            }
+            event.preventDefault();
+        });
+
+        previewCanvas.addEventListener("pointermove", event => {
+            if (!active2DDrag || active2DDrag.pointerId !== event.pointerId) return;
+            event.preventDefault();
+            pending2DDragEvent = event;
+            if (active2DDragFrameId) return;
+
+            active2DDragFrameId = requestAnimationFrame(() => {
+                active2DDragFrameId = 0;
+                const latest = pending2DDragEvent;
+                pending2DDragEvent = null;
+                if (latest && active2DDrag?.pointerId === latest.pointerId) {
+                    apply2DCanvasDrag(latest);
+                }
+            });
+        });
+
+        previewCanvas.addEventListener("pointerup", event => {
+            if (!active2DDrag || active2DDrag.pointerId !== event.pointerId) return;
+            event.preventDefault();
+            finish2DCanvasDrag(true, event);
+        });
+
+        ["pointercancel", "lostpointercapture"].forEach(type => {
+            previewCanvas.addEventListener(type, event => {
+                if (!active2DDrag || active2DDrag.pointerId !== event.pointerId) return;
+                finish2DCanvasDrag(false);
+            });
         });
     }
 
