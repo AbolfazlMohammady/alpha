@@ -2160,6 +2160,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             visual: captureLayerVisualState(item),
             startSide: layerSide(item),
             startAreaId: item.layer.area_id,
+            startTarget: item.target,
+            startNormal: (item.normal || item.surfaceNormal).clone(),
+            startPosition: item.position?.clone() || item.surfacePoint.clone(),
             lastValidPoint: item.surfacePoint.clone(),
             lastValidNormal: item.surfaceNormal.clone(),
             lastValidTarget: item.target,
@@ -2198,13 +2201,22 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         // A label may cross the garment's side seam while the user rotates
         // around it. Switch the production print area at the same time as the
         // surface hit; do not keep rejecting the back because the old area was front.
-        item.layer.side = nextSide;
-        item.layer.area_id = nextArea.id;
+        const previousTarget = item.target;
+        const previousSide = item.layer.side;
+        const previousAreaId = item.layer.area_id;
         item.target = hitTarget;
 
         // Reproject on the exact cloth hit in this frame using the cached artwork.
         const projected = updateProjectedLayerDuringDrag(item, hitPoint, hitNormalVector);
-        if (!projected) return;
+        if (!projected) {
+            item.target = previousTarget;
+            item.layer.side = previousSide;
+            item.layer.area_id = previousAreaId;
+            return;
+        }
+
+        item.layer.side = nextSide;
+        item.layer.area_id = nextArea.id;
 
         activeDrag.lastValidPoint = hitPoint;
         activeDrag.lastValidNormal = hitNormalVector;
@@ -2285,6 +2297,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             item.layer.rotation = activeDrag.startRotation;
             item.layer.side = activeDrag.startSide;
             item.layer.area_id = activeDrag.startAreaId ?? item.layer.area_id;
+            item.target = activeDrag.startTarget || activeDrag.visual?.target || item.target;
+            item.surfacePoint = activeDrag.startSurfacePoint.clone();
+            item.surfaceNormal = activeDrag.startSurfaceNormal.clone();
+            item.normal = activeDrag.startNormal.clone();
+            item.position = activeDrag.startPosition.clone();
             restoreLayerVisualState(activeDrag.visual);
             render();
             return;
