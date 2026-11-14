@@ -4020,8 +4020,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         // Keep the grabbed point's offset from the artwork center. Both the
         // renderer and the drag mapper use full-garment normalized coordinates.
-        const startRelativeX = THREE.MathUtils.clamp(Number(active.startNormalized.x), 0, 1);
-        const startRelativeY = THREE.MathUtils.clamp(Number(active.startNormalized.y), 0, 1);
+        const startRelativeX = THREE.MathUtils.clamp(
+            (Number(active.startNormalized.x) - bounds.minX) / areaWidth,
+            0,
+            1
+        );
+        const startRelativeY = THREE.MathUtils.clamp(
+            (Number(active.startNormalized.y) - bounds.minY) / areaHeight,
+            0,
+            1
+        );
         const deltaRelativeX = (point.x - active.startPointer.x) / Math.max(layout.width * areaWidth, 1);
         const deltaRelativeY = (point.y - active.startPointer.y) / Math.max(layout.height * areaHeight, 1);
         const relativeX = THREE.MathUtils.clamp(startRelativeX + deltaRelativeX, 0, 1);
