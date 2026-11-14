@@ -9440,3 +9440,23 @@ body.customizer-page .studio-scene-panel__note {
     max-width: none !important;
     max-height: none !important;
 }
+
+
+/* In 3D-only mode, use a centered product viewport similar to the reference editor.
+   Split mode remains full-width so both previews retain their existing proportions. */
+.customizer-stage--premium.stage-shell--3d > .designer-3d-stage:not(.is-hidden) {
+    left: 50% !important;
+    right: auto !important;
+    width: min(100%, 640px) !important;
+    max-width: 640px !important;
+    transform: translateX(-50%) !important;
+}
+@media (max-width: 680px) {
+    .customizer-stage--premium.stage-shell--3d > .designer-3d-stage:not(.is-hidden) {
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        transform: none !important;
+    }
+}
