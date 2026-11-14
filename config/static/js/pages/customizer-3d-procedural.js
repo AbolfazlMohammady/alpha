@@ -219,6 +219,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     let shadowMapDirty = true;
     let resizePending = false;
     let garmentLocalBounds = null;
+    let garmentWorldBounds = null;
     let environmentReady = false;
     let pendingDragEvent = null;
     let dragFrameId = 0;
@@ -386,6 +387,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         rootObject.position.y += 0.02;
 
         const finalBox = new THREE.Box3().setFromObject(rootObject);
+        garmentWorldBounds = finalBox.clone();
         const finalSize = finalBox.getSize(new THREE.Vector3());
         const finalMax = Math.max(finalSize.x, finalSize.y, finalSize.z);
 
@@ -528,6 +530,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         garmentMeshes = [];
         garmentMaterials = [];
         garmentLocalBounds = null;
+        garmentWorldBounds = null;
 
         garment = gltf.scene;
         garment.name = "BabaeiTshirtGLB";
@@ -696,6 +699,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             if (garment) {
                 applyResponsiveGarmentScale();
+                garmentWorldBounds = new THREE.Box3().setFromObject(garment);
             }
 
             renderer.setPixelRatio(
@@ -1026,8 +1030,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (!garment || !item || !placement) return false;
 
         const zone = printableBodyZone();
-        const worldBox = new THREE.Box3().setFromObject(garment);
-        const worldSize = worldBox.getSize(new THREE.Vector3());
+        if (!garmentWorldBounds) {
+            garmentWorldBounds = new THREE.Box3().setFromObject(garment);
+        }
+        const worldSize = garmentWorldBounds.getSize(new THREE.Vector3());
         if (worldSize.x <= 1e-6 || worldSize.y <= 1e-6) return false;
 
         const artworkAspect = Math.max(
