@@ -1001,17 +1001,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
 
-    function labelProjectionDepth(width) {
-        // Long-sleeve fabric is comparatively thin; a deep projector intersects
-        // the opposite/back folds and creates fragmented decals. Keep hoodie and
-        // T-shirt at the proven Babaei depth, with a shallower volume for the
-        // long-sleeve and the curved mug body.
-        if (garmentType === "long_sleeve" && cameraFacingGarmentSide() === "back") {
-            return Math.max(0.09, Math.min(0.12, width * 0.36));
+    function labelProjectionDepth(width, item = null, normal = null) {
+        const localNormal = normal ? garmentLocalNormal(normal) : null;
+        const isLongSleeveBack = garmentType === "long_sleeve" &&
+            localNormal && localNormal.z < -0.35;
+
+        if (isLongSleeveBack) {
+            // This is the only product/side with a projection-depth override.
+            return Math.max(0.085, Math.min(0.11, width * 0.32));
         }
-        if (garmentType === "mug") {
-            return Math.max(0.11, Math.min(0.16, width * 0.45));
-        }
+
         return Math.max(0.24, width * 0.9);
     }
 
@@ -1576,7 +1575,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const size = new THREE.Vector3(
             width,
             width / aspect,
-            labelProjectionDepth(width)
+            labelProjectionDepth(width, item, surfaceNormal)
         );
         const position = surfacePoint.clone().addScaledVector(surfaceNormal, 0.008);
         const geometry = new DecalGeometry(
@@ -1779,7 +1778,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const size = new THREE.Vector3(
             width,
             width / aspect,
-            labelProjectionDepth(width)
+            labelProjectionDepth(width, item, surfaceNormal)
         );
         const geometry = new DecalGeometry(
             target,
