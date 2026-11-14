@@ -1,0 +1,417 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?><svg
+ xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:lang="en" xmlns:freesewing="http://freesewing.org/namespaces/freesewing" freesewing="4.10.2" width="1982.87mm" height="2026.81mm" viewBox="0 0 1982.87 2026.81"
+>
+<style type="text/css"><![CDATA[
+svg { shape-rendering: geometricPrecision; }
+.fabric:not(.sa) { fill: #fffefa; stroke: #292d35; stroke-width: 1.35; stroke-linecap: round; stroke-linejoin: round; }
+.fabric.sa { fill: none; stroke: #b89a61; stroke-width: 1.05; stroke-dasharray: 6 4; stroke-linejoin: round; }
+text, .text, .note, .help, .mark, .logo, .scalebox { display: none !important; }
+]]></style>
+<defs>
+ button="
+<g id="button"
+transform="scale(1)">
+  <circle
+    cx="0" cy="0" r="3.4"
+    class="mark"
+  ></circle>
+  <circle cx="-1" cy="-1" r="0.5" class="no-stroke fill-mark"></circle>
+  <circle cx="1"  cy="-1" r="0.5" class="no-stroke fill-mark"></circle>
+  <circle cx="1"  cy="1"  r="0.5" class="no-stroke fill-mark"></circle>
+  <circle cx="-1" cy="1"  r="0.5" class="no-stroke fill-mark"></circle>
+</g>" buttonhole="
+<g id="buttonhole"
+transform="scale(1)">
+  <path
+    class="mark"
+    d="M -1,-5 L 1,-5 L 1,5 L -1,5 z"
+  ></path>
+</g>" buttonhole-start="
+<g id="buttonhole-start"
+transform="scale(1)">
+  <path
+    class="mark"
+    d="M -1,-10 L 1,-10 L 1,0 L -1,0 z"
+  ></path>
+</g>" buttonhole-end="
+<g id="buttonhole-end"
+transform="scale(1)">
+  <path
+    class="mark"
+    d="M -1,0 L 1,0 L 1,10 L -1,10 z"
+  ></path>
+</g>" snap-stud-grad="
+<radialGradient id="snap-stud-grad" cx="50%" cy="50%" r="50%" fx="50%" fy="50%"
+transform="scale(1)">
+  <stop offset="30%" style="stop-color:rgb(235,235,235); stop-opacity:1"></stop>
+  <stop offset="80%" style="stop-color:rgb(100,100,100);stop-opacity:1"></stop>
+</radialGradient>" snap-stud="
+<g id="snap-stud"
+transform="scale(1)">
+  <circle id="snap-stud-circle-edge" cx="0" cy="0" r="3.4"
+    style="stroke:#666;fill:#dddddd;stroke-width:0.3;"
+  ></circle>
+  <circle id="snap-stud-circle-middle" cx="0" cy="0" r="1.8"
+    style="stroke:none;fill:url(#snap-stud-grad);"
+  ></circle>
+  <path
+    id="snap-stud-lines" style="fill:none;stroke:#666; stroke-width:0.2;"
+    d="M -2,0 L -3,0 M 2,0 L 3,0 M 0,2 L 0,3 M 0,-2 L 0,-3 M 1.5,1.5 L 2.1,2.1 M -1.5,1.5 L -2.1,2.1 M -1.5,-1.5 L -2.1,-2.1 M 1.5,-1.5 L 2.1,-2.1"
+  ></path>
+</g>" snap-socket="
+<g id="snap-socket"
+transform="scale(1)">
+  <circle id="snap-socket-circle-edge" cx="0" cy="0" r="3.4"
+    style="stroke:#666;fill:#bbbbbb;stroke-width:0.3;"
+  ></circle>
+  <circle id="snap-socket-circle-middle" cx="0" cy="0" r="2"
+    style="stroke:#666;fill:#dddddd; stroke-width:0.4;"
+  ></circle>
+  <path
+    style="fill:none;stroke:#666; stroke-width:0.5;"
+    d="M -1.7,-1 L -1.7,1 M 1.7,-1 L 1.7,1" id="snap-socket-lines"
+  ></path>
+</g>" eyelet="
+<g id="eyelet">
+  <circle id="eyelet-circle" cx="0" cy="0" r="3.4" class="no-full stroke-mark mark" stroke-width="1" fill="none" stroke="currentColor">
+  </circle>
+</g>" cutonfoldFrom="
+<marker orient="auto" refY="0" refX="0" id="cutonfoldFrom" style="overflow:visible;" markerWidth="12" markerHeight="8" transform="scale(1)">
+	<path class="note fill-note" d="M 0,0 L 12,-4 C 10,-2 10,2 12,4 z" transform="scale(1)"/>
+</marker>" cutonfoldTo="
+<marker orient="auto" refY="0" refX="0" id="cutonfoldTo" style="overflow:visible;" markerWidth="12" markerHeight="8" transform="scale(1)">
+	<path class="note fill-note" d="M 0,0 L -12,-4 C -10,-2 -10,2 -12,4 z" transform="scale(1)"/>
+</marker>" dimensionFrom="
+<marker orient="auto" refY="0" refX="0" id="dimensionFrom" style="overflow:visible;" markerWidth="12" markerHeight="8">
+	<path class="mark fill-mark" d="M 0,0 L 12,-4 C 10,-2 10,2 12,4 z" transform="scale(1)"/>
+</marker>" dimensionTo="
+<marker orient="auto" refY="0" refX="0" id="dimensionTo" style="overflow:visible;" markerWidth="12" markerHeight="8">
+	<path class="mark fill-mark" d="M 0,0 L -12,-4 C -10,-2 -10,2  -12,4 z" transform="scale(1)"/>
+</marker>" grainlineFrom="
+<marker orient="auto" refY="0" refX="0" id="grainlineFrom" style="overflow:visible;" markerWidth="12" markerHeight="8">
+	<path class="note fill-note" d="M -10,0 L 2,-4 C 0,-2 0,2  2,4 z" transform="scale(1)"/>
+</marker>" grainlineTo="
+<marker orient="auto" refY="0" refX="0" id="grainlineTo" style="overflow:visible;" markerWidth="12" markerHeight="8">
+	<path class="note fill-note" d="M 10,0 L -2,-4 C 0,-2 -2,2  -2,4 z" transform="scale(1)"/>
+</marker>" logo="<g id="logo" transform="scale(2) translate(-12.55 -18)"><path class="logo" fill="currentColor" d="m18.56 0c-0.4945 0.3515-0.469 0.3065-0.8685 0.437-0.916 0.2995-1.7945 0.135-2.837 0.048-0.3135-0.035-0.6245-0.0555-0.928-0.0575-1.5325-0.0105-2.834 0.439-3.0805 1.694-0.4545 0.2755-0.8725 0.609-1.2865 0.943-0.884 0.6975-1.5495 1.55-2.0035 2.5775-0.62 1.5175-0.06 3.146 0.2175 4.684 0.066 0.36 0.135 0.703 0.172 0.8355 0.0525 0.1865 0.145 0.3645 0.2455 0.5245 0.0235 4e-3 0.1475-0.187 0.177-0.2715 0.043-0.123 0.0385-0.3205-0.0085-0.4905-0.104-0.3825-0.203-0.693-0.2115-0.849-0.015-0.293 0.042-0.5635 0.149-0.6975 0.038-0.0475 0.125 0.1975 0.1025 0.2885-0.0265 0.1095-0.0465 0.297-0.038 0.3835 0.0235 0.293 0.0665 0.6065 0.12 0.8805 0.0685 0.3535 0.098 0.5805 0.0855 0.6685-9e-3 0.064-0.039 0.1285-0.154 0.3265-0.1 0.1735-0.152 0.314-0.16 0.438-0.0085 0.121 0.028 0.4235 0.062 0.4975 0.0495 0.1155 0.1985 0.237 0.3285 0.267 0.1245 0.0475 0.187 0.146 0.251 0.2565 0.1555 0.2965 0.2755 0.6575 0.3945 1.2015 0.058 0.2605 0.1065 0.493 0.122 0.615-0.96 1e-3 -2.1895 0.0015-3.3095 0.0015-0.377 6e-3 -1.058-0.171-1.6825-0.212-0.0905-0.977-0.5195-2.112-1.2535-2.178-0.501-0.0455-0.9165 0.145-1.268 0.9365l0.01 0.0425c0.2075-0.1735 0.4265-0.704 1.2155-0.6675 0.606 0.0275 0.808 1.1745 0.868 1.8645-0.369 0.027-0.683 0.1405-0.847 0.424h-0.0035c0 5e-4 0 0.0015 0.0015 0.0025-0.0015 1e-3 -0.0015 2e-3 -0.0015 3e-3h0.0035c0.169 0.2905 0.4945 0.403 0.877 0.4255 0.2555 7.225 7.047 8.157 8.903 8.157 6.924 0 9.348-4.705 9.7125-6.5685 0.1705 0.794-0.3665 1.8055-0.495 2.552 1.4605-1.6885 1.1965-3.312 0.9295-4.945 0.222 0.264 0.5225 0.4275 0.93 0.337-0.2905-0.194-0.6845-0.058-0.9205-0.8765-0.103-0.3535-0.192-0.6185-0.2805-0.841-0.191-0.7165-0.462-1.401-0.795-2.068-0.281-0.7235-0.0955-1.1925-0.1235-1.8135 0.5055 1.667 0.8215 2.1105 1.4115 2.285-1.484-1.788-0.976-4.5565-1.8145-7.0275 0.3795 0.223 0.8125 0.29 1.2735 0.0175-0.446-0.127-0.891 0.2085-1.531-0.732-0.5405-1.0515-1.3235-1.828-2.2735-2.513-0.509-0.332-1.074-0.555-1.642-0.762 0.5785-0.145 1.2245-0.66 1.2545-1.0445zm-0.9705 5.5535c0.762 0.278 1.602 1.334 1.5925 2.37v0.058c-0.0205 1.407-0.66 2.1635-0.633 3.1005 0.0345 1.1035 0.5095 1.4885 0.604 1.6725-0.162-0.6805-0.257-1.5365-0.043-2.2145 0.275-0.872 0.5525-1.594 0.5325-2.277-0.01-0.16-0.078-0.7585-0.1235-1.0235 0.817 1.179-0.177 2.8935 0.109 4.0155 0.497 1.9545 2.7245 2.2015 2.0615 6.1395-0.5835 3.462-4.5815 6.0895-8.6795 6.0895-3.038 0-8.3025-1.6815-8.5625-7.646 0.6175-0.044 1.2815-0.216 1.654-0.21 1.126 0 2.412 5e-4 3.381 1e-3 0.182 0.821 0.3185 1.019 1.009 1.566 0.768 0.604 0.947 0.6775 2.083 0.6885 1.1365 0.0115 1.4735-0.232 2.576-1.275 0.238-0.279 0.341-0.6445 0.4565-0.988 1.134-0.0105 1.961-0.0305 2.7745-0.0685 0.8285-0.0375 0.9455 0 2.2805-0.1375-1.335-0.1375-1.452-0.1-2.2805-0.138-0.792-0.036-1.594-0.0565-2.6785-0.0665 0.091-0.4085 0.221-0.8075 0.3595-1.202 0.0855-0.2325 0.186-0.459 0.289-0.6845l0.1125-0.035c0.217-0.077 0.409-0.242 0.4855-0.465 0.0985-0.2955 0.0285-0.6275-0.162-0.869-0.0655-0.0905-0.147-0.206-0.1805-0.257-0.1005-0.159-0.103-0.2475-0.018-0.8385 0.0715-0.495 0.0795-0.754 0.03-1.005-0.01-0.1435-0.011-0.4385-0.0155-0.518 0.038 0.021 0.1205 0.209 0.204 0.4635 0.083 0.2555 0.0965 0.3085 0.1155 0.526 0.021 0.247-0.0715 0.43-0.1475 0.7985-0.038 0.19-0.0715 0.3665-0.0715 0.3905 0 0.0255 0.018 0.0795 0.037 0.1215 0.0445 0.094 0.128 0.226 0.1435 0.226 0.2725-0.3005 0.4325-0.6715 0.575-1.048 0.15-0.426 0.194-0.878 0.299-1.3165 0.085-0.382 0.183-0.7645 0.2135-1.1565 0.0615-0.765 0.0255-1.305-0.1435-2.102-0.0405-0.18-0.1575-0.5235-0.239-0.6855zm-2.68 3.7685c0.2925-0.0035 0.582 0.032 0.8575 0.1115 0.3745 0.1435 0.427 0.478 0.496 0.8535 0.0385 0.24 0.037 0.4125-0.0065 0.6945-0.0305 0.409-0.193 0.7255-0.548 0.948-0.5355 0.099-1.108 0.1945-1.562-0.16-0.381-0.525-0.6105-1.1885-0.523-1.8355 0.0555-0.2655 0.179-0.4035 0.433-0.486 0.2735-0.0785 0.563-0.1215 0.853-0.126zm-4.4415 0.0475c0.2735-0.0025 0.55 0.0265 0.702 0.1235 0.6525 0.4415 0.443 1.16 0.185 1.7905-0.3755 0.8255-1.1875 0.795-1.9745 0.7885-0.4355-0.1275-0.4755-0.4845-0.5385-0.866-0.054-0.3685-0.169-0.7635-0.073-1.134 0.2465-0.596 1.1475-0.6645 1.699-0.7025zm9.9515 0.103c0.0035 1.5865 0.2745 2.366 0.8185 3.4895-0.3205-0.6115-0.7785-0.9595-0.949-1.6905-0.326-1.4115 0.0255-1.3325 0.1305-1.799zm-7.9065 1.149c0.086 0.087 0.1275 0.207 0.202 0.3025 0.0575-0.0985 0.1165-0.1965 0.1905-0.284 0.0385 1e-3 0.0855 0.077 0.128 0.213 0.182 0.503 0.2175 1.0565 0.4535 1.54 0.2205 0.35-0.0805 0.554-0.411 0.57-0.241-5e-4 -0.343-0.165-0.4845-0.328-0.0365 0.1065-0.106 0.175-0.189 0.247-0.211 0.177-0.6245 0.1115-0.6885-0.1675 0.085-0.533 0.3565-1.0225 0.5345-1.5335 0.0885-0.1865 0.0895-0.3295 0.2645-0.5595zm-3.096 2.6925c0.1065 0 0.399 0.1985 0.4585 0.3105 0.041 0.0745 0.1345 0.3645 0.141 0.435 0.0105 0.084-0.015 0.283-0.041 0.337-0.019 0.0385-0.0335 0.044-0.0555 0.019-0.0185-0.021-0.2635-0.491-0.42-0.802-0.123-0.249-0.136-0.2995-0.083-0.2995zm6.111 0.1555c4e-3 5e-4 0.01 2e-3 0.0155 0.0035 0.033 0.0135 0.01 0.1305-0.114 0.5555-0.0235 0.128-0.0805 0.229-0.164 0.313-0.0275 0-0.04-0.032-0.083-0.2095-0.0365-0.1515-0.0405-0.2865-0.015-0.4075 0.044-0.1515 0.222-0.198 0.3605-0.255zm-0.7415 0.9265c0.0105-2e-3 0.0205 0.0035 0.0335 0.014 0.045 0.0315 0.0515 0.1145 0.0215 0.277-0.0365 0.209-0.0445 0.232-0.0985 0.2535-0.0235 0.0105-0.0655 0.018-0.0935 0.018-0.0505-9e-3 -0.0635-0.05-0.0515-0.112 0-0.13 0.038-0.243 0.124-0.3765 0.0325-0.05 0.049-0.0715 0.0645-0.074zm-4.3165 0.0095c0.0345 0 0.1385 0.075 0.177 0.127 0.043 0.055 0.092 0.3825 0.0645 0.439-0.0315 0.071-0.1855 0.0355-0.228-0.053-0.026-0.053-0.0875-0.339-0.0875-0.407 0-0.063 0.0305-0.106 0.074-0.106zm3.9455 0.0865c0.042 0.06 0.053 0.137 0.044 0.306l-0.0085 0.154-0.044 0.044c-0.0265 0.0245-0.0715 0.0545-0.0985 0.067-0.0595 0.028-0.105 0.0305-0.1135 8e-3 -0.01-0.03 7e-3 -0.221 0.0255-0.2855 0.0215-0.0665 0.118-0.265 0.15-0.307 0.0145-0.0385 0.0315 0.0095 0.045 0.0135zm-2.5105-9e-3c0.0905 0.023 0.1305 0.1045 0.18 0.1785l0.0335 0.066-0.047 0.1635c-0.025 0.09-0.0515 0.171-0.0595 0.18-9e-3 0.01-0.0425 0.015-0.092 0.0145-0.132-0.0035-0.147-9e-3 -0.1825-0.063l-0.033-0.049 0.028-0.1375c0.0405-0.198 0.06-0.2575 0.105-0.3085 0.0235-0.0275 0.047-0.0425 0.0675-0.0445zm-0.8355 0.1415 0.0745 0.0745 0.0125 0.1685c0.0065 0.092 0.0095 0.1775 0.0045 0.188-0.0045 0.0145-0.0315 0.0185-0.115 0.0185h-0.1085c-0.058-0.0635-0.076-0.141-0.1005-0.221-0.057-0.2405-0.057-0.35 2e-3 -0.3645 0.0965 6e-3 0.16 0.076 0.2305 0.136zm2.9-0.1155c0.118 0.0315 0.0945 0.219 0.094 0.353-9e-3 0.217-0.0175 0.262-0.0455 0.29-0.0485 0.0485-0.1835 0.0215-0.249-0.0505-0.0215-0.026-0.0235-0.034-0.0065-0.1395 0.0195-0.1285 0.0445-0.2085 0.1-0.3185 0.0405-0.079 0.0785-0.1285 0.107-0.1345zm-2.663 0.01c0.0065-5e-4 0.017 0 0.027 1e-3 0.075 6e-3 0.145 0.055 0.207 0.145l0.05 0.0735c0.0045 0.1205 0 0.2475-0.0215 0.3595-0.013 0.0065-0.067 0.0165-0.12 0.0215-0.092 0.0085-0.1005 0.0065-0.1325-0.0215-0.0445-0.038-0.057-0.1085-0.068-0.3425-0.0065-0.191-2e-3 -0.2335 0.058-0.2365zm1.1345 0.04c0.0805 0.017 0.1315 0.06 0.154 0.1305 0.018 0.0605 0.029 0.399 0.0115 0.4225-6e-3 0.01-0.044 0.0225-0.0875 0.028-0.162 0.0205-0.305 5e-3 -0.319-0.0335-0.018-0.044 0.1025-0.48 0.147-0.534 0.019-0.042 0.065-0.0095 0.094-0.0135zm1.049 3e-3c0.0355-0.0035 0.0735 0.0305 0.1105 0.103 0.03 0.0605 0.0345 0.0815 0.0345 0.217 0 0.108-0.0065 0.1545-0.018 0.1645-0.01 8e-3 -0.0505 0.0225-0.0935 0.0335-0.075 0.0195-0.0915 0.0215-0.115 0.0135l-0.1125-0.0205 0.0085-0.067c8e-3 -0.0875 0.0655-0.2815 0.106-0.3655 0.024-0.05 0.0515-0.075 0.0795-0.0785zm-0.489 0.0015c0.0235-1e-3 0.0345 0.0045 0.0495 0.021 0.0355 0.042 0.0805 0.166 0.109 0.2985 0.038 0.1865 0.038 0.186-0.0435 0.2105-0.0355 0.011-0.1105 0.0225-0.164 0.0255-0.1765 9e-3 -0.19-0.0015-0.1685-0.1575 0.017-0.139 0.0855-0.358 0.115-0.374 0.032-0.017 0.069-0.0165 0.1025-0.024zm-8.9965 0.7045c0.0015-5e-4 0.0035 0 0.0035 0 0.0045 0.0975 0.0045 0.196 0.0065 0.294-0.2475-0.019-0.4295-0.078-0.4295-0.1475 0-0.0685 0.1755-0.127 0.4195-0.1465zm0.4325 0.0085c0.2005 0.025 0.339 0.0775 0.3365 0.138 0 0.061-0.134 0.113-0.333 0.1375-2e-3 -0.0915-2e-3 -0.1835-0.0035-0.2755zm9.363 0.2665c0.017-0.0015 0.0245-3e-3 0.0505-5e-4 0.104 0.0105 0.119 0.017 0.119 0.052 0 0.046-0.079 0.1845-0.1325 0.2325-0.025 0.024-0.0595 0.044-0.0715 0.044-0.06 0-0.095-0.1265-0.067-0.243 0.017-0.063 0.048-0.0825 0.1015-0.085zm-0.3775 0.0415c0.0465-4e-3 0.0915 0.0085 0.1365 0.0145-0.013 0.1315-0.072 0.239-0.1815 0.3105-0.027 0-0.0405-0.0515-0.0405-0.164 0-0.134 7e-3 -0.1595 0.0855-0.161zm-0.414 0.0485c0.0965 0 0.1815 0.0045 0.1855 0.01 0.018 0.017-0.034 0.146-0.1105 0.277-0.0655 0.1165-0.075 0.125-0.1155 0.128-0.159-0.018-0.1545-0.2045-0.179-0.3325 0-0.076 0.017-0.0825 0.2195-0.0825zm-1.5045 0.0145c0.1105 2e-3 0.1535 0.0185 0.1535 0.061 0 0.054-0.041 0.1615-0.0645 0.175-0.0355 0.0195-0.0385 0.0185-0.1085-0.0545-0.1105-0.124-0.123-0.147 0.0195-0.1815zm0.532 0.0055c2e-3 3e-3 0.0235 0.042 0.045 0.086 0.047 0.0915 0.0505 0.1315 0.017 0.162-0.079 0.045-0.0955 0.0195-0.167-0.026-0.083-0.0785-0.1485-0.184-0.127-0.206 0.074-0.0265 0.1555-0.0165 0.232-0.016zm0.211 0.0025 0.1975 0.0035c0.077 0 0.1435 4e-3 0.147 0.01 0.0135 0.012-0.03 0.269-0.0535 0.327-0.027 0.065-0.1215 0.0655-0.1705-0.0115-0.07-0.1105-0.116-0.2035-0.1175-0.2675z"/></g>" notch="
+<g id="notch" transform="scale(1)">
+  <circle cy="0" cx="0" r="1.4" class="fill-note"></circle>
+  <circle cy="0" cx="0" r="2.8" class="note"></circle>
+</g>" bnotch="
+<g id="bnotch" transform="scale(1)">
+  <path d="M -1.1 -1.1 L 1.1 1.1 M 1.1 -1.1 L -1.1 1.1" class="note"></path>
+  <circle cy="0" cx="0" r="2.8" class="note"></circle>
+</g>" pleat="
+<marker id="pleatTo" markerWidth="10" markerHeight="6" orient="auto" refY="3" refX="10">
+	<path d="M 10,3 L 0,0 C 2,2 2,4 0,6 z" class="fill-note note" transform="scale(1)" />
+</marker>
+" sewTogetherStart="
+<marker id="sewTogetherStart" markerWidth="10" markerHeight="6" orient="auto" refX="1" refY="2">
+	<path d="M 0,2 L 6,0 C 5,1 5,3 6,4 z" class="fill-note note" transform="scale(1)" />
+</marker>" sewTogetherEnd="
+<marker id="sewTogetherEnd" markerWidth="10" markerHeight="6" orient="auto" refX="6" refY="2">
+	<path d="M 6,2 L 0,0 C 1,1 1,3 0,4 z" class="fill-note note" transform="scale(1)" />
+</marker>" sewTogetherCross="
+<marker id="sewTogetherCross" markerWidth="5" markerHeight="5" orient="auto" refX="2.5" refY="2.5">
+  <path d="M 0,0 L 5,5 M 5,0 L 0,5" class="note" transform="scale(1)" />
+</marker>"
+</defs>
+
+
+<!-- Start of group #fs-container -->
+<g id="fs-container">
+
+<!-- Start of group #fs-stack-hugo.front -->
+<g id="fs-stack-hugo.front"  transform="translate(633.1749139256967, 685.3435344534645)">
+
+<!-- Start of group #fs-stack-hugo.front-part-hugo.front -->
+<g id="fs-stack-hugo.front-part-hugo.front"  transform="translate(-91.875, 0)">
+<path  class="contrast help" id="fs-1" d="M 0,280 L 291.6,280" />
+<path  class="contrast help" id="fs-2" d="M 0,550 L 291.6,550" />
+<path  class="fabric" id="fs-3" d="M 0,625.5 L 274.4,625.5 C 274.4,550 291.6,350.9 291.6,350.9 C 275.66,350.9 258.44,336.29 250.45,328.3 L 82.26,22.66 C 64.51,53.12 32.34,69.3 0,69.3 z" />
+<path  class="note help" id="fs-4" d="M 137.2,625.5 L 163.13,580.59 C 163.13,580.59 137.2,565.62 137.2,444 L 0,444" />
+<path  class="fabric sa" id="fs-5" d="M 0,635.5 L 274.4,635.5 L 284.4,625.5 C 284.4,550 301.43,352.9 301.6,350.9 L 291.6,340.9 C 290.31,340.9 289,340.75 287.69,340.48 C 280.05,338.93 272.51,333.97 266.5,329.22 C 262.88,326.36 259.79,323.5 257.52,321.23 L 259.21,323.48 L 91.02,17.84 L 73.62,17.63 C 57.74,44.89 28.92,59.3 0,59.3 L 0,69.3M 0,625.5 L 0,635.5" />
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine" id="fs-6" d="M 0,280 L 291.6,280" />
+<text><textPath xlink:href="#fs-6"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine</tspan></textPath>
+</text>
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine" id="fs-7" d="M 0,550 L 291.6,550" />
+<text><textPath xlink:href="#fs-7"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine</tspan></textPath>
+</text>
+<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="fs-8" d="M 0,97.11 L 15,97.11 L 15,597.69 L 0,597.69" />
+<text><textPath xlink:href="#fs-8"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
+</text>
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="350.9"><tspan>1 </tspan>
+</text>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="354.9"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" class="text-lg fill-current font-bold left" x="145.8" y="366.9"><tspan>front </tspan>
+</text>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="374.9"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="382.9"><tspan>plugin-annotations:cut,1,plugin-annotations:onFold,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="145.8" dy="8"> </tspan>
+</text>
+<use x="145.8" y="420.9" xlink:href="#logo"  transform="translate(145.8, 420.9) scale(1) translate(-145.8, -420.9)"></use>
+<use x="166.35" y="175.48" xlink:href="#notch"  transform="translate(166.35, 175.48) scale(1) translate(-166.35, -175.48)"></use>
+</g>
+<!-- end of group #fs-stack-hugo.front-part-hugo.front -->
+</g>
+<!-- end of group #fs-stack-hugo.front -->
+
+<!-- Start of group #fs-stack-hugo.back -->
+<g id="fs-stack-hugo.back"  transform="translate(633.2108901874384, 19.473050544867945)">
+
+<!-- Start of group #fs-stack-hugo.back-part-hugo.back -->
+<g id="fs-stack-hugo.back-part-hugo.back"  transform="translate(-91.875, 0)">
+<path  class="contrast help" id="fs-9" d="M 0,280 L 291.6,280" />
+<path  class="contrast help" id="fs-10" d="M 0,550 L 291.6,550" />
+<path  class="fabric" id="fs-11" d="M 0,625.5 L 274.4,625.5 C 274.4,550 291.6,350.9 291.6,350.9 C 275.66,350.9 258.44,336.29 250.45,328.3 L 67.67,14.23 C 40.35,21 0,21 0,21 z" />
+<path  class="fabric sa" id="fs-12" d="M 0,635.5 L 274.4,635.5 L 284.4,625.5 C 284.4,550 301.43,352.9 301.6,350.9 L 291.6,340.9 C 290.31,340.9 289,340.75 287.69,340.48 C 280.05,338.93 272.51,333.97 266.5,329.22 C 262.88,326.36 259.79,323.5 257.52,321.23 L 259.09,323.27 L 76.31,9.2 L 65.26,4.53 C 59.25,6.02 52.67,7.15 46.09,8.03 C 23.91,10.98 1.73,10.99 -0.04,11 L 0,21M 0,625.5 L 0,635.5" />
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine" id="fs-13" d="M 0,280 L 291.6,280" />
+<text><textPath xlink:href="#fs-13"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:chestLine</tspan></textPath>
+</text>
+<path  class="hidden" data-text-dy="-1" data-text-class="center contrast help" data-text="hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine" id="fs-14" d="M 0,550 L 291.6,550" />
+<text><textPath xlink:href="#fs-14"  startOffset="50%" ><tspan  dy="-1" class="center contrast help">hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine &#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; hugo:waistLine</tspan></textPath>
+</text>
+<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="fs-15" d="M 0,51.23 L 15,51.23 L 15,595.28 L 0,595.28" />
+<text><textPath xlink:href="#fs-15"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
+</text>
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="350.9"><tspan>2 </tspan>
+</text>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="354.9"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" class="text-lg fill-current font-bold left" x="145.8" y="366.9"><tspan>back </tspan>
+</text>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="374.9"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 145.8 350.9)" x="145.8" y="382.9"><tspan>plugin-annotations:cut,1,plugin-annotations:onFold,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="145.8" dy="8"> </tspan>
+</text>
+<use x="145.8" y="420.9" xlink:href="#logo"  transform="translate(145.8, 420.9) scale(1) translate(-145.8, -420.9)"></use>
+<use x="159.06" y="171.27" xlink:href="#bnotch"  transform="translate(159.06, 171.27) scale(1) translate(-159.06, -171.27)"></use>
+</g>
+<!-- end of group #fs-stack-hugo.back-part-hugo.back -->
+</g>
+<!-- end of group #fs-stack-hugo.back -->
+
+<!-- Start of group #fs-stack-hugo.sleeve -->
+<g id="fs-stack-hugo.sleeve"  transform="translate(258.64995696284836, 398.3304320313436)">
+
+<!-- Start of group #fs-stack-hugo.sleeve-part-hugo.sleeve -->
+<g id="fs-stack-hugo.sleeve-part-hugo.sleeve"  transform="translate(0, 0)">
+<path  class="fabric" id="fs-16" d="M 20.35,-369.34 C 13.92,-358.16 6.87,-350 0,-350 C -8.59,-350 -16.76,-351.04 -24.44,-352.99 C -24.44,-352.99 -45.36,-270.33 -84.26,-193.93 C -123.15,-117.52 -193.33,-29.62 -225.02,0 L -108,418.4 L 108,418.4 L 225.02,0 C 197.11,-18.48 125.4,-105.96 83.1,-194.37 C 48.38,-266.94 20.35,-369.34 20.35,-369.34 z" />
+<path  class="fabric sa" id="fs-17" d="M 11.69,-374.33 C 7.94,-367.82 4.58,-360.17 -0.05,-360 C -7.73,-360 -15.08,-360.93 -21.98,-362.68 L -34.11,-355.51 C -34.59,-353.7 -52.73,-281.95 -87.35,-210.21 C -89.27,-206.23 -91.24,-202.24 -93.26,-198.27 C -99.48,-186.08 -106.62,-173.38 -114.29,-160.69 C -127.56,-138.74 -142.4,-116.78 -157.23,-96.4 C -185.96,-56.95 -214.65,-23.38 -231.85,-7.31 L -234.65,2.69 L -117.63,421.09 L -108,428.4 L 108,428.4 L 117.63,421.09 L 234.65,2.69 L 230.54,-8.34 C 214.34,-19.07 183.13,-53.97 151.74,-98.45 C 130.31,-128.81 108.87,-163.67 92.12,-198.69 C 84.56,-214.48 77.36,-231.61 70.71,-248.73 C 47.07,-309.62 30.41,-370.51 29.99,-372.02 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-18" d="M 0,379.98 L 0,-311.58" />
+<text><textPath xlink:href="#fs-18"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+</text>
+<path  class="scalebox imperial fill-current" id="fs-19" d="M -50.8,114.6 L -50.8,165.4 L 50.8,165.4 L 50.8,114.6 L -50.8,114.6 z" />
+<path  class="scalebox metric fill-bg" id="fs-20" d="M -50,115 L -50,165 L 50,165 L 50,115 L -50,115 z" />
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="0"><tspan>3 </tspan>
+</text>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="4"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" class="text-lg fill-current font-bold left" x="0" y="16"><tspan>sleeve </tspan>
+</text>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="24"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 0 0)" x="0" y="32"><tspan>plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="0" dy="8"> </tspan>
+</text>
+<text  class="text-xs bold" x="-45" y="125"><tspan>FreeSewing </tspan>
+</text>
+<text  class="text bold" x="-45" y="135"><tspan>Hugo hoodie v4.10.2 </tspan>
+</text>
+<text  class="text-xs" x="-45" y="147"><tspan>plugin-annotations:supportFreeSewingBecomeAPatron </tspan>
+</text>
+<text  class="text-sm fill-note bold" x="-45" y="152"><tspan>FreeSewing.org/patrons/join </tspan>
+</text>
+<text  class="text-xs center" x="0" y="160"><tspan>plugin-annotations:theWhiteInsideOfThisBoxShouldMeasure 10cm x 5cm </tspan>
+</text>
+<text  class="text-xs center" x="0" y="164"><tspan>plugin-annotations:theBlackOutsideOfThisBoxShouldMeasure 4&#8220; x 2&#8220; </tspan>
+</text>
+<use x="0" y="70" xlink:href="#logo"  transform="translate(0, 70) scale(1) translate(0, -70)"></use>
+<use x="-86.22" y="-190.1" xlink:href="#notch"  transform="translate(-86.22, -190.1) scale(1) translate(86.22, 190.1)"></use>
+<use x="81.27" y="-198.24" xlink:href="#bnotch"  transform="translate(81.27, -198.24) scale(1) translate(-81.27, 198.24)"></use>
+<use x="0" y="-350" xlink:href="#notch"  transform="translate(0, -350) scale(1) translate(0, 350)"></use>
+</g>
+<!-- end of group #fs-stack-hugo.sleeve-part-hugo.sleeve -->
+</g>
+<!-- end of group #fs-stack-hugo.sleeve -->
+
+<!-- Start of group #fs-stack-hugo.pocket -->
+<g id="fs-stack-hugo.pocket"  transform="translate(982.8108901874384, -78)">
+
+<!-- Start of group #fs-stack-hugo.pocket-part-hugo.pocket -->
+<g id="fs-stack-hugo.pocket-part-hugo.pocket"  transform="translate(-91.875, 0)">
+<path  class="fabric" id="fs-21" d="M 137.2,625.5 L 163.13,580.59 C 163.13,580.59 137.2,565.62 137.2,444 L 0,444 L 0,625.5 L 137.2,625.5 z" />
+<path  class="fabric" id="fs-21" d="M 137.2,625.5 L 163.13,580.59 C 163.13,580.59 137.2,565.62 137.2,444 L 0,444 L 0,625.5 L 137.2,625.5 z" />
+<path  class=" fabric help note dashed" id="fs-22" d="M 150.31,602.79 L 146.51,600.49 C 144.74,599.02 111.27,588.15 111.27,444" />
+<path  class="fabric sa" id="fs-23" d="M 0,635.5 L 137.2,635.5 L 145.86,630.5 L 171.79,585.59 L 169.54,572.91 C 168.08,571.7 147.2,556.93 147.2,444 L 137.2,434 L 0,434 L 0,444M 0,625.5 L 0,635.5" />
+<path  class="note" marker-start="url(#cutonfoldFrom)" marker-end="url(#cutonfoldTo)" data-text="plugin-annotations:cutOnFoldAndGrainline" data-text-class="center fill-note" id="fs-24" d="M 0,616.42 L 15,616.42 L 15,453.08 L 0,453.08" />
+<text><textPath xlink:href="#fs-24"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:cutOnFoldAndGrainline</tspan></textPath>
+</text>
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 68.60000000000004 534.75)" x="68.6" y="534.75"><tspan>4 </tspan>
+</text>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 68.60000000000004 534.75)" x="68.6" y="538.75"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 68.60000000000004 534.75)" class="text-lg fill-current font-bold left" x="68.6" y="550.75"><tspan>pocket </tspan>
+</text>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 68.60000000000004 534.75)" x="68.6" y="558.75"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 68.60000000000004 534.75)" x="68.6" y="566.75"><tspan>plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="68.6" dy="8"> </tspan>
+</text>
+</g>
+<!-- end of group #fs-stack-hugo.pocket-part-hugo.pocket -->
+</g>
+<!-- end of group #fs-stack-hugo.pocket -->
+
+<!-- Start of group #fs-stack-hugo.pocketFacing -->
+<g id="fs-stack-hugo.pocketFacing"  transform="translate(1420.5148418386848, -330.711435497009)">
+
+<!-- Start of group #fs-stack-hugo.pocketFacing-part-hugo.pocketFacing -->
+<g id="fs-stack-hugo.pocketFacing-part-hugo.pocketFacing"  transform="translate(-91.875, 0)">
+<path  class=" fabric help note dashed" id="fs-25" d="M 150.31,602.79 L 146.51,600.49 C 144.74,599.02 111.27,588.15 111.27,444" />
+<path  class="fabric" id="fs-26" d="M 150.31,602.79 L 146.51,600.49 C 144.74,599.02 111.27,588.15 111.27,444 L 137.2,444 C 137.2,565.62 163.13,580.59 163.13,580.59 L 150.31,602.79 z" />
+<path  class="fabric sa" id="fs-27" d="M 111.27,434 L 137.2,434 L 147.2,444 C 147.2,504.94 153.32,538.02 159.63,555.88 C 164.41,569.39 168.95,572.42 169.54,572.91 L 171.79,585.59 L 158.97,607.79 L 150.31,602.79M 111.27,444 L 111.27,434" />
+<text  class="text-4xl fill-note font-bold center" transform="matrix(0.666, 0, 0, 0.666, 45.824799999999996, 188.91725676083178) rotate(0 137.20000000000002 565.6205292240473)" x="137.2" y="565.62"><tspan>5 </tspan>
+</text>
+<text  class="text-sm fill-current center" transform="matrix(0.666, 0, 0, 0.666, 45.824799999999996, 188.91725676083178) rotate(0 137.20000000000002 565.6205292240473)" x="137.2" y="569.62"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(0.666, 0, 0, 0.666, 45.824799999999996, 188.91725676083178) rotate(0 137.20000000000002 565.6205292240473)" class="text-lg fill-current font-bold center" x="137.2" y="581.62"><tspan>pocketFacing </tspan>
+</text>
+<text  class="fill-note center" transform="matrix(0.666, 0, 0, 0.666, 45.824799999999996, 188.91725676083178) rotate(0 137.20000000000002 565.6205292240473)" x="137.2" y="589.62"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current center" transform="matrix(0.666, 0, 0, 0.666, 45.824799999999996, 188.91725676083178) rotate(0 137.20000000000002 565.6205292240473)" x="137.2" y="597.62"><tspan>plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="137.2" dy="8"> </tspan>
+</text>
+</g>
+<!-- end of group #fs-stack-hugo.pocketFacing-part-hugo.pocketFacing -->
+</g>
+<!-- end of group #fs-stack-hugo.pocketFacing -->
+
+<!-- Start of group #fs-stack-library.hoodSide -->
+<g id="fs-stack-library.hoodSide"  transform="translate(561.4943817447962, 1378.8435344534646)">
+
+<!-- Start of group #fs-stack-library.hoodSide-part-library.hoodSide -->
+<g id="fs-stack-library.hoodSide-part-library.hoodSide"  transform="translate(0, 0)">
+<path  class="fabric" id="fs-28" d="M 220.98,319.05 C 220.98,290.55 197.72,298.76 192.48,270.75 C 187.23,242.74 163.21,123.49 220.98,54.15 C 220.98,54.15 158.03,0 95.08,0 C -94.44,0 28.5,270.75 28.5,270.75 C 110.49,270.75 110.49,319.05 220.98,319.05 z" />
+<path  class="fabric sa" id="fs-29" d="M 220.98,329.05 C 133.04,329.05 113.74,299.38 69.66,286.24 C 58.35,282.87 45.25,280.75 28.5,280.75 L 19.36,274.8 C 18.7,273.32 -54.09,108.42 -0.55,31.63 C 16.69,6.9 46.19,-10 95.08,-10 C 128.74,-10 162.05,4.1 186.91,18.42 C 210.68,32.11 226.59,45.81 227.38,46.47 L 228.66,60.55 C 209.42,83.64 199.99,112.67 195.83,141.61 C 193.84,155.45 193.07,169.3 193.07,182.54 C 193.07,206.49 195.59,228.46 198.11,244.93 C 199.75,255.6 201.38,264.01 202.36,269.24 C 205.56,286.29 217.62,287.33 223.83,295.35 C 227.89,300.61 230.98,307.55 230.98,319.05 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-30" d="M 95.08,271.18 L 95.08,14.27" />
+<text><textPath xlink:href="#fs-30"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+</text>
+<text  class="text-4xl fill-note font-bold center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 95.08344631036059 67.6875)" x="95.08" y="67.69"><tspan>6 </tspan>
+</text>
+<text  class="text-sm fill-current center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 95.08344631036059 67.6875)" x="95.08" y="71.69"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 95.08344631036059 67.6875)" class="text-lg fill-current font-bold center" x="95.08" y="83.69"><tspan>hoodSide </tspan>
+</text>
+<text  class="fill-note center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 95.08344631036059 67.6875)" x="95.08" y="91.69"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 95.08344631036059 67.6875)" x="95.08" y="99.69"><tspan>plugin-annotations:cut,4,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="95.08" dy="8"> </tspan>
+</text>
+<use x="95.08" y="285.46" xlink:href="#notch"  transform="translate(95.08, 285.46) scale(1) translate(-95.08, -285.46)"></use>
+<use x="212.74" y="318.95" xlink:href="#notch"  transform="translate(212.74, 318.95) scale(1) translate(-212.74, -318.95)"></use>
+<use x="95.08" y="180.32" xlink:href="#logo"  transform="translate(95.08, 180.32) scale(1) translate(-95.08, -180.32)"></use>
+</g>
+<!-- end of group #fs-stack-library.hoodSide-part-library.hoodSide -->
+</g>
+<!-- end of group #fs-stack-library.hoodSide -->
+
+<!-- Start of group #fs-stack-library.hoodCenter -->
+<g id="fs-stack-library.hoodCenter"  transform="translate(900.9358901874384, 34)">
+
+<!-- Start of group #fs-stack-library.hoodCenter-part-library.hoodCenter -->
+<g id="fs-stack-library.hoodCenter-part-library.hoodCenter"  transform="translate(0, 0)">
+<path  class="fabric" id="fs-31" d="M 0,0 L 0,57 L 480.98,57 L 480.98,0 L 0,0 z" />
+<path  class="fabric sa" id="fs-32" d="M -10,0 L -10,57 L 0,67 L 480.98,67 L 490.98,57 L 490.98,0 L 480.98,-10 L 0,-10 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-33" d="M 24.05,28.5 L 456.93,28.5" />
+<text><textPath xlink:href="#fs-33"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+</text>
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 240.48769011133743 28.5)" x="240.49" y="28.5"><tspan>7 </tspan>
+</text>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 240.48769011133743 28.5)" x="240.49" y="32.5"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 240.48769011133743 28.5)" class="text-lg fill-current font-bold left" x="240.49" y="44.5"><tspan>hoodCenter </tspan>
+</text>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 240.48769011133743 28.5)" x="240.49" y="52.5"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 240.48769011133743 28.5)" x="240.49" y="60.5"><tspan>plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="240.49" dy="8"> </tspan>
+</text>
+</g>
+<!-- end of group #fs-stack-library.hoodCenter-part-library.hoodCenter -->
+</g>
+<!-- end of group #fs-stack-library.hoodCenter -->
+
+<!-- Start of group #fs-stack-hugo.waistband -->
+<g id="fs-stack-hugo.waistband"  transform="translate(34, 884.7263692674937)">
+
+<!-- Start of group #fs-stack-hugo.waistband-part-hugo.waistband -->
+<g id="fs-stack-hugo.waistband-part-hugo.waistband"  transform="translate(0, 0)">
+<path  class="various" id="fs-34" d="M 0,0 L 0,1108.08 L 139,1108.08 L 139,0 z" />
+<path  class="various sa" id="fs-35" d="M -10,0 L -10,1108.08 L 0,1118.08 L 139,1118.08 L 149,1108.08 L 149,0 L 139,-10 L 0,-10 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-36" d="M 14.65,23.49 L 124.35,23.49" />
+<text><textPath xlink:href="#fs-36"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+</text>
+<text  class="text-4xl fill-note font-bold center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 69.50000000000031 554.0400000000001)" x="69.5" y="554.04"><tspan>8 </tspan>
+</text>
+<text  class="text-sm fill-current center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 69.50000000000031 554.0400000000001)" x="69.5" y="558.04"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 69.50000000000031 554.0400000000001)" class="text-lg fill-current font-bold center" x="69.5" y="570.04"><tspan>waistband </tspan>
+</text>
+<text  class="fill-note center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 69.50000000000031 554.0400000000001)" x="69.5" y="578.04"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current center" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 69.50000000000031 554.0400000000001)" x="69.5" y="586.04"><tspan>plugin-annotations:cut,1,plugin-annotations:from,plugin-annotations:ribbing,</tspan><tspan x="69.5" dy="8"> </tspan>
+</text>
+</g>
+<!-- end of group #fs-stack-hugo.waistband-part-hugo.waistband -->
+</g>
+<!-- end of group #fs-stack-hugo.waistband -->
+
+<!-- Start of group #fs-stack-hugo.cuff -->
+<g id="fs-stack-hugo.cuff"  transform="translate(900.9358901874384, 159)">
+
+<!-- Start of group #fs-stack-hugo.cuff-part-hugo.cuff -->
+<g id="fs-stack-hugo.cuff-part-hugo.cuff"  transform="translate(0, 0)">
+<path  class="various" id="fs-37" d="M 0,0 L 0,139 L 205.2,139 L 205.2,0 L 0,0 z" />
+<path  class="various sa" id="fs-38" d="M -10,0 L -10,139 L 0,149 L 205.2,149 L 215.2,139 L 215.2,0 L 205.2,-10 L 0,-10 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-39" d="M 20,132.05 L 20,6.95" />
+<text><textPath xlink:href="#fs-39"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+</text>
+<text  class="text-4xl fill-note font-bold left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 102.59999999999997 69.49999999999997)" x="102.6" y="69.5"><tspan>9 </tspan>
+</text>
+<text  class="text-sm fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 102.59999999999997 69.49999999999997)" x="102.6" y="73.5"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 102.59999999999997 69.49999999999997)" class="text-lg fill-current font-bold left" x="102.6" y="85.5"><tspan>cuff </tspan>
+</text>
+<text  class="fill-note left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 102.59999999999997 69.49999999999997)" x="102.6" y="93.5"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current left" transform="matrix(1, 0, 0, 1, 0, 0) rotate(0 102.59999999999997 69.49999999999997)" x="102.6" y="101.5"><tspan>plugin-annotations:cut,2,plugin-annotations:mirrored,plugin-annotations:from,plugin-annotations:ribbing,</tspan><tspan x="102.6" dy="8"> </tspan>
+</text>
+</g>
+<!-- end of group #fs-stack-hugo.cuff-part-hugo.cuff -->
+</g>
+<!-- end of group #fs-stack-hugo.cuff -->
+
+<!-- Start of group #fs-stack-hugo.neckBinding -->
+<g id="fs-stack-hugo.neckBinding"  transform="translate(1449.9112704101133, 34)">
+
+<!-- Start of group #fs-stack-hugo.neckBinding-part-hugo.neckBinding -->
+<g id="fs-stack-hugo.neckBinding-part-hugo.neckBinding"  transform="translate(0, 0)">
+<path  class="fabric" id="fs-40" d="M 0,0 L 0,11.29 L 498.95,11.29 L 498.95,0 L 0,0 z" />
+<path  class="fabric sa" id="fs-41" d="M -10,0 L -10,11.29 L 0,21.29 L 498.95,21.29 L 508.95,11.29 L 508.95,0 L 498.95,-10 L 0,-10 z" />
+<path  class="note" marker-start="url(#grainlineFrom)" marker-end="url(#grainlineTo)" data-text="plugin-annotations:grainline" data-text-class="center fill-note" id="fs-42" d="M 51.89,6.77 L 447.06,6.77" />
+<text><textPath xlink:href="#fs-42"  startOffset="50%" ><tspan  class="center fill-note">plugin-annotations:grainline</tspan></textPath>
+</text>
+<text  class="text-4xl fill-note font-bold left" transform="matrix(0.4, 0, 0, 0.4, 149.686365309661, 20.319416105383848) rotate(0 249.47727551610168 33.86569350897308)" x="249.48" y="33.87"><tspan>10 </tspan>
+</text>
+<text  class="text-sm fill-current left" transform="matrix(0.4, 0, 0, 0.4, 149.686365309661, 20.319416105383848) rotate(0 249.47727551610168 33.86569350897308)" x="249.48" y="37.87"><tspan>Friday, Nov 13, 2026 </tspan>
+</text>
+<text  transform="matrix(0.4, 0, 0, 0.4, 149.686365309661, 20.319416105383848) rotate(0 249.47727551610168 33.86569350897308)" class="text-lg fill-current font-bold left" x="249.48" y="49.87"><tspan>neckBinding </tspan>
+</text>
+<text  class="fill-note left" transform="matrix(0.4, 0, 0, 0.4, 149.686365309661, 20.319416105383848) rotate(0 249.47727551610168 33.86569350897308)" x="249.48" y="57.87"><tspan>FreeSewing Hugo hoodie v4.10.2 ( ephemeral ) </tspan>
+</text>
+<text  class="text-md fill-current left" transform="matrix(0.4, 0, 0, 0.4, 149.686365309661, 20.319416105383848) rotate(0 249.47727551610168 33.86569350897308)" x="249.48" y="65.87"><tspan>plugin-annotations:cut,1,plugin-annotations:from,plugin-annotations:fabric,</tspan><tspan x="249.48" dy="8"> </tspan>
+</text>
+</g>
+<!-- end of group #fs-stack-hugo.neckBinding-part-hugo.neckBinding -->
+</g>
+<!-- end of group #fs-stack-hugo.neckBinding -->
+</g>
+<!-- end of group #fs-container -->
+</svg>
