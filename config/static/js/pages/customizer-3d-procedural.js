@@ -4033,29 +4033,43 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         };
     }
 
-    function normalizedPointFromPatternPointer(point, region, layout) {
-        if (!point || !region?.printBounds || !layout) return null;
-        const pagePoint = {
-            x: (point.x - layout.x) / layout.width,
-            y: (point.y - layout.y) / layout.height,
-        };
-        if (!pointInPolygon(pagePoint, region.printPolygon)) return null;
+    function normalizedPointFromPatternPointer(point, active) {
+        if (!point || !active?.region?.printBounds || !active?.layout || !active?.startPointer) return null;
 
-        const bounds = region.printBounds;
-        const relativeX = (pagePoint.x - bounds.minX) / Math.max(bounds.maxX - bounds.minX, 1e-6);
-        const relativeY = (pagePoint.y - bounds.minY) / Math.max(bounds.maxY - bounds.minY, 1e-6);
+        const bounds = active.region.printBounds;
+        const layout = active.layout;
         const zone = printableBodyZone();
+        const zoneWidth = Math.max(zone.maxX - zone.minX, 1e-6);
+        const zoneHeight = Math.max(zone.maxY - zone.minY, 1e-6);
+        const areaWidth = Math.max(bounds.maxX - bounds.minX, 1e-6);
+        const areaHeight = Math.max(bounds.maxY - bounds.minY, 1e-6);
+
+        // Preserve the point where the user grabbed the artwork. The pointer
+        // delta moves the artwork center; it must not snap the center to the
+        // cursor when the user grabs an edge or corner of a label.
+        const startRelativeX = THREE.MathUtils.clamp(
+            (active.startNormalized.x - zone.minX) / zoneWidth,
+            0,
+            1
+        );
+        const startRelativeY = THREE.MathUtils.clamp(
+            (active.startNormalized.y - zone.minY) / zoneHeight,
+            0,
+            1
+        );
+        const deltaRelativeX = (point.x - active.startPointer.x) / Math.max(layout.width * areaWidth, 1);
+        const deltaRelativeY = (point.y - active.startPointer.y) / Math.max(layout.height * areaHeight, 1);
+        const relativeX = THREE.MathUtils.clamp(startRelativeX + deltaRelativeX, 0, 1);
+        const relativeY = THREE.MathUtils.clamp(startRelativeY + deltaRelativeY, 0, 1);
+        const pagePoint = {
+            x: bounds.minX + relativeX * areaWidth,
+            y: bounds.minY + relativeY * areaHeight,
+        };
+        if (!pointInPolygon(pagePoint, active.region.printPolygon)) return null;
+
         return {
-            x: THREE.MathUtils.clamp(
-                zone.minX + relativeX * (zone.maxX - zone.minX),
-                zone.minX,
-                zone.maxX
-            ),
-            y: THREE.MathUtils.clamp(
-                zone.minY + relativeY * (zone.maxY - zone.minY),
-                zone.minY,
-                zone.maxY
-            ),
+            x: zone.minX + relativeX * zoneWidth,
+            y: zone.minY + relativeY * zoneHeight,
         };
     }
 
@@ -4066,7 +4080,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (!active || !item || !canvas || item.layer.locked) return;
 
         const pointerPoint = twoDCanvasPoint(event, canvas);
-        const candidate = normalizedPointFromPatternPointer(pointerPoint, active.region, active.layout);
+        const candidate = normalizedPointFromPatternPointer(pointerPoint, active);
         if (!candidate) return;
 
         const side = active.side;
@@ -4088,7 +4102,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         active.previewPoint = hit.point.clone();
         active.previewNormal = normal.clone();
         active.previewTarget = hit.object;
-        active.moved = true;
+        active.moved = (
+            Math.abs(normalized.x - active.startNormalized.x) > 0.0015 ||
+            Math.abs(normalized.y - active.startNormalized.y) > 0.0015
+        );
 
         // The 2D artwork is redrawn at the live preview point; the committed
         // Three.js decal is updated once, on pointerup, to avoid flicker.
@@ -4180,6 +4197,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 side: hit.side,
                 region: hit,
                 layout: previewPageTransform,
+                startPointer: { x: point.x, y: point.y },
                 startNormalized: { x: normalized.x, y: normalized.y },
                 previewNormalized: { x: normalized.x, y: normalized.y },
                 previewPoint: item.surfacePoint?.clone() || item.position?.clone() || null,
