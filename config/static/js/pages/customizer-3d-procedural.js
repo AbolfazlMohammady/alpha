@@ -1469,74 +1469,55 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     });
     updateGarmentPicker("tshirt", true);
 
-    function project(item, point, normal) {
-        if (!item?.artwork?.image || !garmentMeshes.length) return;
 
-        // Keep the real cloth anchor separate from the tiny visual lift. The old
-        // code re-used item.position when resizing, so the 0.018 offset was added
-        // again and again until the decal floated away and disappeared.
+    function buildProjectedLayer(item, point, normal, options = {}) {
+        if (!item?.artwork?.image || !garmentMeshes.length) return false;
+
         const surfacePoint = point.clone();
         const surfaceNormal = normal.clone().normalize();
-        const revision = (item.projectRevision || 0) + 1;
-        item.projectRevision = revision;
+        const target = item.target?.isMesh ? item.target : garmentMeshes[0];
+        const cropped = item.visibleArtwork || null;
+        const texture = item.visibleTexture || null;
+        if (!texture || !cropped) return false;
 
-        loadTexture(item.artwork.image).then(sourceTexture => {
-            if (!layers.has(item.id) || item.projectRevision !== revision) return;
+        texture.repeat.set(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
+        texture.offset.set(item.layer.flip_x ? 1 : 0, item.layer.flip_y ? 1 : 0);
+        texture.needsUpdate = true;
 
-            const cropped = cropTextureToVisiblePixels(sourceTexture);
-            const texture = cropped.texture;
-            texture.center.set(0.5, 0.5);
-            texture.repeat.set(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
-            texture.offset.set(item.layer.flip_x ? 1 : 0, item.layer.flip_y ? 1 : 0);
-            texture.needsUpdate = true;
-            item.visibleTexture = texture;
-            item.visibleArtworkWidth = cropped.visibleWidth || texture.image?.width || 0;
-            item.visibleArtworkHeight = cropped.visibleHeight || texture.image?.height || 0;
+        const aspect = Math.max(
+            0.15,
+            (cropped.visibleWidth || texture.image?.width || 1) /
+                Math.max(1, cropped.visibleHeight || texture.image?.height || 1)
+        );
+        const width = Math.max(0.08, Math.min(1.05, 0.86 * Number(item.layer.width || 0.35)));
+        const size = new THREE.Vector3(
+            width,
+            width / aspect,
+            Math.max(0.24, width * 0.9)
+        );
+        const position = surfacePoint.clone().addScaledVector(surfaceNormal, 0.008);
+        const geometry = new DecalGeometry(
+            target,
+            position,
+            orientation(surfaceNormal, item.layer.rotation),
+            size
+        );
 
-            item.normal = surfaceNormal.clone();
-            item.surfacePoint = surfacePoint.clone();
-            item.surfaceNormal = surfaceNormal.clone();
-            item.position = surfacePoint.clone().addScaledVector(surfaceNormal, 0.008);
+        if (!geometry.attributes.position?.count) {
+            geometry.dispose();
+            return false;
+        }
 
-            // Use the cropped artwork aspect ratio. The transparent padding
-            // around the original file is no longer part of the label.
-            const aspect = Math.max(
-                0.15,
-                (cropped.visibleWidth || texture.image?.width || 1) /
-                    Math.max(1, cropped.visibleHeight || texture.image?.height || 1)
-            );
-            item.renderAspect = aspect;
+        geometry.applyMatrix4(target.matrixWorld.clone().invert());
 
-            const width = Math.max(0.08, Math.min(1.05, 0.86 * Number(item.layer.width || 0.35)));
-            const size = new THREE.Vector3(
-                width,
-                width / aspect,
-                Math.max(0.24, width * 0.9)
-            );
-            item.size = size;
+        const previousMesh = item.mesh;
+        const previousFrame = item.frame;
+        const previousHandles = item.handles;
 
-            const target = item.target?.isMesh ? item.target : garmentMeshes[0];
-            const geometry = new DecalGeometry(
-                target,
-                item.position,
-                orientation(item.normal, item.layer.rotation),
-                size
-            );
-
-            // DecalGeometry can legitimately produce an empty geometry when the
-            // pointer is on a thin/angled part of the garment (especially sleeves).
-            // Never remove the currently visible label until the replacement has
-            // actually intersected the garment.
-            if (!geometry.attributes.position?.count) {
-                geometry.dispose();
-                return;
-            }
-
-            const material = new THREE.MeshPhysicalMaterial({
+        let material = item.decalMaterial;
+        if (!material) {
+            material = new THREE.MeshPhysicalMaterial({
                 map: texture,
-                // Artwork files already contain their intended colors. White
-                // keeps those colors intact instead of multiplying them by a
-                // saved label tint.
                 color: new THREE.Color("#ffffff"),
                 transparent: true,
                 opacity: Math.max(0.2, Math.min(1, Number(item.layer.opacity ?? 1))),
@@ -1544,8 +1525,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 roughness: 0.62,
                 metalness: 0,
                 clearcoat: 0.02,
-                // A small emissive contribution restores the vivid colors seen
-                // in the label library without making the artwork look flat.
                 emissive: new THREE.Color("#ffffff"),
                 emissiveMap: texture,
                 emissiveIntensity: 0.16,
@@ -1556,152 +1535,177 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 polygonOffsetUnits: -2,
                 side: THREE.DoubleSide,
             });
+            item.decalMaterial = material;
+        } else {
+            material.map = texture;
+            material.emissiveMap = texture;
+            material.opacity = Math.max(0.2, Math.min(1, Number(item.layer.opacity ?? 1)));
+            material.needsUpdate = true;
+        }
 
-            // DecalGeometry is generated in world space. Convert it into the target
-            // mesh's local space and parent it to that mesh so it stays physically
-            // attached when the garment rotates.
-            geometry.applyMatrix4(target.matrixWorld.clone().invert());
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.renderOrder = 30 + (Number(item.layer.z_index) || 0);
+        mesh.visible = item.layer.visible !== false;
+        mesh.userData.customizerLayerId = item.id;
+        target.add(mesh);
 
-            const mesh = new THREE.Mesh(geometry, material);
-            mesh.renderOrder = 30 + (Number(item.layer.z_index) || 0);
-            mesh.visible = item.layer.visible !== false;
-            mesh.userData.customizerLayerId = item.id;
-            target.add(mesh);
+        const frameGeometry = new THREE.EdgesGeometry(new THREE.PlaneGeometry(size.x, size.y));
+        const frameMaterial = new THREE.LineBasicMaterial({
+            color: 0xd8b66b,
+            transparent: true,
+            opacity: 0.92,
+            depthTest: false,
+            depthWrite: false,
+        });
+        const frame = new THREE.LineSegments(frameGeometry, frameMaterial);
+        const targetWorldPosition = position.clone();
+        target.worldToLocal(targetWorldPosition);
+        frame.position.copy(targetWorldPosition);
+        const worldQuaternion = new THREE.Quaternion().setFromEuler(
+            orientation(surfaceNormal, item.layer.rotation)
+        );
+        const targetWorldQuaternion = target.getWorldQuaternion(new THREE.Quaternion());
+        frame.quaternion.copy(targetWorldQuaternion.clone().invert().multiply(worldQuaternion));
+        frame.userData.customizerLayerId = item.id;
+        frame.renderOrder = 80;
+        frame.visible = item.id === selectedId && item.layer.visible !== false;
+        target.add(frame);
 
-            // Professional selection frame: a subtle gold outline that follows the
-            // same surface/rotation as the decal and remains attached to the garment.
-            const frameGeometry = new THREE.EdgesGeometry(
-                new THREE.PlaneGeometry(size.x, size.y)
-            );
-            const frameMaterial = new THREE.LineBasicMaterial({
-                color: 0xd8b66b,
-                transparent: true,
-                opacity: 0.92,
-                depthTest: false,
-                depthWrite: false,
-            });
-            const frame = new THREE.LineSegments(frameGeometry, frameMaterial);
-            const targetWorldPosition = item.position.clone();
-            target.worldToLocal(targetWorldPosition);
-            frame.position.copy(targetWorldPosition);
-            const worldQuaternion = new THREE.Quaternion().setFromEuler(
-                orientation(item.normal, item.layer.rotation)
-            );
-            const targetWorldQuaternion = target.getWorldQuaternion(new THREE.Quaternion());
-            frame.quaternion.copy(targetWorldQuaternion.clone().invert().multiply(worldQuaternion));
-            frame.userData.customizerLayerId = item.id;
-            frame.renderOrder = 80;
-            frame.visible = item.id === selectedId && item.layer.visible !== false;
-            target.add(frame);
+        const handleGroup = new THREE.Group();
+        handleGroup.position.copy(targetWorldPosition);
+        handleGroup.quaternion.copy(targetWorldQuaternion.clone().invert().multiply(worldQuaternion));
+        handleGroup.userData.customizerLayerId = item.id;
+        handleGroup.renderOrder = 81;
+        handleGroup.visible = item.id === selectedId && item.layer.visible !== false && !item.layer.locked;
 
-            // Four compact handles make the selected artwork feel like a real
-            // mobile design editor without adding another DOM overlay.
-            const handleGroup = new THREE.Group();
-            handleGroup.position.copy(targetWorldPosition);
-            handleGroup.quaternion.copy(targetWorldQuaternion.clone().invert().multiply(worldQuaternion));
-            handleGroup.userData.customizerLayerId = item.id;
-            handleGroup.renderOrder = 81;
-            handleGroup.visible = item.id === selectedId && item.layer.visible !== false && !item.layer.locked;
+        const isTouchEditor = compactMedia.matches || (navigator.maxTouchPoints || 0) > 0;
+        const handleSize = Math.max(
+            isTouchEditor ? 0.038 : 0.026,
+            Math.min(size.x, size.y) * (isTouchEditor ? 0.065 : 0.05)
+        );
+        const handleGeometry = new THREE.SphereGeometry(handleSize, 12, 10);
+        const handleMaterial = new THREE.MeshBasicMaterial({
+            color: 0xf8f8ff,
+            transparent: true,
+            opacity: 1,
+            depthTest: false,
+            depthWrite: false,
+        });
+        const rotationMaterial = new THREE.MeshBasicMaterial({
+            color: 0x8b72ff,
+            transparent: true,
+            opacity: 1,
+            depthTest: false,
+            depthWrite: false,
+        });
 
-            const isTouchEditor = compactMedia.matches || (navigator.maxTouchPoints || 0) > 0;
-            const handleSize = Math.max(
-                isTouchEditor ? 0.038 : 0.026,
-                Math.min(size.x, size.y) * (isTouchEditor ? 0.065 : 0.05)
-            );
-            const handleGeometry = new THREE.SphereGeometry(handleSize, 16, 12);
-            const handleMaterial = new THREE.MeshBasicMaterial({
-                color: 0xf8f8ff,
-                transparent: true,
-                opacity: 1,
-                depthTest: false,
-                depthWrite: false,
-            });
-            const rotationMaterial = new THREE.MeshBasicMaterial({
+        const resizeHandles = [
+            { type: "nw", x: -size.x / 2, y: size.y / 2 },
+            { type: "n",  x: 0,             y: size.y / 2 },
+            { type: "ne", x: size.x / 2,  y: size.y / 2 },
+            { type: "e",  x: size.x / 2,  y: 0 },
+            { type: "se", x: size.x / 2,  y: -size.y / 2 },
+            { type: "s",  x: 0,             y: -size.y / 2 },
+            { type: "sw", x: -size.x / 2, y: -size.y / 2 },
+            { type: "w",  x: -size.x / 2, y: 0 },
+        ];
+        resizeHandles.forEach(({ type, x, y }) => {
+            const handle = new THREE.Mesh(handleGeometry.clone(), handleMaterial.clone());
+            handle.position.set(x, y, handleSize * 0.18);
+            handle.renderOrder = 82;
+            handle.userData.customizerLayerId = item.id;
+            handle.userData.customizerHandleType = type;
+            handleGroup.add(handle);
+        });
+
+        const rotationStemStart = new THREE.Vector3(0, size.y / 2, handleSize * 0.15);
+        const rotationStemEnd = new THREE.Vector3(
+            0,
+            size.y / 2 + handleSize * 3.2,
+            handleSize * 0.15
+        );
+        const rotationStem = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([rotationStemStart, rotationStemEnd]),
+            new THREE.LineBasicMaterial({
                 color: 0x8b72ff,
-                transparent: true,
-                opacity: 1,
                 depthTest: false,
                 depthWrite: false,
+            })
+        );
+        rotationStem.renderOrder = 82;
+        handleGroup.add(rotationStem);
+
+        const rotationHandle = new THREE.Mesh(handleGeometry.clone(), rotationMaterial);
+        rotationHandle.position.copy(rotationStemEnd);
+        rotationHandle.renderOrder = 83;
+        rotationHandle.userData.customizerLayerId = item.id;
+        rotationHandle.userData.customizerHandleType = "rotate";
+        handleGroup.add(rotationHandle);
+        target.add(handleGroup);
+
+        item.mesh = mesh;
+        item.frame = frame;
+        item.handles = handleGroup;
+        item.normal = surfaceNormal.clone();
+        item.surfacePoint = surfacePoint.clone();
+        item.surfaceNormal = surfaceNormal.clone();
+        item.position = position.clone();
+        item.renderAspect = aspect;
+        item.size = size;
+        item.target = target;
+
+        if (previousMesh) {
+            previousMesh.geometry?.dispose();
+            previousMesh.parent?.remove(previousMesh);
+        }
+        if (previousFrame) {
+            previousFrame.geometry?.dispose();
+            previousFrame.material?.dispose();
+            previousFrame.parent?.remove(previousFrame);
+        }
+        if (previousHandles) {
+            previousHandles.traverse(child => {
+                child.geometry?.dispose();
+                child.material?.dispose();
             });
+            previousHandles.parent?.remove(previousHandles);
+        }
 
-            const resizeHandles = [
-                { type: "nw", x: -size.x / 2, y: size.y / 2 },
-                { type: "n",  x: 0,             y: size.y / 2 },
-                { type: "ne", x: size.x / 2,  y: size.y / 2 },
-                { type: "e",  x: size.x / 2,  y: 0 },
-                { type: "se", x: size.x / 2,  y: -size.y / 2 },
-                { type: "s",  x: 0,             y: -size.y / 2 },
-                { type: "sw", x: -size.x / 2, y: -size.y / 2 },
-                { type: "w",  x: -size.x / 2, y: 0 },
-            ];
-
-            resizeHandles.forEach(({ type, x, y }) => {
-                const handle = new THREE.Mesh(handleGeometry.clone(), handleMaterial.clone());
-                handle.position.set(x, y, handleSize * 0.18);
-                handle.renderOrder = 82;
-                handle.userData.customizerLayerId = item.id;
-                handle.userData.customizerHandleType = type;
-                handleGroup.add(handle);
-            });
-
-            const rotationStemStart = new THREE.Vector3(0, size.y / 2, handleSize * 0.15);
-            const rotationStemEnd = new THREE.Vector3(
-                0,
-                size.y / 2 + handleSize * 3.2,
-                handleSize * 0.15
-            );
-            const rotationStem = new THREE.Line(
-                new THREE.BufferGeometry().setFromPoints([rotationStemStart, rotationStemEnd]),
-                new THREE.LineBasicMaterial({
-                    color: 0x8b72ff,
-                    depthTest: false,
-                    depthWrite: false,
-                })
-            );
-            rotationStem.renderOrder = 82;
-            handleGroup.add(rotationStem);
-
-            const rotationHandle = new THREE.Mesh(handleGeometry.clone(), rotationMaterial);
-            rotationHandle.position.copy(rotationStemEnd);
-            rotationHandle.renderOrder = 83;
-            rotationHandle.userData.customizerLayerId = item.id;
-            rotationHandle.userData.customizerHandleType = "rotate";
-            handleGroup.add(rotationHandle);
-
-            target.add(handleGroup);
-
-            const previousMesh = item.mesh;
-            const previousFrame = item.frame;
-            const previousHandles = item.handles;
-
-            item.mesh = mesh;
-            item.frame = frame;
-            item.handles = handleGroup;
-            mesh.visible = item.layer.visible !== false;
-            frame.visible = item.id === selectedId && item.layer.visible !== false;
-            handleGroup.visible = item.id === selectedId && item.layer.visible !== false && !item.layer.locked;
-
-            if (previousMesh) {
-                previousMesh.geometry?.dispose();
-                previousMesh.material?.dispose();
-                previousMesh.parent?.remove(previousMesh);
-            }
-            if (previousFrame) {
-                previousFrame.geometry?.dispose();
-                previousFrame.material?.dispose();
-                previousFrame.parent?.remove(previousFrame);
-            }
-            if (previousHandles) {
-                previousHandles.traverse(child => {
-                    child.geometry?.dispose();
-                    child.material?.dispose();
-                });
-                previousHandles.parent?.remove(previousHandles);
-            }
-
+        if (!options.silent) {
             scheduleRenderLoop();
             renderSelectedPreview();
-        }).catch(() => status("تصویر لیبل برای پیش‌نمایش بارگذاری نشد."));
+        }
+        return true;
+    }
+
+    function project(item, point, normal, options = {}) {
+        if (!item?.artwork?.image || !garmentMeshes.length) return;
+
+        const surfacePoint = point.clone();
+        const surfaceNormal = normal.clone().normalize();
+        const revision = (item.projectRevision || 0) + 1;
+        item.projectRevision = revision;
+
+        const cached = item.visibleArtworkPromise || loadTexture(item.artwork.image).then(sourceTexture => {
+            const cropped = cropTextureToVisiblePixels(sourceTexture);
+            item.visibleArtwork = cropped;
+            item.visibleTexture = cropped.texture;
+            item.visibleArtworkPromise = Promise.resolve(cropped);
+            item.visibleArtworkWidth = cropped.visibleWidth || cropped.texture.image?.width || 0;
+            item.visibleArtworkHeight = cropped.visibleHeight || cropped.texture.image?.height || 0;
+            return cropped;
+        });
+
+        Promise.resolve(cached).then(cropped => {
+            if (!layers.has(item.id) || item.projectRevision !== revision) return;
+            item.visibleArtwork = cropped;
+            item.visibleTexture = cropped.texture;
+            if (!buildProjectedLayer(item, surfacePoint, surfaceNormal, options)) {
+                if (!options.silent) status("نمایش لیبل روی این بخش از لباس ممکن نشد.");
+            }
+        }).catch(() => {
+            if (!options.silent) status("تصویر لیبل برای پیش‌نمایش بارگذاری نشد.");
+        });
     }
 
     function addText(textValue, rawStyle = {}, rawColor = "#ffffff") {
@@ -2028,6 +2032,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             startSurfacePoint: item.surfacePoint.clone(),
             startSurfaceNormal: item.surfaceNormal.clone(),
             visual: captureLayerVisualState(item),
+            startSide: layerSide(item),
+            lastValidPoint: item.surfacePoint.clone(),
+            lastValidNormal: item.surfaceNormal.clone(),
+            lastValidTarget: item.target,
             startX: start.x,
             startY: start.y,
             startWidth: Number(item.layer.width) || 0.35,
@@ -2037,18 +2045,37 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         };
     }
 
+
     function previewLayerMove(event) {
         const activeDrag = drag;
         const item = activeDrag ? layers.get(activeDrag.layerId) : null;
         if (!activeDrag || !item || !activeDrag.visual) return;
 
-        const point = pointerOnLayerPlane(event, activeDrag.plane);
-        if (!point) return;
+        const area = areaById(item.layer.area_id, layerSide(item));
+        const hits = garmentHits(event);
+        const hit = hits.find(candidate =>
+            isValidPrintSurface(candidate, area) &&
+            surfaceSide(hitNormal(candidate)) === activeDrag.startSide
+        );
+        if (!hit) return;
 
-        const delta = point.sub(activeDrag.startPointerPoint);
-        activeDrag.previewDelta = delta.clone();
-        applyLayerVisualMove(activeDrag.visual, delta);
+        const hitNormalVector = hitNormal(hit);
+        const hitPoint = hit.point.clone();
+        const hitTarget = hit.object;
+
+        // Keep the current layer visibly attached to the cloth during the drag.
+        // Build with the cached texture: no image request or texture decode occurs.
+        item.target = hitTarget;
+        const projected = buildProjectedLayer(item, hitPoint, hitNormalVector, { silent: true });
+        if (!projected) return;
+
+        activeDrag.lastValidPoint = hitPoint;
+        activeDrag.lastValidNormal = hitNormalVector;
+        activeDrag.lastValidTarget = hitTarget;
+        activeDrag.lastSide = surfaceSide(hitNormalVector);
+
         render();
+        if (selectedPreviewFrameId === 0) renderSelectedPreview();
     }
 
     function applyLayerTransform(event) {
@@ -2125,11 +2152,23 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         }
 
         if (activeDrag.mode === "move") {
-            const moved = moveSelected(event);
-            if (!moved) {
+            if (!activeDrag.lastValidPoint || !activeDrag.lastValidNormal || !activeDrag.lastValidTarget) {
                 restoreLayerVisualState(activeDrag.visual);
                 render();
+                return;
             }
+            item.target = activeDrag.lastValidTarget;
+            item.layer.side = activeDrag.startSide;
+            const normalized = normalizedGarmentPoint(activeDrag.lastValidPoint);
+            if (normalized) {
+                item.layer.x = normalized.x;
+                item.layer.y = normalized.y;
+            }
+            item.surfacePoint = activeDrag.lastValidPoint.clone();
+            item.surfaceNormal = activeDrag.lastValidNormal.clone();
+            item.normal = activeDrag.lastValidNormal.clone();
+            item.position = item.surfacePoint.clone().addScaledVector(item.surfaceNormal, 0.008);
+            renderSelectedPreview();
             return;
         }
 
@@ -2483,6 +2522,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const rect = canvas.getBoundingClientRect();
         if (rect.width < 2 || rect.height < 2) return;
 
+        if (drag?.mode === "move") return;
         const token = ++selectedPreviewRevision;
         const ratio = Math.min(window.devicePixelRatio || 1, 2);
         canvas.width = Math.max(1, Math.round(rect.width * ratio));
@@ -4030,7 +4070,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 openSelectedPanel();
                 const selectedLayer = layers.get(selectedId);
                 if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
+                    const surfacePoint = pointerOnLayerPlane(event, new THREE.Plane().setFromNormalAndCoplanarPoint(
+                        selectedLayer.surfaceNormal,
+                        selectedLayer.surfacePoint
+                    ));
+                    if (!surfacePoint) return;
                     drag = beginLayerTransform(event, selectedLayer, "move");
+                    if (!drag) return;
                     controls.enabled = false;
                     canvas.style.touchAction = "none";
                     canvas.setPointerCapture(event.pointerId);
