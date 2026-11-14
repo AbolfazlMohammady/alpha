@@ -2141,7 +2141,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         const normal = item.surfaceNormal.clone().normalize();
         const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, item.surfacePoint);
-        const point = pointerOnLayerPlane(event, plane);
+        const point = pointerOnLayerPlane(event, plane) ||
+            (mode === "move" ? item.surfacePoint.clone() : null);
         if (!point) return null;
 
         const axes = layerPlaneAxes(item);
@@ -4191,7 +4192,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         canvas.addEventListener("pointerdown", event => {
             if (compactMedia.matches) hideMobileDragHint();
-            garmentHits(event);
+            const visibleGarmentHits = garmentHits(event);
 
             const handleHits = raycaster.intersectObjects(
                 Array.from(layers.values()).map(item => item.handles).filter(Boolean),
@@ -4218,19 +4219,27 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 return;
             }
 
+            const nearestGarmentDistance = visibleGarmentHits[0]?.distance ?? Infinity;
             const decal = raycaster.intersectObjects(
                 Array.from(layers.values()).map(item => item.mesh).filter(Boolean),
                 true
-            ).find(hit => hit.object?.userData?.customizerLayerId != null);
+            ).find(hit =>
+                hit.object?.userData?.customizerLayerId != null &&
+                hit.distance <= nearestGarmentDistance + 0.025
+            );
 
             if (decal) {
                 selectedId = Number(decal.object.userData.customizerLayerId);
                 openSelectedPanel();
                 const selectedLayer = layers.get(selectedId);
                 if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
-                    const startSurfaceHit = raycaster.intersectObjects(garmentMeshes, false).find(hit =>
-                        surfaceSide(hitNormal(hit)) === layerSide(selectedLayer) &&
-                        isValidPrintSurface(hit, areaById(selectedLayer.layer.area_id, layerSide(selectedLayer)))
+                    const selectedArea = areaById(selectedLayer.layer.area_id, layerSide(selectedLayer));
+                    const startSurfaceHit = visibleGarmentHits.find(hit =>
+                        is3DPrintableArea(areaForSurfaceSide(surfaceSide(hitNormal(hit)), selectedArea)) &&
+                        isValidPrintSurface(
+                            hit,
+                            areaForSurfaceSide(surfaceSide(hitNormal(hit)), selectedArea)
+                        )
                     );
                     if (!startSurfaceHit) return;
                     drag = beginLayerTransform(event, selectedLayer, "move");
@@ -4253,8 +4262,28 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             if (event.button === 1 || event.altKey) return;
 
-            // A selected label must only move after the user starts dragging the label itself.
-            // Clicking another point on the garment must never teleport the selected label.
+            const selectedLayer = layers.get(selectedId);
+            if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
+                const fallbackArea = areaById(selectedLayer.layer.area_id, layerSide(selectedLayer));
+                const printableSurfaceHit = visibleGarmentHits.find(hit => {
+                    const candidateArea = areaForSurfaceSide(surfaceSide(hitNormal(hit)), fallbackArea);
+                    return is3DPrintableArea(candidateArea) && isValidPrintSurface(hit, candidateArea);
+                });
+
+                if (printableSurfaceHit) {
+                    drag = beginLayerTransform(event, selectedLayer, "move");
+                    if (drag) {
+                        controls.enabled = false;
+                        canvas.style.touchAction = "none";
+                        canvas.setPointerCapture(event.pointerId);
+                        sync();
+                        return;
+                    }
+                }
+            }
+
+            // A blank click does not move a label. A real pointer movement is
+            // required; once it starts, previewLayerMove projects onto the live surface hit.
         });
 
         canvas.addEventListener("pointermove", event => {
