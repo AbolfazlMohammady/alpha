@@ -1711,7 +1711,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const size = new THREE.Vector3(
             width,
             width / aspect,
-            THREE.MathUtils.clamp(width * 0.16, 0.045, 0.085)
+            Math.max(0.24, width * 0.9)
         );
         const geometry = new DecalGeometry(
             target,
