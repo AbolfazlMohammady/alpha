@@ -550,8 +550,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         // Keep every product inside the same compact product frame. The old
         // fitDistance only prevented cropping, so it made each model fill the
         // entire canvas (and made a mug look as large as a shirt).
-        const targetWidthRatio = isPhone ? 0.42 : 0.58;
-        const targetHeightRatio = isPhone ? 0.54 : 0.58;
+        const isMug = garmentType === "mug";
+        const targetWidthRatio = isMug
+            ? (isPhone ? 0.30 : 0.32)
+            : (isPhone ? 0.42 : 0.58);
+        const targetHeightRatio = isMug
+            ? (isPhone ? 0.36 : 0.38)
+            : (isPhone ? 0.54 : 0.58);
         const fitDistance = Math.max(
             horizontalDistance / targetWidthRatio,
             verticalDistance / targetHeightRatio,
@@ -3336,184 +3341,361 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         });
     }
 
-    function canvasBlob(canvas, type = "image/webp", quality = 0.88) {
-        return new Promise((resolve, reject) => {
-            try {
-                canvas.toBlob(blob => {
-                    if (blob) resolve(blob);
-                    else reject(new Error("The 2D preview canvas did not produce an image."));
-                }, type, quality);
-            } catch (error) {
-                reject(error);
-            }
-        });
-    }
 
-    async function build2DPreview(side) {
-        let view = await resolve2DPatternView(side);
-        if (!view?.background) return null;
+    async function build2DBackgroundViews() {
+        const results = await Promise.all([
+            resolve2DPatternView("front"),
+            resolve2DPatternView("back"),
+        ]);
+        const frontView = results[0];
+        const backView = results[1];
+        const preferred = frontView && frontView.background ? frontView : backView;
+        if (!preferred || !preferred.background) return null;
 
         let background;
+        let views = { front: frontView, back: backView };
+        let generated = true;
         try {
-            background = await imageFromSource(view.background);
-        } catch (databaseImageError) {
-            console.warn("Configured 2D canvas failed; trying generated pattern SVG.", databaseImageError);
-            const fallbackView = await resolve2DPatternView(side, { forceDatabase: true });
-            if (!fallbackView?.background || fallbackView.background === view.background) {
-                throw databaseImageError;
-            }
-            view = fallbackView;
-            background = await imageFromSource(view.background);
+            background = await imageFromSource(preferred.background);
+        } catch (generatedImageError) {
+            console.warn("Generated 2D pattern SVG failed; trying configured database canvases.", generatedImageError);
+            const fallbackViews = await Promise.all([
+                resolve2DPatternView("front", { forceDatabase: true }),
+                resolve2DPatternView("back", { forceDatabase: true }),
+            ]);
+            const fallback = fallbackViews.find(view => view && view.background);
+            if (!fallback) throw generatedImageError;
+            background = await imageFromSource(fallback.background);
+            views = {
+                front: fallbackViews[0] || fallback,
+                back: fallbackViews[1] || fallback,
+            };
+            generated = false;
         }
-        const canvas = document.createElement("canvas");
-        const scale = Math.min(1, 1800 / Math.max(background.naturalWidth || background.width, background.naturalHeight || background.height));
-        canvas.width = Math.max(1, Math.round((background.naturalWidth || background.width) * scale));
-        canvas.height = Math.max(1, Math.round((background.naturalHeight || background.height) * scale));
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 
-        const viewAreas = view.areas || [];
-        const areaByIdLocal = id => viewAreas.find(area => Number(area.id) === Number(id));
-        const sideLayers = Array.from(layers.values())
-            .filter(item => layerSide(item) === side && item.layer.visible !== false)
-            .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0));
-
-        for (const item of sideLayers) {
-            const area = areaByIdLocal(item.layer.area_id);
-            const geometry = area?.geometry || [];
-            if (geometry.length < 3) continue;
-            const xs = geometry.map(point => Number(point.x));
-            const ys = geometry.map(point => Number(point.y));
-            const minX = Math.min(...xs), maxX = Math.max(...xs);
-            const minY = Math.min(...ys), maxY = Math.max(...ys);
-            const areaWidth = Math.max(maxX - minX, 0.0001);
-            const areaHeight = Math.max(maxY - minY, 0.0001);
-            const placement = areaRelativePlacement(item) || { x: item.layer.x, y: item.layer.y };
-            const x = (minX + placement.x * areaWidth) * canvas.width;
-            const y = (minY + placement.y * areaHeight) * canvas.height;
-            const width = item.layer.width * areaWidth * canvas.width;
-            const height = item.layer.height * areaHeight * canvas.height;
-
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(Number(item.layer.rotation || 0) * Math.PI / 180);
-            ctx.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
-            if (item.artwork?.is_text) {
-                const style = normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {});
-                ctx.fillStyle = item.layer.color || "#ffffff";
-                ctx.font = `${style.fontStyle} ${style.fontWeight} ${Math.max(12, height * 0.48)}px ${style.fontFamily}`;
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
-                ctx.fillText(String(item.layer.text || item.artwork.name || ""), 0, 0, Math.max(width, 20));
-            } else if (item.artwork?.image) {
-                try {
-                    const artworkImage = await imageFromSource(item.artwork.image);
-                    ctx.globalAlpha = Number(item.layer.opacity ?? 1);
-                    ctx.drawImage(artworkImage, -width / 2, -height / 2, width, height);
-                } catch (error) {
-                    console.warn("2D artwork preview failed", error);
-                }
-            }
-            ctx.restore();
-        }
-        return canvasBlob(canvas);
-    }
-
-    function draw2DStudioGrid(context, width, height, ratio = 1) {
-        const step = 24 * Math.max(1, Math.min(ratio, 2));
-        context.save();
-        context.lineWidth = 1;
-        for (let x = 0, index = 0; x <= width; x += step, index += 1) {
-            context.beginPath();
-            context.moveTo(Math.round(x) + 0.5, 0);
-            context.lineTo(Math.round(x) + 0.5, height);
-            context.strokeStyle = index % 5 === 0
-                ? "rgba(117, 119, 124, 0.18)"
-                : "rgba(117, 119, 124, 0.075)";
-            context.stroke();
-        }
-        for (let y = 0, index = 0; y <= height; y += step, index += 1) {
-            context.beginPath();
-            context.moveTo(0, Math.round(y) + 0.5);
-            context.lineTo(width, Math.round(y) + 0.5);
-            context.strokeStyle = index % 5 === 0
-                ? "rgba(117, 119, 124, 0.18)"
-                : "rgba(117, 119, 124, 0.075)";
-            context.stroke();
-        }
-        context.restore();
+        const manifest = await loadPatternManifest();
+        const pattern = manifest && manifest.models ? manifest.models[garmentType] : null;
+        return {
+            background,
+            pageWidth: Number((pattern && pattern.page && pattern.page.width) || preferred.width || background.naturalWidth || background.width),
+            pageHeight: Number((pattern && pattern.page && pattern.page.height) || preferred.height || background.naturalHeight || background.height),
+            views,
+            generated,
+        };
     }
 
     let active2DSide = "front";
     let previewRenderToken = 0;
+    let previewLayerHitRegions = [];
+    let previewPageTransform = null;
+    const previewImageCache = new Map();
+
+    function awaitPreviewImage(src) {
+        const key = String(src || "");
+        if (!key) return Promise.resolve(null);
+        if (!previewImageCache.has(key)) {
+            const promise = imageFromSource(key).catch(error => {
+                previewImageCache.delete(key);
+                throw error;
+            });
+            previewImageCache.set(key, promise);
+        }
+        return previewImageCache.get(key);
+    }
+
+    function draw2DPreviewRulers(context, layout, ratio) {
+        const rulerSize = Math.max(18, 22 * ratio);
+        context.save();
+        context.strokeStyle = "rgba(78, 82, 91, 0.48)";
+        context.fillStyle = "rgba(78, 82, 91, 0.82)";
+        context.lineWidth = Math.max(0.75, ratio * 0.65);
+        context.font = Math.max(9, 10 * ratio) + "px Arial, sans-serif";
+
+        const horizontalStep = layout.pageWidth > 1800 ? 200 : 100;
+        for (let mm = 0; mm <= layout.pageWidth; mm += horizontalStep) {
+            const px = layout.x + (mm / layout.pageWidth) * layout.width;
+            const major = mm % (horizontalStep * 2) === 0;
+            context.beginPath();
+            context.moveTo(px, layout.y);
+            context.lineTo(px, layout.y - (major ? rulerSize * 0.72 : rulerSize * 0.42));
+            context.stroke();
+            if (major) {
+                context.textAlign = "center";
+                context.textBaseline = "bottom";
+                context.fillText(String(mm), px, layout.y - rulerSize * 0.78);
+            }
+        }
+
+        const verticalStep = layout.pageHeight > 1800 ? 200 : 100;
+        for (let mm = 0; mm <= layout.pageHeight; mm += verticalStep) {
+            const py = layout.y + (mm / layout.pageHeight) * layout.height;
+            const major = mm % (verticalStep * 2) === 0;
+            context.beginPath();
+            context.moveTo(layout.x, py);
+            context.lineTo(layout.x - (major ? rulerSize * 0.72 : rulerSize * 0.42), py);
+            context.stroke();
+            if (major) {
+                context.save();
+                context.translate(layout.x - rulerSize * 0.82, py);
+                context.rotate(-Math.PI / 2);
+                context.textAlign = "center";
+                context.textBaseline = "middle";
+                context.fillText(String(mm), 0, 0);
+                context.restore();
+            }
+        }
+
+        context.textAlign = "left";
+        context.textBaseline = "top";
+        context.fillText("mm", Math.max(4, layout.x - rulerSize), Math.max(3, layout.y - rulerSize * 1.1));
+        context.restore();
+    }
+
+    function layerPreviewGeometry(item, view, layout) {
+        const viewAreas = view && Array.isArray(view.areas) ? view.areas : [];
+        const area = viewAreas.find(candidate => Number(candidate.id) === Number(item.layer.area_id));
+        const geometry = Array.isArray(area && area.geometry) ? area.geometry : [];
+        if (geometry.length < 3) return null;
+
+        const xs = geometry.map(point => Number(point.x));
+        const ys = geometry.map(point => Number(point.y));
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const areaWidth = Math.max(maxX - minX, 0.0001);
+        const areaHeight = Math.max(maxY - minY, 0.0001);
+        const placement = areaRelativePlacement(item) || {
+            x: Number(item.layer.x == null ? 0.5 : item.layer.x),
+            y: Number(item.layer.y == null ? 0.5 : item.layer.y),
+        };
+
+        return {
+            layerId: item.id,
+            side: layerSide(item),
+            centerX: layout.x + (minX + placement.x * areaWidth) * layout.width,
+            centerY: layout.y + (minY + placement.y * areaHeight) * layout.height,
+            width: Math.max(1, Number(item.layer.width || 0.35) * areaWidth * layout.width),
+            height: Math.max(1, Number(item.layer.height || 0.25) * areaHeight * layout.height),
+            rotation: Number(item.layer.rotation || 0) * Math.PI / 180,
+            item,
+        };
+    }
+
+    function draw2DSelection(context, region, ratio) {
+        if (!region) return;
+        context.save();
+        context.translate(region.centerX, region.centerY);
+        context.rotate(region.rotation);
+        context.strokeStyle = "#765cff";
+        context.fillStyle = "#ffffff";
+        context.lineWidth = Math.max(1.25, ratio * 1.1);
+        context.setLineDash([]);
+        context.strokeRect(-region.width / 2, -region.height / 2, region.width, region.height);
+
+        const handleSize = Math.max(7, 8 * ratio);
+        const points = [
+            [-region.width / 2, -region.height / 2],
+            [0, -region.height / 2],
+            [region.width / 2, -region.height / 2],
+            [-region.width / 2, 0],
+            [region.width / 2, 0],
+            [-region.width / 2, region.height / 2],
+            [0, region.height / 2],
+            [region.width / 2, region.height / 2],
+        ];
+        for (const point of points) {
+            context.fillRect(point[0] - handleSize / 2, point[1] - handleSize / 2, handleSize, handleSize);
+            context.strokeRect(point[0] - handleSize / 2, point[1] - handleSize / 2, handleSize, handleSize);
+        }
+
+        const rotateY = -region.height / 2 - Math.max(23, 25 * ratio);
+        context.beginPath();
+        context.moveTo(0, -region.height / 2);
+        context.lineTo(0, rotateY + 7 * ratio);
+        context.stroke();
+        context.beginPath();
+        context.arc(0, rotateY, Math.max(8, 9 * ratio), 0, Math.PI * 2);
+        context.fillStyle = "#765cff";
+        context.fill();
+        context.restore();
+    }
+
+    function pointInsidePreviewRegion(x, y, region) {
+        const dx = x - region.centerX;
+        const dy = y - region.centerY;
+        const cosine = Math.cos(-region.rotation);
+        const sine = Math.sin(-region.rotation);
+        const localX = dx * cosine - dy * sine;
+        const localY = dx * sine + dy * cosine;
+        return Math.abs(localX) <= region.width / 2 && Math.abs(localY) <= region.height / 2;
+    }
 
     async function render2DPreview() {
         const token = ++previewRenderToken;
         const previewCanvas = document.getElementById("designer-canvas");
         const loading = document.getElementById("stage-loading");
         if (!previewCanvas) return;
-        if (loading) {
+
+        const hasPreviousDrawing = previewCanvas.dataset.hasRendered === "1";
+        if (loading && !hasPreviousDrawing) {
             loading.textContent = "در حال آماده‌سازی نمای دوبعدی…";
             loading.classList.remove("is-hidden");
         }
+
         try {
-            const blob = await build2DPreview(active2DSide);
+            // Always render the whole sheet. Selecting a layer only redraws
+            // its artwork and selection handles, never removes the pattern.
+            const resolved = await build2DBackgroundViews();
             if (token !== previewRenderToken) return;
-            if (!blob) {
-                if (loading) {
-                    loading.textContent = "الگوی دوبعدی این مدل هنوز تولید نشده است؛ اسکریپت scripts/garment-patterns را اجرا کنید.";
-                    loading.classList.remove("is-hidden");
-                }
-                return;
+            if (!resolved || !resolved.background) {
+                throw new Error("No 2D pattern background is available for " + garmentType);
             }
-            const imageUrl = URL.createObjectURL(blob);
-            try {
-                const image = await imageFromSource(imageUrl);
+
+            let rect = null;
+            for (let attempt = 0; attempt < 5; attempt += 1) {
+                await new Promise(resolve => requestAnimationFrame(resolve));
                 if (token !== previewRenderToken) return;
+                rect = previewCanvas.getBoundingClientRect();
+                if (rect.width > 1 && rect.height > 1) break;
+            }
+            if (!rect || rect.width <= 1 || rect.height <= 1) {
+                throw new Error("2D preview stage has no visible layout size.");
+            }
 
-                // Wait for layout after the 2D panel becomes visible.
-                let rect = null;
-                for (let attempt = 0; attempt < 4; attempt += 1) {
-                    await new Promise(resolve => requestAnimationFrame(resolve));
-                    if (token !== previewRenderToken) return;
-                    rect = previewCanvas.getBoundingClientRect();
-                    if (rect.width > 1 && rect.height > 1) break;
-                }
-                if (!rect || rect.width <= 1 || rect.height <= 1) {
-                    throw new Error("2D preview stage has no visible layout size.");
-                }
-
-                const ratio = Math.min(window.devicePixelRatio || 1, 2);
-                const width = Math.max(1, Math.round(rect.width * ratio));
-                const height = Math.max(1, Math.round(rect.height * ratio));
+            const ratio = Math.min(window.devicePixelRatio || 1, 2);
+            const width = Math.max(1, Math.round(rect.width * ratio));
+            const height = Math.max(1, Math.round(rect.height * ratio));
+            if (previewCanvas.width !== width || previewCanvas.height !== height) {
                 previewCanvas.width = width;
                 previewCanvas.height = height;
-                const context = previewCanvas.getContext("2d");
-                if (!context) throw new Error("2D preview canvas context is unavailable.");
-                context.clearRect(0, 0, width, height);
-                context.fillStyle = "#f5f3ee";
-                context.fillRect(0, 0, width, height);
-                draw2DStudioGrid(context, width, height, ratio);
-
-                // Preserve the pattern sheet's aspect ratio and keep all pieces visible.
-                const padding = 18 * ratio;
-                const availableWidth = Math.max(1, width - padding * 2);
-                const availableHeight = Math.max(1, height - padding * 2);
-                const scale = Math.min(availableWidth / image.width, availableHeight / image.height);
-                const drawWidth = image.width * scale;
-                const drawHeight = image.height * scale;
-                context.drawImage(image, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
-                if (loading) loading.classList.add("is-hidden");
-            } finally {
-                URL.revokeObjectURL(imageUrl);
             }
+            const context = previewCanvas.getContext("2d");
+            if (!context) throw new Error("2D preview canvas context is unavailable.");
+
+            context.clearRect(0, 0, width, height);
+            context.fillStyle = "#f5f3ee";
+            context.fillRect(0, 0, width, height);
+            draw2DStudioGrid(context, width, height, ratio);
+
+            const image = resolved.background;
+            const imageWidth = image.naturalWidth || image.width;
+            const imageHeight = image.naturalHeight || image.height;
+            const pageWidth = Math.max(1, resolved.pageWidth || imageWidth);
+            const pageHeight = Math.max(1, resolved.pageHeight || imageHeight);
+            const padding = Math.max(26, 32 * ratio);
+            const availableWidth = Math.max(1, width - padding * 2);
+            const availableHeight = Math.max(1, height - padding * 2);
+            const scale = Math.min(availableWidth / imageWidth, availableHeight / imageHeight);
+            const drawWidth = imageWidth * scale;
+            const drawHeight = imageHeight * scale;
+            const drawX = (width - drawWidth) / 2;
+            const drawY = (height - drawHeight) / 2;
+            const layout = {
+                x: drawX,
+                y: drawY,
+                width: drawWidth,
+                height: drawHeight,
+                pageWidth,
+                pageHeight,
+            };
+
+            context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+            draw2DPreviewRulers(context, layout, ratio);
+
+            const regions = [];
+            for (const side of ["front", "back"]) {
+                const sideView = resolved.views[side];
+                if (!sideView) continue;
+                const sideLayers = Array.from(layers.values())
+                    .filter(item => layerSide(item) === side && item.layer.visible !== false)
+                    .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0));
+
+                for (const item of sideLayers) {
+                    if (token !== previewRenderToken) return;
+                    const region = layerPreviewGeometry(item, sideView, layout);
+                    if (!region) continue;
+
+                    if (item.artwork && item.artwork.is_text) {
+                        const style = normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {});
+                        context.save();
+                        context.translate(region.centerX, region.centerY);
+                        context.rotate(region.rotation);
+                        context.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
+                        context.globalAlpha = Math.max(0.05, Math.min(1, Number(item.layer.opacity == null ? 1 : item.layer.opacity)));
+                        context.fillStyle = item.layer.color || "#ffffff";
+                        context.font = style.fontStyle + " " + style.fontWeight + " " + Math.max(12, region.height * 0.48) + "px " + style.fontFamily;
+                        context.textAlign = "center";
+                        context.textBaseline = "middle";
+                        context.fillText(String(item.layer.text || item.artwork.name || ""), 0, 0, Math.max(region.width, 20));
+                        context.restore();
+                    } else if (item.artwork && item.artwork.image) {
+                        try {
+                            const artImage = await awaitPreviewImage(item.artwork.image);
+                            if (token !== previewRenderToken) return;
+                            if (artImage) {
+                                context.save();
+                                context.translate(region.centerX, region.centerY);
+                                context.rotate(region.rotation);
+                                context.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
+                                context.globalAlpha = Math.max(0.05, Math.min(1, Number(item.layer.opacity == null ? 1 : item.layer.opacity)));
+                                context.drawImage(artImage, -region.width / 2, -region.height / 2, region.width, region.height);
+                                context.restore();
+                            }
+                        } catch (error) {
+                            // An artwork without cross-origin permission is skipped;
+                            // the base SVG pattern remains intact and editable.
+                            console.warn("2D artwork preview skipped", error);
+                        }
+                    }
+                    regions.push(region);
+                }
+            }
+
+            previewLayerHitRegions = regions;
+            previewPageTransform = layout;
+            const selectedRegion = regions.find(region => region.layerId === selectedId);
+            if (selectedRegion) draw2DSelection(context, selectedRegion, ratio);
+
+            previewCanvas.dataset.hasRendered = "1";
+            if (loading) loading.classList.add("is-hidden");
         } catch (error) {
             console.error("2D garment preview failed", error);
+            // Keep the previous valid drawing instead of replacing it with a blank stage.
             if (loading) {
-                loading.textContent = "نمای دوبعدی بارگذاری نشد.";
-                loading.classList.remove("is-hidden");
+                if (previewCanvas.dataset.hasRendered === "1") {
+                    loading.classList.add("is-hidden");
+                } else {
+                    loading.textContent = "پیش‌نمایش دوبعدی بارگذاری نشد؛ نشانی فایل الگو را بررسی کن.";
+                    loading.classList.remove("is-hidden");
+                }
             }
         }
+    }
+
+    function bind2DCanvasSelection() {
+        const previewCanvas = document.getElementById("designer-canvas");
+        if (!previewCanvas || previewCanvas.dataset.selectionBound === "1") return;
+        previewCanvas.dataset.selectionBound = "1";
+        previewCanvas.addEventListener("pointerdown", event => {
+            if (!previewPageTransform || !previewLayerHitRegions.length) return;
+            const rect = previewCanvas.getBoundingClientRect();
+            if (rect.width < 1 || rect.height < 1) return;
+            const x = (event.clientX - rect.left) * (previewCanvas.width / rect.width);
+            const y = (event.clientY - rect.top) * (previewCanvas.height / rect.height);
+            const hit = [...previewLayerHitRegions].reverse().find(region =>
+                pointInsidePreviewRegion(x, y, region)
+            );
+            if (!hit) return;
+
+            active2DSide = hit.side;
+            document.querySelectorAll("[data-2d-side]").forEach(button => {
+                const active = button.dataset.twoDSide === active2DSide;
+                button.classList.toggle("is-active", active);
+                button.setAttribute("aria-pressed", String(active));
+            });
+            selectLayer(hit.layerId);
+        });
     }
 
     function setStudioView(mode) {
@@ -4376,6 +4558,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 render2DPreview();
             });
         });
+        bind2DCanvasSelection();
 
         document.getElementById("variant-select")?.addEventListener("change", event => {
             const variant = variants.find(item => String(item.id) === String(event.target.value)) || null;
