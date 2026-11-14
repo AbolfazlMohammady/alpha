@@ -3403,6 +3403,31 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         return previewImageCache.get(key);
     }
 
+    function draw2DStudioGrid(context, width, height, ratio) {
+        const step = 24 * Math.max(1, Math.min(ratio, 2));
+        context.save();
+        context.lineWidth = 1;
+        for (let x = 0, index = 0; x <= width; x += step, index += 1) {
+            context.beginPath();
+            context.moveTo(Math.round(x) + 0.5, 0);
+            context.lineTo(Math.round(x) + 0.5, height);
+            context.strokeStyle = index % 5 === 0
+                ? "rgba(117, 119, 124, 0.18)"
+                : "rgba(117, 119, 124, 0.075)";
+            context.stroke();
+        }
+        for (let y = 0, index = 0; y <= height; y += step, index += 1) {
+            context.beginPath();
+            context.moveTo(0, Math.round(y) + 0.5);
+            context.lineTo(width, Math.round(y) + 0.5);
+            context.strokeStyle = index % 5 === 0
+                ? "rgba(117, 119, 124, 0.18)"
+                : "rgba(117, 119, 124, 0.075)";
+            context.stroke();
+        }
+        context.restore();
+    }
+
     function draw2DPreviewRulers(context, layout, ratio) {
         const rulerSize = Math.max(18, 22 * ratio);
         context.save();
