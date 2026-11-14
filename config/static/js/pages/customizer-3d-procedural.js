@@ -518,29 +518,25 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
 
+
     function fitCamera(initial = false) {
         if (!camera || !controls || !garment) return;
 
         const mobile = compactMedia.matches;
         const aspect = Math.max(0.35, camera.aspect || 1);
+        const previousTarget = controls.target.clone();
+        const previousOffset = camera.position.clone().sub(previousTarget);
+        const previousDistance = Math.max(previousOffset.length(), 0.01);
+        const previousBaseDistance = Math.max(baseCameraDistance || previousDistance, 0.01);
+        const previousZoomRatio = previousDistance / previousBaseDistance;
+        const previousDirection = previousOffset.normalize();
 
-        // The mobile viewport is portrait, so the horizontal FOV is much
-        // narrower than the vertical FOV. The camera must therefore be fitted
-        // against BOTH the garment width and height. Fitting by height alone
-        // crops the shoulders/sleeves on phones.
-        //
-        // A wider mobile FOV lets us keep the garment visually large while the
-        // two-axis fit guarantees that the complete shirt remains inside the
-        // canvas.
-        // Portrait screens have very little horizontal field of view. A
-        // slightly tighter mobile FOV keeps the garment prominent without
-        // cropping the sleeves because the fit distance is still calculated
-        // from both axes below.
         const targetFov = mobile ? 39 : 28;
         if (Math.abs(camera.fov - targetFov) > 0.01) {
             camera.fov = targetFov;
         }
 
+        garment.updateWorldMatrix(true, true);
         const box = new THREE.Box3().setFromObject(garment);
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
@@ -549,41 +545,54 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const horizontalFov = 2 * Math.atan(
             Math.tan(verticalFov / 2) * aspect
         );
+        const verticalDistance = size.y / (2 * Math.tan(verticalFov / 2));
+        const horizontalDistance = size.x / (2 * Math.tan(horizontalFov / 2));
 
-        const verticalDistance =
-            size.y / (2 * Math.tan(verticalFov / 2));
-
-        const horizontalDistance =
-            size.x / (2 * Math.tan(horizontalFov / 2));
-
-        // Phone reference frame:
-        // - the garment center must sit at the real center of the phone viewport
-        // - the shirt should occupy roughly 44% of the viewport width, matching
-        //   the desired compact reference composition from the editor
-        // - the same rule is used on first load and on desktop -> mobile resize,
-        //   so the model cannot jump to a different frame after refresh.
         const isPhone = window.matchMedia("(max-width: 600px)").matches;
-
-        // Keep a consistent, compact product footprint. The old fit filled
-        // almost the entire stage and made wide products (especially mugs) huge.
-        const targetWidthRatio = isPhone ? 0.40 : 0.42;
-        const targetHeightRatio = isPhone ? 0.54 : 0.56;
-        const distance = Math.max(
-            horizontalDistance / targetWidthRatio,
-            verticalDistance / targetHeightRatio,
+        const desktopFitDistance = Math.max(
+            verticalDistance,
+            horizontalDistance,
             size.z * 1.25
-        ) * 1.04;
-        const targetY = center.y;
-        const cameraY = center.y;
+        );
 
-        baseCameraDistance = distance;        camera.position.set(0, cameraY, distance);
-        controls.target.set(center.x, targetY, center.z);
+        let fitDistance = desktopFitDistance * 1.08;
+        if (isPhone) {
+            fitDistance = Math.max(
+                verticalDistance,
+                horizontalDistance / 0.34,
+                size.z * 1.25
+            ) * 1.30;
+        }
 
-        camera.near = Math.max(0.01, distance / 100);
-        camera.far = Math.max(100, distance * 20);
+        // On first load / garment switch, use a near-frontal view with a
+        // small elevation so chest artwork is readable without orbiting.
+        // On responsive resize, preserve the user's current orbit and zoom.
+        const defaultDirection = new THREE.Vector3(0, 0.095, 1).normalize();
+        const direction = initial || previousOffset.lengthSq() < 1e-6
+            ? defaultDirection
+            : previousDirection;
+
+        const zoomRatio = initial
+            ? 1
+            : THREE.MathUtils.clamp(previousZoomRatio, 0.68, 2.25);
+        const distance = THREE.MathUtils.clamp(
+            fitDistance * zoomRatio,
+            Math.max(controls.minDistance || 0.1, fitDistance * 0.55),
+            Math.min(controls.maxDistance || fitDistance * 3, fitDistance * 2.4)
+        );
+
+        baseCameraDistance = fitDistance;
+        controls.target.copy(center);
+        camera.position.copy(center).add(direction.multiplyScalar(distance));
+        camera.near = Math.max(0.01, distance / 120);
+        camera.far = Math.max(100, distance * 24);
         camera.updateProjectionMatrix();
+        camera.lookAt(center);
 
-        if (initial) controls.update();
+        // OrbitControls keeps an internal spherical state. Updating it on every
+        // fit (not only the first one) prevents stale camera orientation after
+        // a panel resize, garment switch, or split/3D view transition.
+        controls.update();
         render();
         updateCameraZoomLabel();
     }
@@ -1006,18 +1015,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         };
     }
 
+    function garmentLocalNormal(worldNormal) {
+        const localNormal = worldNormal.clone().normalize();
+        if (!garment) return localNormal;
+
+        garment.updateWorldMatrix(true, false);
+        const garmentNormalMatrix = new THREE.Matrix3().getNormalMatrix(garment.matrixWorld);
+        garmentNormalMatrix.invert();
+        return localNormal.applyMatrix3(garmentNormalMatrix).normalize();
+    }
+
     function surfaceSide(normal) {
-        const localNormal = normal.clone().normalize();
-
-        // Front/back belongs to the shirt itself, not to the screen/world.
-        // Convert the hit normal into garment-local space so rotating the shirt
-        // never changes which physical side a label belongs to.
-        if (garment) {
-            const inverseRotation = garment.getWorldQuaternion(new THREE.Quaternion()).invert();
-            localNormal.applyQuaternion(inverseRotation).normalize();
-        }
-
-        return localNormal.dot(frontAxis) >= 0 ? "front" : "back";
+        return garmentLocalNormal(normal).dot(frontAxis) >= 0 ? "front" : "back";
     }
 
     function cameraFacingGarmentSide() {
@@ -1046,7 +1055,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         // which face the customer actually used.
         if (explicitSides && area.side && area.side !== side) return false;
 
-        return Math.abs(normal.dot(frontAxis)) >= 0.35;
+        const localNormal = garmentLocalNormal(normal);
+        return Math.abs(localNormal.dot(frontAxis)) >= 0.35;
     }
 
     function printAreaGeometry(area) {
@@ -1302,8 +1312,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     function hitNormal(hit) {
+        if (!hit?.object) return frontAxis.clone();
+
+        hit.object.updateWorldMatrix(true, false);
+        const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
         return (hit.face?.normal?.clone() || frontAxis.clone())
-            .transformDirection(hit.object.matrixWorld)
+            .applyMatrix3(normalMatrix)
             .normalize();
     }
 
@@ -1316,13 +1330,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         // make the decal visibly spin. World-up gives the front and back a stable
         // "top" direction and we only rotate around the surface normal when the
         // user explicitly changes the label rotation.
-        let up = new THREE.Vector3(0, 1, 0);
+        // Use the garment's own vertical axis rather than global world-up.
+        // Imported hoodie / long-sleeve GLBs can have slightly different root
+        // orientations, so world-up can make artwork appear skewed on them.
+        let up = garment
+            ? new THREE.Vector3(0, 1, 0).transformDirection(garment.matrixWorld)
+            : new THREE.Vector3(0, 1, 0);
         up.addScaledVector(n, -up.dot(n));
 
-        // Near a perfectly vertical normal, world-up has no usable projection.
-        // Fall back to world-Z in that rare case.
         if (up.lengthSq() < 1e-6) {
-            up.set(0, 0, 1);
+            up = garment
+                ? new THREE.Vector3(1, 0, 0).transformDirection(garment.matrixWorld)
+                : new THREE.Vector3(0, 0, 1);
             up.addScaledVector(n, -up.dot(n));
         }
 
@@ -1492,7 +1511,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const size = new THREE.Vector3(
             width,
             width / aspect,
-            Math.max(0.24, width * 0.9)
+            THREE.MathUtils.clamp(width * 0.16, 0.045, 0.085)
         );
         const position = surfacePoint.clone().addScaledVector(surfaceNormal, 0.008);
         const geometry = new DecalGeometry(
@@ -1691,7 +1710,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 Math.max(1, item.visibleArtwork.visibleHeight || item.visibleTexture.image?.height || 1)
         );
         const width = Math.max(0.08, Math.min(1.05, 0.86 * Number(item.layer.width || 0.35)));
-        const size = new THREE.Vector3(width, width / aspect, Math.max(0.24, width * 0.9));
+        const size = new THREE.Vector3(
+            width,
+            width / aspect,
+            THREE.MathUtils.clamp(width * 0.16, 0.045, 0.085)
+        );
         const geometry = new DecalGeometry(
             target,
             position,
@@ -2131,6 +2154,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             startSurfaceNormal: item.surfaceNormal.clone(),
             visual: captureLayerVisualState(item),
             startSide: layerSide(item),
+            startAreaId: item.layer.area_id,
             lastValidPoint: item.surfacePoint.clone(),
             lastValidNormal: item.surfaceNormal.clone(),
             lastValidTarget: item.target,
@@ -2149,27 +2173,39 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const item = activeDrag ? layers.get(activeDrag.layerId) : null;
         if (!activeDrag || !item || !activeDrag.visual) return;
 
-        const area = areaById(item.layer.area_id, layerSide(item));
+        const fallbackArea = areaById(item.layer.area_id, layerSide(item));
         const hits = garmentHits(event);
-        const hit = hits.find(candidate =>
-            isValidPrintSurface(candidate, area)
-        );
+        const hit = hits.find(candidate => {
+            const candidateSide = surfaceSide(hitNormal(candidate));
+            const candidateArea = areaForSurfaceSide(candidateSide, fallbackArea);
+            return is3DPrintableArea(candidateArea) &&
+                isValidPrintSurface(candidate, candidateArea);
+        });
         if (!hit) return;
 
         const hitNormalVector = hitNormal(hit);
         const hitPoint = hit.point.clone();
         const hitTarget = hit.object;
+        const nextSide = surfaceSide(hitNormalVector);
+        const nextArea = areaForSurfaceSide(nextSide, fallbackArea);
+        if (!nextArea) return;
 
-        // Keep the current layer visibly attached to the cloth during the drag.
-        // Build with the cached texture: no image request or texture decode occurs.
+        // A label may cross the garment's side seam while the user rotates
+        // around it. Switch the production print area at the same time as the
+        // surface hit; do not keep rejecting the back because the old area was front.
+        item.layer.side = nextSide;
+        item.layer.area_id = nextArea.id;
         item.target = hitTarget;
+
+        // Reproject on the exact cloth hit in this frame using the cached artwork.
         const projected = updateProjectedLayerDuringDrag(item, hitPoint, hitNormalVector);
         if (!projected) return;
 
         activeDrag.lastValidPoint = hitPoint;
         activeDrag.lastValidNormal = hitNormalVector;
         activeDrag.lastValidTarget = hitTarget;
-        activeDrag.lastSide = surfaceSide(hitNormalVector);
+        activeDrag.lastSide = nextSide;
+        activeDrag.lastAreaId = nextArea.id;
 
         render();
     }
@@ -2242,6 +2278,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             item.layer.width = activeDrag.startWidth;
             item.layer.height = activeDrag.startHeight;
             item.layer.rotation = activeDrag.startRotation;
+            item.layer.side = activeDrag.startSide;
+            item.layer.area_id = activeDrag.startAreaId ?? item.layer.area_id;
             restoreLayerVisualState(activeDrag.visual);
             render();
             return;
@@ -2254,7 +2292,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 return;
             }
             item.target = activeDrag.lastValidTarget;
-            item.layer.side = activeDrag.startSide;
+            item.layer.side = activeDrag.lastSide || activeDrag.startSide;
+            if (activeDrag.lastAreaId != null) item.layer.area_id = activeDrag.lastAreaId;
             const normalized = normalizedGarmentPoint(activeDrag.lastValidPoint);
             if (normalized) {
                 item.layer.x = normalized.x;
