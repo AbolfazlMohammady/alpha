@@ -1346,10 +1346,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     function disposeLayer(item) {
         if (!item?.mesh) return;
         item.mesh.geometry?.dispose();
-        // Textures are cached/shared between projections; dispose only the
-        // per-decal material, otherwise a drag would invalidate the cached texture. 
-        item.mesh.material?.dispose();
+        // The decal material is cached per layer and shared by its projected
+        // meshes; only dispose the geometry here.
         item.mesh.parent?.remove(item.mesh);
+        item.decalMaterial?.dispose();
+        item.decalMaterial = null;
         if (item.frame) {
             item.frame.geometry?.dispose();
             item.frame.material?.dispose();
@@ -1536,6 +1537,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 side: THREE.DoubleSide,
             });
             item.decalMaterial = material;
+            item.decalMaterial = material;
         } else {
             material.map = texture;
             material.emissiveMap = texture;
@@ -1706,6 +1708,27 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         }
         geometry.applyMatrix4(target.matrixWorld.clone().invert());
 
+        if (!item.decalMaterial) {
+            item.decalMaterial = new THREE.MeshPhysicalMaterial({
+                map: item.visibleTexture,
+                color: new THREE.Color("#ffffff"),
+                transparent: true,
+                opacity: Math.max(0.2, Math.min(1, Number(item.layer.opacity ?? 1))),
+                alphaTest: 0.02,
+                roughness: 0.62,
+                metalness: 0,
+                clearcoat: 0.02,
+                emissive: new THREE.Color("#ffffff"),
+                emissiveMap: item.visibleTexture,
+                emissiveIntensity: 0.16,
+                depthTest: true,
+                depthWrite: false,
+                polygonOffset: true,
+                polygonOffsetFactor: -5,
+                polygonOffsetUnits: -2,
+                side: THREE.DoubleSide,
+            });
+        }
         const oldMesh = item.mesh;
         const mesh = new THREE.Mesh(geometry, item.decalMaterial);
         mesh.renderOrder = 30 + (Number(item.layer.z_index) || 0);
