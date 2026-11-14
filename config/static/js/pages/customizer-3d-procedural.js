@@ -4567,7 +4567,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             setColor(currentVariant?.hex || "#ffffff");
             sync();
             updateGarmentPicker("tshirt", false);
-            setStudioView("split");
+            setStudioView(preferredStudioView);
         } catch (error) {
             console.error("GLB customizer model failed to load", error);
             setLoading("بارگذاری مدل سه‌بعدی انجام نشد.", true);
