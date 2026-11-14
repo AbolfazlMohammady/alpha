@@ -572,29 +572,38 @@
             wrapper.setAttribute("aria-label", "انتخاب مدل محصول");
 
             const current = window.BabaeiCustomizer3D?.getGarmentType?.() || "tshirt";
-            wrapper.innerHTML = modelSources.map(source => {
-                const key = source.dataset.garmentType || "";
-                const title = source.dataset.garmentLabel || key;
-                const subtitle = source.dataset.garmentSubtitle || "";
-                const icon = source.dataset.garmentIcon || "□";
-                const active = key === current;
+            wrapper.innerHTML = `
+                <div class="garment-type-popover__intro">
+                    <span>PRODUCT STUDIO</span>
+                    <strong>چه محصولی طراحی می‌کنی؟</strong>
+                    <small>مدل موردنظرت را انتخاب کن تا محیط طراحی آماده شود.</small>
+                </div>
+                <div class="garment-type-popover__grid">
+                    ${modelSources.map(source => {
+                        const key = source.dataset.garmentType || "";
+                        const modelTitle = source.dataset.garmentLabel || key;
+                        const subtitle = source.dataset.garmentSubtitle || "";
+                        const icon = source.dataset.garmentIcon || "□";
+                        const active = key === current;
 
-                return `
-                    <button type="button"
-                        class="garment-type-card${active ? " is-active" : ""}"
-                        data-garment-type="${key}"
-                        aria-pressed="${active ? "true" : "false"}">
-                        <span class="garment-type-card__icon" aria-hidden="true">${icon}</span>
-                        <span class="garment-type-card__copy">
-                            <strong>${title}</strong>
-                            <small>${subtitle}</small>
-                        </span>
-                        <span class="garment-type-card__check" aria-hidden="true">✓</span>
-                    </button>
-                `;
-            }).join("");
+                        return `
+                            <button type="button"
+                                class="garment-type-card${active ? " is-active" : ""}"
+                                data-garment-type="${key}"
+                                aria-pressed="${active ? "true" : "false"}">
+                                <span class="garment-type-card__icon" aria-hidden="true">${icon}</span>
+                                <span class="garment-type-card__copy">
+                                    <strong>${modelTitle}</strong>
+                                    <small>${subtitle}</small>
+                                </span>
+                                <span class="garment-type-card__check" aria-hidden="true">✓</span>
+                            </button>
+                        `;
+                    }).join("")}
+                </div>
+            `;
 
-            const cards = Array.from(wrapper.querySelectorAll("[data-garment-type]"));
+            const cards = Array.from(wrapper.querySelectorAll(".garment-type-card[data-garment-type]"));
             cards.forEach(button => {
                 button.addEventListener("click", async event => {
                     event.preventDefault();
@@ -621,7 +630,7 @@
                 });
             });
 
-            open("نوع محصول", wrapper);
+            open("انتخاب محصول", wrapper);
         };
 
         const openShirtColors = () => {
