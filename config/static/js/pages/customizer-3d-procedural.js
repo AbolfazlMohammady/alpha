@@ -1001,76 +1001,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
 
-    function printableBodyZone(type = garmentType) {
-        const zones = {
-            tshirt:      { minX: 0.22, maxX: 0.78, minY: 0.11, maxY: 0.91 },
-            long_sleeve: { minX: 0.26, maxX: 0.74, minY: 0.12, maxY: 0.90 },
-            hoodie:      { minX: 0.23, maxX: 0.77, minY: 0.12, maxY: 0.90 },
-            // The mug is one GLB mesh. Its handle extends the positive local-X
-            // bounds, so the printable body must stop before that side section.
-            mug:         { minX: 0.035, maxX: 0.70, minY: 0.07, maxY: 0.93 },
-        };
-        return zones[String(type || "").toLowerCase()] || zones.tshirt;
-    }
-
-    function isPrintableBodyPoint(worldPoint, paddingX = 0, paddingY = 0) {
-        const normalized = normalizedGarmentPoint(worldPoint);
-        if (!normalized) return false;
-
-        const zone = printableBodyZone();
-        return (
-            normalized.x >= zone.minX + paddingX &&
-            normalized.x <= zone.maxX - paddingX &&
-            normalized.y >= zone.minY + paddingY &&
-            normalized.y <= zone.maxY - paddingY
-        );
-    }
-
-    function placementFitsPrintableBody(item, placement) {
-        if (!garment || !item || !placement) return false;
-
-        const zone = printableBodyZone();
-        if (!garmentWorldBounds) {
-            garmentWorldBounds = new THREE.Box3().setFromObject(garment);
-        }
-        const worldSize = garmentWorldBounds.getSize(new THREE.Vector3());
-        if (worldSize.x <= 1e-6 || worldSize.y <= 1e-6) return false;
-
-        const artworkAspect = Math.max(
-            0.15,
-            Number(item.renderAspect) ||
-                (Number(item.visibleArtworkWidth) / Math.max(1, Number(item.visibleArtworkHeight))) ||
-                1
-        );
-        const physicalWidth = Math.max(
-            0.08,
-            Math.min(1.05, 0.86 * Number(placement.width ?? item.layer.width ?? 0.35))
-        );
-        const physicalHeight = physicalWidth / artworkAspect;
-        const halfWidth = physicalWidth / worldSize.x / 2;
-        const halfHeight = physicalHeight / worldSize.y / 2;
-        const angle = THREE.MathUtils.degToRad(Number(placement.rotation ?? item.layer.rotation ?? 0));
-        const extentX = Math.abs(Math.cos(angle)) * halfWidth + Math.abs(Math.sin(angle)) * halfHeight;
-        const extentY = Math.abs(Math.sin(angle)) * halfWidth + Math.abs(Math.cos(angle)) * halfHeight;
-        const x = Number(placement.x);
-        const y = Number(placement.y);
-
-        return (
-            Number.isFinite(x) &&
-            Number.isFinite(y) &&
-            x - extentX >= zone.minX &&
-            x + extentX <= zone.maxX &&
-            y - extentY >= zone.minY &&
-            y + extentY <= zone.maxY
-        );
-    }
-
     function labelProjectionDepth(width) {
         // Long-sleeve fabric is comparatively thin; a deep projector intersects
         // the opposite/back folds and creates fragmented decals. Keep hoodie and
         // T-shirt at the proven Babaei depth, with a shallower volume for the
         // long-sleeve and the curved mug body.
-        if (garmentType === "long_sleeve") {
+        if (garmentType === "long_sleeve" && cameraFacingGarmentSide() === "back") {
             return Math.max(0.09, Math.min(0.12, width * 0.36));
         }
         if (garmentType === "mug") {
@@ -1186,10 +1122,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (explicitSides && area.side && area.side !== side) return false;
 
         const localNormal = garmentLocalNormal(normal);
-        return (
-            Math.abs(localNormal.dot(frontAxis)) >= 0.35 &&
-            isPrintableBodyPoint(hit.point)
-        );
+        return Math.abs(localNormal.dot(frontAxis)) >= 0.35;
     }
 
     function printAreaGeometry(area) {
@@ -1361,17 +1294,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             return { ok: false, message: "ناحیه چاپ لباس معتبر نیست." };
         }
 
-        if (!placementFitsPrintableBody(item, placement)) {
-            return {
-                ok: false,
-                message: garmentType === "mug"
-                    ? "لیبل باید روی بدنه‌ی ماگ بماند و نباید وارد دسته شود."
-                    : "لیبل باید کاملاً داخل بدنه‌ی لباس باشد؛ آستین و یقه ناحیه‌ی چاپ نیستند.",
-            };
-        }
-
-        // Labels can sit beside one another; only the garment's printable
-        // body boundary is enforced here.
+        // Keep the original free-placement behavior. The print-zone geometry
+        // is not a generic 3D movement boundary; the garment surface itself is
+        // the only hit-test constraint for existing products.
         return { ok: true };
     }
 
@@ -1396,25 +1321,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const bounds = garmentNdcBounds();
         if (!bounds) return null;
 
-        // Keep first placement centered inside the actual printable body.
-        // The mug's body is offset inside its GLB bounds because the handle
-        // extends to one side; using a fixed 0.5 center would bias artwork toward it.
-        const bodyZone = printableBodyZone();
-        const bodyCenterX = (bodyZone.minX + bodyZone.maxX) / 2;
-        const bodySpread = (bodyZone.maxX - bodyZone.minX) * 0.34;
         const candidates = [
-            [bodyCenterX, 0.42],
-            [bodyCenterX - bodySpread, 0.42],
-            [bodyCenterX + bodySpread, 0.42],
-            [bodyCenterX, 0.30],
-            [bodyCenterX, 0.56],
-            [bodyCenterX - bodySpread, 0.30],
-            [bodyCenterX + bodySpread, 0.30],
-            [bodyCenterX - bodySpread, 0.56],
-            [bodyCenterX + bodySpread, 0.56],
-            [bodyCenterX, 0.68],
-            [bodyCenterX - bodySpread, 0.68],
-            [bodyCenterX + bodySpread, 0.68],
+            [0.50, 0.42], [0.30, 0.42], [0.70, 0.42],
+            [0.50, 0.30], [0.50, 0.56],
+            [0.28, 0.30], [0.72, 0.30],
+            [0.28, 0.56], [0.72, 0.56],
+            [0.50, 0.68], [0.30, 0.68], [0.70, 0.68],
+            [0.20, 0.42], [0.80, 0.42],
         ];
 
         // Pick a free-looking visual position, not a collision-free
@@ -1562,93 +1475,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         raycaster.set(origin, direction);
         const hits = raycaster.intersectObjects(garmentMeshes, false);
-        return hits.find(hit =>
-            surfaceSide(hitNormal(hit)) === side &&
-            isPrintableBodyPoint(hit.point)
-        ) || null;
+        return hits.find(hit => surfaceSide(hitNormal(hit)) === side) || null;
     }
 
-    async function reprojectLayersAfterGarmentSwitch(previousType = "tshirt") {
-        const sourceZone = printableBodyZone(previousType);
-        const targetZone = printableBodyZone(garmentType);
-        const offsets = [
-            [0, 0], [0, -0.018], [0, 0.018],
-            [-0.018, 0], [0.018, 0],
-            [-0.035, -0.018], [0.035, -0.018],
-            [-0.035, 0.018], [0.035, 0.018],
-        ];
-
+    async function reprojectLayersAfterGarmentSwitch() {
         for (const item of layers.values()) {
             const side = String(item.layer.side || "front").toLowerCase() === "back"
                 ? "back"
                 : "front";
-            const sourceX = THREE.MathUtils.clamp(
-                (Number(item.layer.x ?? 0.5) - sourceZone.minX) /
-                    Math.max(sourceZone.maxX - sourceZone.minX, 1e-6),
-                0.02,
-                0.98
-            );
-            const sourceY = THREE.MathUtils.clamp(
-                (Number(item.layer.y ?? 0.5) - sourceZone.minY) /
-                    Math.max(sourceZone.maxY - sourceZone.minY, 1e-6),
-                0.02,
-                0.98
-            );
-            const baseX = targetZone.minX + sourceX * (targetZone.maxX - targetZone.minX);
-            const baseY = targetZone.minY + sourceY * (targetZone.maxY - targetZone.minY);
-            const area = areaForSurfaceSide(
-                side,
-                areaById(item.layer.area_id, side) || areas.find(is3DPrintableArea)
-            );
-            if (!area) continue;
+            const hit = garmentSurfaceHitAtPlacement(item.layer.x, item.layer.y, side);
+            if (!hit) continue;
 
-            let hit = null;
-            let nextX = baseX;
-            let nextY = baseY;
-            for (const [dx, dy] of offsets) {
-                const candidateX = THREE.MathUtils.clamp(
-                    baseX + dx,
-                    targetZone.minX + 0.01,
-                    targetZone.maxX - 0.01
-                );
-                const candidateY = THREE.MathUtils.clamp(
-                    baseY + dy,
-                    targetZone.minY + 0.01,
-                    targetZone.maxY - 0.01
-                );
-                const candidate = garmentSurfaceHitAtPlacement(candidateX, candidateY, side);
-                if (candidate && isValidPrintSurface(candidate, area)) {
-                    hit = candidate;
-                    nextX = candidateX;
-                    nextY = candidateY;
-                    break;
-                }
-            }
-
-            // If the old relative point lands on a seam/pocket, pick a safe
-            // printable body location instead of projecting onto a sleeve.
-            if (!hit) {
-                hit = placementHit(area, item.layer.width, item.layer.height, side);
-                if (hit) {
-                    const normalized = normalizedGarmentPoint(hit.point);
-                    if (normalized) {
-                        nextX = normalized.x;
-                        nextY = normalized.y;
-                    }
-                }
-            }
-            if (!hit) {
-                item.mesh = null;
-                item.frame = null;
-                item.handles = null;
-                item.target = null;
-                continue;
-            }
-
-            item.layer.x = nextX;
-            item.layer.y = nextY;
-            item.layer.side = side;
-            item.layer.area_id = area.id;
             item.target = hit.object;
             project(item, hit.point, hitNormal(hit));
         }
@@ -1687,7 +1524,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         try {
             await loadGarment(model.url);
             fitCamera(true);
-            await reprojectLayersAfterGarmentSwitch(previousType);
+            await reprojectLayersAfterGarmentSwitch();
             render();
             // Mugs temporarily force 3D; garments restore the selected view.
             setStudioView(preferredStudioView);
@@ -2495,7 +2332,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 render();
                 return;
             }
-            item.target = activeDrag.lastValidTarget;
+            const targetChanged = item.target !== activeDrag.lastValidTarget;
+            if (targetChanged) item.target = activeDrag.lastValidTarget;
             item.layer.side = activeDrag.lastSide || activeDrag.startSide;
             if (activeDrag.lastAreaId != null) item.layer.area_id = activeDrag.lastAreaId;
             const normalized = normalizedGarmentPoint(activeDrag.lastValidPoint);
@@ -2507,6 +2345,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             item.surfaceNormal = activeDrag.lastValidNormal.clone();
             item.normal = activeDrag.lastValidNormal.clone();
             item.position = item.surfacePoint.clone().addScaledVector(item.surfaceNormal, 0.008);
+            if (targetChanged || !item.mesh) {
+                project(item, item.surfacePoint, item.surfaceNormal, { silent: true });
+            } else if (item.mesh && item.target) {
+                item.mesh.position.copy(item.target.worldToLocal(item.position.clone()));
+            }
             renderSelectedPreview();
             return;
         }
@@ -2566,16 +2409,33 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         const hitPoint = hit.point.clone();
         const hitNormalVector = hitNormal(hit);
-        const previousTarget = item.target;
-        item.target = hit.object;
+        const startTarget = activeDrag?.startTarget || item.target;
 
-        // Rebuild the live decal from the actual surface hit. The fast path
-        // keeps the cached texture/material and existing handles, but uses
-        // Babaei's projection depth so the artwork remains intact on fabric folds.
-        const projected = updateProjectedLayerDuringDrag(item, hitPoint, hitNormalVector);
-        if (!projected) {
-            item.target = previousTarget;
-            return false;
+        // Reuse the existing decal and gizmo objects during ordinary dragging.
+        // Rebuilding DecalGeometry on every pointer event caused visible stutter.
+        // When the pointer moves over another mesh section, defer the re-projection
+        // until pointer-up; the layer stays visually responsive in the meantime.
+        if (startTarget && hit.object === startTarget) {
+            if (activeDrag?.visual) {
+                const worldDelta = hitPoint.clone().sub(activeDrag.startSurfacePoint);
+                applyLayerVisualMove(activeDrag.visual, worldDelta);
+            } else if (item.mesh && item.surfacePoint) {
+                const worldDelta = hitPoint.clone().sub(item.surfacePoint);
+                const localDelta = item.target.worldToLocal(
+                    item.surfacePoint.clone().add(worldDelta)
+                ).sub(item.target.worldToLocal(item.surfacePoint.clone()));
+                [item.mesh, item.frame, item.handles].forEach(object => {
+                    if (object) object.position.add(localDelta);
+                });
+            }
+            if (activeDrag) {
+                activeDrag.lastValidPoint = hitPoint;
+                activeDrag.lastValidNormal = hitNormalVector;
+                activeDrag.lastValidTarget = hit.object;
+                activeDrag.lastSide = hitSide;
+                activeDrag.lastAreaId = area.id;
+            }
+            return true;
         }
 
         if (activeDrag) {
@@ -2584,6 +2444,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             activeDrag.lastValidTarget = hit.object;
             activeDrag.lastSide = hitSide;
             activeDrag.lastAreaId = area.id;
+            return true;
+        }
+
+        const previousTarget = item.target;
+        item.target = hit.object;
+        const projected = updateProjectedLayerDuringDrag(item, hitPoint, hitNormalVector);
+        if (!projected) {
+            item.target = previousTarget;
+            return false;
         }
 
         return true;
