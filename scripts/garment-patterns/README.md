@@ -54,3 +54,8 @@ docker-compose run --no-deps garment-patterns
 ```
 
 اگر دانلود image یا نصب npm به خطای شبکه خورد، متن کامل خطا را بررسی کن؛ اجرای اسکریپت روی ویندوز یا داخل کانتینر Django جایگزین لازم نیست.
+
+
+### Full garment layout in the 2D editor
+
+The editor-facing `tshirt.svg`, `long_sleeve.svg`, and `hoodie.svg` are composed previews: FreeSewing's front/back half-patterns are mirrored about the fold edge into full panels, with a mirrored sleeve pair and available auxiliary pieces arranged underneath. The original FreeSewing layout is retained as `*-freesewing.svg` and referenced through `sourceSvg` in the manifest. The editor preview helps with artwork placement; it is not a certified industrial cutting file. The bundled M measurement profile must be replaced with the customer's actual measurements before production.
