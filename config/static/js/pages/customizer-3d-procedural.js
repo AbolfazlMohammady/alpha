@@ -1785,7 +1785,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const revision = (item.projectRevision || 0) + 1;
         item.projectRevision = revision;
 
-        const cached = item.visibleArtworkPromise || loadTexture(item.artwork.image).then(sourceTexture => {
+        const cached = item.visibleArtwork
+            ? Promise.resolve(item.visibleArtwork)
+            : (item.visibleArtworkPromise || loadTexture(item.artwork.image).then(sourceTexture => {
             const cropped = cropTextureToVisiblePixels(sourceTexture);
             item.visibleArtwork = cropped;
             item.visibleTexture = cropped.texture;
@@ -1793,7 +1795,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             item.visibleArtworkWidth = cropped.visibleWidth || cropped.texture.image?.width || 0;
             item.visibleArtworkHeight = cropped.visibleHeight || cropped.texture.image?.height || 0;
             return cropped;
-        });
+        }));
 
         Promise.resolve(cached).then(cropped => {
             if (!layers.has(item.id) || item.projectRevision !== revision) return;
