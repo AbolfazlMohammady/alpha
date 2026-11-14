@@ -145,24 +145,21 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             : /(back|پشت)/i.test(label);
     }
 
-    async function resolve2DPatternView(side, { forceGenerated = false } = {}) {
+    async function resolve2DPatternView(side, { forceDatabase = false } = {}) {
         const databaseView = (data.views || []).find(view => viewMatchesSide(view, side)) || null;
-        if (!forceGenerated && databaseView?.background) return databaseView;
+        if (forceDatabase) return databaseView;
 
         const manifest = await loadPatternManifest();
-        if (!manifest?.generated) return forceGenerated ? null : databaseView;
-        const pattern = manifest.models?.[garmentType];
+        const pattern = manifest?.generated ? manifest.models?.[garmentType] : null;
         const patternSide = pattern?.views?.[side];
-        if (!pattern?.svg || !patternSide?.geometry?.length) {
-            return forceGenerated ? null : databaseView;
-        }
+        if (!pattern?.svg || !patternSide?.geometry?.length) return databaseView;
 
         const manifestAbsoluteUrl = new URL(patternManifestUrl, window.location.href).href;
         const background = new URL(pattern.svg, manifestAbsoluteUrl).href;
         const sideAreas = areas.filter(area => area.side === side);
         const mappedAreas = sideAreas.map(area => ({
             ...area,
-            // Mapped coordinates now belong to the generated SVG page, not a photo canvas.
+            // Preview geometry belongs to the generated full-panel SVG.
             geometry: patternSide.geometry,
         }));
 
@@ -549,20 +546,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const horizontalDistance = size.x / (2 * Math.tan(horizontalFov / 2));
 
         const isPhone = window.matchMedia("(max-width: 600px)").matches;
-        const desktopFitDistance = Math.max(
-            verticalDistance,
-            horizontalDistance,
-            size.z * 1.25
-        );
 
-        let fitDistance = desktopFitDistance * 1.08;
-        if (isPhone) {
-            fitDistance = Math.max(
-                verticalDistance,
-                horizontalDistance / 0.34,
-                size.z * 1.25
-            ) * 1.30;
-        }
+        // Keep every product inside the same compact product frame. The old
+        // fitDistance only prevented cropping, so it made each model fill the
+        // entire canvas (and made a mug look as large as a shirt).
+        const targetWidthRatio = isPhone ? 0.42 : 0.58;
+        const targetHeightRatio = isPhone ? 0.54 : 0.58;
+        const fitDistance = Math.max(
+            horizontalDistance / targetWidthRatio,
+            verticalDistance / targetHeightRatio,
+            size.z * 1.25
+        ) * 1.05;
 
         // On first load / garment switch, use a near-frontal view with a
         // small elevation so chest artwork is readable without orbiting.
@@ -572,13 +566,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             ? defaultDirection
             : previousDirection;
 
+        controls.minDistance = Math.max(0.25, fitDistance * 0.55);
+        controls.maxDistance = Math.max(fitDistance * 2.8, controls.minDistance + 1);
+
         const zoomRatio = initial
             ? 1
             : THREE.MathUtils.clamp(previousZoomRatio, 0.68, 2.25);
         const distance = THREE.MathUtils.clamp(
             fitDistance * zoomRatio,
-            Math.max(controls.minDistance || 0.1, fitDistance * 0.55),
-            Math.min(controls.maxDistance || fitDistance * 3, fitDistance * 2.4)
+            controls.minDistance,
+            controls.maxDistance
         );
 
         baseCameraDistance = fitDistance;
@@ -3340,7 +3337,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     function canvasBlob(canvas, type = "image/webp", quality = 0.88) {
-        return new Promise(resolve => canvas.toBlob(resolve, type, quality));
+        return new Promise((resolve, reject) => {
+            try {
+                canvas.toBlob(blob => {
+                    if (blob) resolve(blob);
+                    else reject(new Error("The 2D preview canvas did not produce an image."));
+                }, type, quality);
+            } catch (error) {
+                reject(error);
+            }
+        });
     }
 
     async function build2DPreview(side) {
@@ -3352,7 +3358,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             background = await imageFromSource(view.background);
         } catch (databaseImageError) {
             console.warn("Configured 2D canvas failed; trying generated pattern SVG.", databaseImageError);
-            const fallbackView = await resolve2DPatternView(side, { forceGenerated: true });
+            const fallbackView = await resolve2DPatternView(side, { forceDatabase: true });
             if (!fallbackView?.background || fallbackView.background === view.background) {
                 throw databaseImageError;
             }
@@ -3516,15 +3522,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const threeD = document.getElementById("designer-3d-stage");
         if (!shell || !twoD || !threeD) return;
         const requestedView = ["2d", "split", "3d"].includes(mode) ? mode : preferredStudioView;
-        if (garmentType !== "mug") {
-            preferredStudioView = requestedView;
-            try {
-                window.localStorage.setItem(studioViewStorageKey, preferredStudioView);
-            } catch (error) {
-                // Storage may be disabled; keep the in-memory preference.
-            }
+        const mugForces3D = garmentType === "mug";
+        preferredStudioView = mugForces3D ? "3d" : requestedView;
+        try {
+            window.localStorage.setItem(studioViewStorageKey, preferredStudioView);
+        } catch (error) {
+            // Storage may be disabled; keep the in-memory preference.
         }
-        const view = garmentType === "mug" ? "3d" : preferredStudioView;
+        const view = preferredStudioView;
         const switcher = document.getElementById("studio-view-switcher");
         if (switcher) switcher.hidden = garmentType === "mug";
         shell.classList.toggle("stage-shell--split", view === "split");
