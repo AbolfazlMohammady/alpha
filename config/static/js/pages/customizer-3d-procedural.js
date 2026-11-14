@@ -3630,9 +3630,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const areaWidth = Math.max(maxX - minX, 0.0001);
         const areaHeight = Math.max(maxY - minY, 0.0001);
 
-        // GLB normalized coordinates describe the whole model; SVG geometry
-        // describes the print panel on the pattern page. Convert through the
-        // same printable-body zone in both directions.
+        // GLB coordinates are normalized against the whole garment. The
+        // pattern artwork is positioned relative to this print area's bounds.
         const garmentPoint = active2DDrag?.layerId === item.id
             ? active2DDrag.previewNormalized
             : normalizedGarmentPoint(item.surfacePoint || item.position);
@@ -4018,8 +4017,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const areaWidth = Math.max(bounds.maxX - bounds.minX, 1e-6);
         const areaHeight = Math.max(bounds.maxY - bounds.minY, 1e-6);
 
-        // Keep the grabbed point's offset from the artwork center. Both the
-        // renderer and the drag mapper use full-garment normalized coordinates.
+        // Preserve the exact grabbed offset, then map the pointer delta through
+        // the print-area bounds back into full-garment normalized coordinates.
         const startRelativeX = THREE.MathUtils.clamp(
             (Number(active.startNormalized.x) - bounds.minX) / areaWidth,
             0,
