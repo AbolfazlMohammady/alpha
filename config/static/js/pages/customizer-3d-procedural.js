@@ -1344,11 +1344,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     function disposeLayer(item) {
-        if (!item?.mesh) return;
-        item.mesh.geometry?.dispose();
-        // The decal material is cached per layer and shared by its projected
-        // meshes; only dispose the geometry here.
-        item.mesh.parent?.remove(item.mesh);
+        if (!item) return;
+        if (item.mesh) {
+            item.mesh.geometry?.dispose();
+            item.mesh.parent?.remove(item.mesh);
+        }
+        // Release the per-layer material once the layer itself is removed.
         item.decalMaterial?.dispose();
         item.decalMaterial = null;
         if (item.frame) {
@@ -1536,7 +1537,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 polygonOffsetUnits: -2,
                 side: THREE.DoubleSide,
             });
-            item.decalMaterial = material;
             item.decalMaterial = material;
         } else {
             material.map = texture;
@@ -1728,6 +1728,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 polygonOffsetUnits: -2,
                 side: THREE.DoubleSide,
             });
+        } else {
+            item.decalMaterial.map = item.visibleTexture;
+            item.decalMaterial.emissiveMap = item.visibleTexture;
+            item.decalMaterial.opacity = Math.max(0.2, Math.min(1, Number(item.layer.opacity ?? 1)));
         }
         const oldMesh = item.mesh;
         const mesh = new THREE.Mesh(geometry, item.decalMaterial);
