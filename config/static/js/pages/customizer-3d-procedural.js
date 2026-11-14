@@ -1396,15 +1396,25 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const bounds = garmentNdcBounds();
         if (!bounds) return null;
 
-        // Keep placement simple: the 3D shirt body is the canvas.
-        // We only care about front/back and collisions with existing labels.
+        // Keep first placement centered inside the actual printable body.
+        // The mug's body is offset inside its GLB bounds because the handle
+        // extends to one side; using a fixed 0.5 center would bias artwork toward it.
+        const bodyZone = printableBodyZone();
+        const bodyCenterX = (bodyZone.minX + bodyZone.maxX) / 2;
+        const bodySpread = (bodyZone.maxX - bodyZone.minX) * 0.34;
         const candidates = [
-            [0.50, 0.42], [0.30, 0.42], [0.70, 0.42],
-            [0.50, 0.30], [0.50, 0.56],
-            [0.28, 0.30], [0.72, 0.30],
-            [0.28, 0.56], [0.72, 0.56],
-            [0.50, 0.68], [0.30, 0.68], [0.70, 0.68],
-            [0.20, 0.42], [0.80, 0.42],
+            [bodyCenterX, 0.42],
+            [bodyCenterX - bodySpread, 0.42],
+            [bodyCenterX + bodySpread, 0.42],
+            [bodyCenterX, 0.30],
+            [bodyCenterX, 0.56],
+            [bodyCenterX - bodySpread, 0.30],
+            [bodyCenterX + bodySpread, 0.30],
+            [bodyCenterX - bodySpread, 0.56],
+            [bodyCenterX + bodySpread, 0.56],
+            [bodyCenterX, 0.68],
+            [bodyCenterX - bodySpread, 0.68],
+            [bodyCenterX + bodySpread, 0.68],
         ];
 
         // Pick a free-looking visual position, not a collision-free
@@ -2191,12 +2201,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         const side = surfaceSide(hitNormal(hit));
         area = areaForSurfaceSide(side, area);
+        const initialPosition = normalizedGarmentPoint(hit.point) || { x: 0.5, y: 0.5 };
         const layer = {
             id: nextId++,
             artwork_id: artwork.id,
             area_id: area.id,
-            x: 0.5,
-            y: 0.5,
+            x: initialPosition.x,
+            y: initialPosition.y,
             width: 0.35,
             height: 0.25,
             rotation: 0,
