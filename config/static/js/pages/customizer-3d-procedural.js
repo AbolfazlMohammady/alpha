@@ -1678,6 +1678,78 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         return true;
     }
 
+
+    function updateProjectedLayerDuringDrag(item, point, normal) {
+        if (!item?.visibleTexture || !item?.visibleArtwork || !item?.target?.isMesh) return false;
+
+        const surfacePoint = point.clone();
+        const surfaceNormal = normal.clone().normalize();
+        const target = item.target;
+        const position = surfacePoint.clone().addScaledVector(surfaceNormal, 0.008);
+        const aspect = Math.max(
+            0.15,
+            (item.visibleArtwork.visibleWidth || item.visibleTexture.image?.width || 1) /
+                Math.max(1, item.visibleArtwork.visibleHeight || item.visibleTexture.image?.height || 1)
+        );
+        const width = Math.max(0.08, Math.min(1.05, 0.86 * Number(item.layer.width || 0.35)));
+        const size = new THREE.Vector3(width, width / aspect, Math.max(0.24, width * 0.9));
+        const geometry = new DecalGeometry(
+            target,
+            position,
+            orientation(surfaceNormal, item.layer.rotation),
+            size
+        );
+
+        if (!geometry.attributes.position?.count) {
+            geometry.dispose();
+            return false;
+        }
+        geometry.applyMatrix4(target.matrixWorld.clone().invert());
+
+        const oldMesh = item.mesh;
+        const mesh = new THREE.Mesh(geometry, item.decalMaterial);
+        mesh.renderOrder = 30 + (Number(item.layer.z_index) || 0);
+        mesh.visible = item.layer.visible !== false;
+        mesh.userData.customizerLayerId = item.id;
+        target.add(mesh);
+
+        // Re-use the existing frame and handles where possible; only move their
+        // anchors and orientation. The box follows the current surface point.
+        const targetLocal = target.worldToLocal(position.clone());
+        const targetQuaternion = target.getWorldQuaternion(new THREE.Quaternion());
+        const worldQuaternion = new THREE.Quaternion().setFromEuler(
+            orientation(surfaceNormal, item.layer.rotation)
+        );
+        const localQuaternion = targetQuaternion.clone().invert().multiply(worldQuaternion);
+
+        if (item.frame) {
+            item.frame.position.copy(targetLocal);
+            item.frame.quaternion.copy(localQuaternion);
+            item.frame.visible = item.id === selectedId && item.layer.visible !== false;
+        }
+        if (item.handles) {
+            item.handles.position.copy(targetLocal);
+            item.handles.quaternion.copy(localQuaternion);
+            item.handles.visible = item.id === selectedId && item.layer.visible !== false && !item.layer.locked;
+        }
+
+        item.mesh = mesh;
+        item.normal = surfaceNormal.clone();
+        item.surfacePoint = surfacePoint;
+        item.surfaceNormal = surfaceNormal.clone();
+        item.position = position;
+        item.size = size;
+        item.renderAspect = aspect;
+        item.target = target;
+
+        if (oldMesh) {
+            oldMesh.geometry?.dispose();
+            oldMesh.parent?.remove(oldMesh);
+        }
+        render();
+        return true;
+    }
+
     function project(item, point, normal, options = {}) {
         if (!item?.artwork?.image || !garmentMeshes.length) return;
 
@@ -2054,8 +2126,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const area = areaById(item.layer.area_id, layerSide(item));
         const hits = garmentHits(event);
         const hit = hits.find(candidate =>
-            isValidPrintSurface(candidate, area) &&
-            surfaceSide(hitNormal(candidate)) === activeDrag.startSide
+            isValidPrintSurface(candidate, area)
         );
         if (!hit) return;
 
@@ -2066,7 +2137,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         // Keep the current layer visibly attached to the cloth during the drag.
         // Build with the cached texture: no image request or texture decode occurs.
         item.target = hitTarget;
-        const projected = buildProjectedLayer(item, hitPoint, hitNormalVector, { silent: true });
+        const projected = updateProjectedLayerDuringDrag(item, hitPoint, hitNormalVector);
         if (!projected) return;
 
         activeDrag.lastValidPoint = hitPoint;
@@ -2075,7 +2146,6 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         activeDrag.lastSide = surfaceSide(hitNormalVector);
 
         render();
-        if (selectedPreviewFrameId === 0) renderSelectedPreview();
     }
 
     function applyLayerTransform(event) {
@@ -4070,13 +4140,19 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 openSelectedPanel();
                 const selectedLayer = layers.get(selectedId);
                 if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
-                    const surfacePoint = pointerOnLayerPlane(event, new THREE.Plane().setFromNormalAndCoplanarPoint(
-                        selectedLayer.surfaceNormal,
-                        selectedLayer.surfacePoint
-                    ));
-                    if (!surfacePoint) return;
+                    const startSurfaceHit = raycaster.intersectObjects(garmentMeshes, false).find(hit =>
+                        surfaceSide(hitNormal(hit)) === layerSide(selectedLayer) &&
+                        isValidPrintSurface(hit, areaById(selectedLayer.layer.area_id, layerSide(selectedLayer)))
+                    );
+                    if (!startSurfaceHit) return;
                     drag = beginLayerTransform(event, selectedLayer, "move");
                     if (!drag) return;
+                    drag.startPointerPoint = startSurfaceHit.point.clone();
+                    drag.startSurfacePoint = startSurfaceHit.point.clone();
+                    drag.startSurfaceNormal = hitNormal(startSurfaceHit);
+                    drag.lastValidPoint = startSurfaceHit.point.clone();
+                    drag.lastValidNormal = hitNormal(startSurfaceHit);
+                    drag.lastValidTarget = startSurfaceHit.object;
                     controls.enabled = false;
                     canvas.style.touchAction = "none";
                     canvas.setPointerCapture(event.pointerId);
