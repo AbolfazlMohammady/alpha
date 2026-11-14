@@ -24,88 +24,89 @@
     "tshirt": {
       "name": "Teagan T-shirt",
       "svg": "tshirt.svg",
+      "sourceSvg": "tshirt-freesewing.svg",
       "page": {
-        "width": 1205.7190104873769,
-        "height": 874.3891926788749
+        "width": 1377.56,
+        "height": 1362.89
       },
       "views": {
         "front": {
-          "piece": "teagan.front",
+          "piece": "teagan.front.full",
           "pieceBounds": {
-            "x": 24.000000000000007,
-            "y": 24,
-            "width": 312.39009015964956,
-            "height": 826.3891926788749
+            "x": 36,
+            "y": 70,
+            "width": 624.78,
+            "height": 826.39
           },
           "geometry": [
             {
-              "x": 0.071723,
-              "y": 0.216469
+              "x": 0.116841,
+              "y": 0.172632
             },
             {
-              "x": 0.227177,
-              "y": 0.216469
+              "x": 0.388966,
+              "y": 0.172632
             },
             {
-              "x": 0.227177,
-              "y": 0.575608
+              "x": 0.388966,
+              "y": 0.403045
             },
             {
-              "x": 0.071723,
-              "y": 0.575608
+              "x": 0.116841,
+              "y": 0.403045
             }
           ]
         },
         "back": {
-          "piece": "teagan.back",
+          "piece": "teagan.back.full",
           "pieceBounds": {
-            "x": 384.39009015964956,
-            "y": 24,
-            "width": 312.39009015964956,
-            "height": 826.3891926788749
+            "x": 716.78,
+            "y": 70,
+            "width": 624.78,
+            "height": 826.39
           },
           "geometry": [
             {
-              "x": 0.370624,
-              "y": 0.197567
+              "x": 0.611034,
+              "y": 0.160505
             },
             {
-              "x": 0.526078,
-              "y": 0.197567
+              "x": 0.883159,
+              "y": 0.160505
             },
             {
-              "x": 0.526078,
-              "y": 0.613413
+              "x": 0.883159,
+              "y": 0.427299
             },
             {
-              "x": 0.370624,
-              "y": 0.613413
+              "x": 0.611034,
+              "y": 0.427299
             }
           ]
         }
       },
       "pieces": {
-        "teagan.front": {
-          "x": 24,
-          "y": 24,
-          "width": 312.39,
+        "teagan.front.full": {
+          "x": 36,
+          "y": 70,
+          "width": 624.78,
           "height": 826.39
         },
-        "teagan.back": {
-          "x": 384.39,
-          "y": 24,
-          "width": 312.39,
+        "teagan.back.full": {
+          "x": 716.78,
+          "y": 70,
+          "width": 624.78,
           "height": 826.39
         },
-        "library.sleeve": {
-          "x": -218.16,
-          "y": -253.94,
-          "width": 436.32,
-          "height": 630
+        "teagan.sleeve.left": {
+          "x": 36,
+          "y": 952.39,
+          "width": 436.94,
+          "height": 346.5
         },
-        "teagan.sleeve": {
-          "x": 744.78,
-          "y": 24,
+        "teagan.sleeve.right": {
+          "x": 472.94,
+          "y": 952.39,
           "width": 436.94,
           "height": 346.5
         }
@@ -114,82 +115,89 @@
     "long_sleeve": {
       "name": "Brian Long Sleeve Block",
       "svg": "long_sleeve.svg",
+      "sourceSvg": "long_sleeve-freesewing.svg",
       "page": {
-        "width": 891.1617385824228,
-        "height": 1440.612616959383
+        "width": 1410.12,
+        "height": 1534.61
       },
       "views": {
         "front": {
-          "piece": "brian.front",
+          "piece": "brian.front.full",
           "pieceBounds": {
-            "x": 638.5367385824228,
-            "y": 24,
-            "width": 320.5,
-            "height": 714.6126169593832
+            "x": 36,
+            "y": 70,
+            "width": 641,
+            "height": 714.61
           },
           "geometry": [
             {
-              "x": 0.78845,
-              "y": 0.115869
+              "x": 0.116444,
+              "y": 0.138747
             },
             {
-              "x": 1.004236,
-              "y": 0.115869
+              "x": 0.389187,
+              "y": 0.138747
             },
             {
-              "x": 1.004236,
-              "y": 0.304367
+              "x": 0.389187,
+              "y": 0.315698
             },
             {
-              "x": 0.78845,
-              "y": 0.304367
+              "x": 0.116444,
+              "y": 0.315698
             }
           ]
         },
         "back": {
-          "piece": "brian.back",
+          "piece": "brian.back.full",
           "pieceBounds": {
-            "x": 115.875,
-            "y": 702,
-            "width": 320.5604839771126,
-            "height": 714.6126169593831
+            "x": 733,
+            "y": 70,
+            "width": 641.12,
+            "height": 714.61
           },
           "geometry": [
             {
-              "x": 0.201969,
-              "y": 0.576581
+              "x": 0.610745,
+              "y": 0.129433
             },
             {
-              "x": 0.417796,
-              "y": 0.576581
+              "x": 0.883539,
+              "y": 0.129433
             },
             {
-              "x": 0.417796,
-              "y": 0.794842
+              "x": 0.883539,
+              "y": 0.334325
             },
             {
-              "x": 0.201969,
-              "y": 0.794842
+              "x": 0.610745,
+              "y": 0.334325
             }
           ]
         }
       },
       "pieces": {
-        "brian.back": {
-          "x": 115.88,
-          "y": 702,
-          "width": 320.56,
+        "brian.front.full": {
+          "x": 36,
+          "y": 70,
+          "width": 641,
           "height": 714.61
         },
-        "brian.front": {
-          "x": 638.54,
-          "y": 24,
-          "width": 320.5,
+        "brian.back.full": {
+          "x": 733,
+          "y": 70,
+          "width": 641.12,
           "height": 714.61
         },
-        "library.sleeve": {
-          "x": 24,
-          "y": 24,
+        "library.sleeve.left": {
+          "x": 36,
+          "y": 840.61,
+          "width": 474.66,
+          "height": 630
+        },
+        "library.sleeve.right": {
+          "x": 510.66,
+          "y": 840.61,
           "width": 474.66,
           "height": 630
         }
@@ -198,134 +206,127 @@
     "hoodie": {
       "name": "Hugo Hoodie",
       "svg": "hoodie.svg",
+      "sourceSvg": "hoodie-freesewing.svg",
       "page": {
-        "width": 1982.8658214423167,
-        "height": 2026.8063692674937
+        "width": 1334.48,
+        "height": 2162.04
       },
       "views": {
         "front": {
-          "piece": "hugo.front",
+          "piece": "hugo.front.full",
           "pieceBounds": {
-            "x": 633.1749139256967,
-            "y": 702.973050544868,
-            "width": 301.6,
-            "height": 617.8704839085966
+            "x": 36,
+            "y": 70,
+            "width": 603.2,
+            "height": 617.87
           },
           "geometry": [
             {
-              "x": 0.349744,
-              "y": 0.407808
+              "x": 0.117379,
+              "y": 0.089533
             },
             {
-              "x": 0.441006,
-              "y": 0.407808
+              "x": 0.388586,
+              "y": 0.089533
             },
             {
-              "x": 0.441006,
-              "y": 0.52365
+              "x": 0.388586,
+              "y": 0.19813
             },
             {
-              "x": 0.349744,
-              "y": 0.52365
+              "x": 0.117379,
+              "y": 0.19813
             }
           ]
         },
         "back": {
-          "piece": "hugo.back",
+          "piece": "hugo.back.full",
           "pieceBounds": {
-            "x": 633.1749139256967,
-            "y": 24,
-            "width": 301.6359762617417,
-            "height": 630.973050544868
+            "x": 695.2,
+            "y": 70,
+            "width": 603.28,
+            "height": 630.97
           },
           "geometry": [
             {
-              "x": 0.349747,
-              "y": 0.067878
+              "x": 0.611366,
+              "y": 0.084908
             },
             {
-              "x": 0.44102,
-              "y": 0.067878
+              "x": 0.882609,
+              "y": 0.084908
             },
             {
-              "x": 0.44102,
-              "y": 0.204856
+              "x": 0.882609,
+              "y": 0.213318
             },
             {
-              "x": 0.349747,
-              "y": 0.204856
+              "x": 0.611366,
+              "y": 0.213318
             }
           ]
         }
       },
       "pieces": {
-        "brian.back": {
-          "x": -0.06,
-          "y": -9.61,
-          "width": 301.66,
-          "height": 714.61
-        },
-        "brian.front": {
-          "x": 0,
-          "y": -9.61,
-          "width": 301.6,
-          "height": 714.61
-        },
-        "hugo.front": {
-          "x": 633.17,
-          "y": 702.97,
-          "width": 301.6,
+        "hugo.front.full": {
+          "x": 36,
+          "y": 70,
+          "width": 603.2,
           "height": 617.87
         },
-        "hugo.back": {
-          "x": 633.17,
-          "y": 24,
-          "width": 301.64,
+        "hugo.back.full": {
+          "x": 695.2,
+          "y": 70,
+          "width": 603.28,
           "height": 630.97
         },
-        "library.sleeve": {
-          "x": -234.6,
-          "y": -243.17,
-          "width": 469.19,
-          "height": 642.2
+        "hugo.sleeve.left": {
+          "x": 36,
+          "y": 756.97,
+          "width": 469.3,
+          "height": 802.73
         },
-        "hugo.sleeve": {
-          "x": 24,
-          "y": 24,
+        "hugo.sleeve.right": {
+          "x": 505.3,
+          "y": 756.97,
           "width": 469.3,
           "height": 802.73
         },
         "hugo.pocket": {
-          "x": 982.81,
-          "y": 356,
+          "x": 1030.6,
+          "y": 756.97,
           "width": 171.79,
           "height": 201.5
         },
         "hugo.pocketFacing": {
-          "x": 1531.79,
-          "y": 103.29,
+          "x": 36,
+          "y": 1643.7,
           "width": 60.52,
           "height": 173.79
         },
         "library.hoodSide": {
-          "x": 541.3,
-          "y": 1368.84,
+          "x": 152.52,
+          "y": 1643.7,
           "width": 251.17,
           "height": 339.05
         },
         "library.hoodCenter": {
-          "x": 890.94,
-          "y": 24,
+          "x": 459.69,
+          "y": 1643.7,
           "width": 500.98,
           "height": 77
         },
         "hugo.neckBinding": {
-          "x": 1439.91,
-          "y": 24,
+          "x": 36,
+          "y": 2066.75,
           "width": 518.95,
           "height": 31.29
         }
       }
     }
+  },
+  "previewLayout": {
+    "description": "Full front and back panels mirrored from FreeSewing fold patterns, with sleeve pairs and auxiliary pieces",
+    "note": "Editor visualization only. Verify source patterns, measurements, fabric, and seam allowances before cutting."
   }
 }
