@@ -443,6 +443,47 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         });
     }
 
+    function detachLayerProjection(item) {
+        if (!item) return;
+
+        if (item.mesh) {
+            item.mesh.geometry?.dispose();
+            item.mesh.parent?.remove(item.mesh);
+            item.mesh = null;
+        }
+
+        if (item.frame) {
+            item.frame.geometry?.dispose();
+            const materials = Array.isArray(item.frame.material)
+                ? item.frame.material
+                : [item.frame.material];
+            materials.forEach(material => material?.dispose?.());
+            item.frame.parent?.remove(item.frame);
+            item.frame = null;
+        }
+
+        if (item.handles) {
+            item.handles.traverse(child => {
+                child.geometry?.dispose();
+                const materials = Array.isArray(child.material)
+                    ? child.material
+                    : [child.material];
+                materials.forEach(material => material?.dispose?.());
+            });
+            item.handles.parent?.remove(item.handles);
+            item.handles = null;
+        }
+
+        // Keep item.decalMaterial and item.visibleTexture alive. They belong to
+        // the artwork layer, not to a specific GLB garment, and are reused by
+        // the new model's projection after a product switch.
+        item.target = null;
+    }
+
+    function detachLayerProjectionsFromGarment() {
+        layers.forEach(item => detachLayerProjection(item));
+    }
+
     function disposeObject3D(object) {
         if (!object) return;
         object.traverse(child => {
@@ -476,6 +517,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         const previousGarment = garment;
         if (previousGarment) {
+            // Decals own cached artwork textures shared across garment models.
+            // Detach them before disposing the old GLB so its material cleanup
+            // cannot destroy the artwork texture that the next GLB must reuse.
+            detachLayerProjectionsFromGarment();
             scene.remove(previousGarment);
             disposeObject3D(previousGarment);
         }
@@ -1580,6 +1625,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 item.mesh = null;
                 item.frame = null;
                 item.handles = null;
+                item.target = null;
                 continue;
             }
 
