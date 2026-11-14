@@ -1001,19 +1001,26 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
 
-    function labelProjectionDepth(width, item = null, normal = null) {
-        const localNormal = normal ? garmentLocalNormal(normal) : null;
-        const isLongSleeveBack = garmentType === "long_sleeve" &&
-            localNormal && localNormal.z < -0.35;
+    function isLongSleeveBackSurface(normal) {
+        if (garmentType !== "long_sleeve" || !normal) return false;
+        return garmentLocalNormal(normal).z < -0.35;
+    }
 
-        if (isLongSleeveBack) {
-            // This is the only product/side with a projection-depth override.
+    function labelProjectionDepth(width, item = null, normal = null) {
+        const backSide = normal
+            ? isLongSleeveBackSurface(normal)
+            : Boolean(
+                garmentType === "long_sleeve" &&
+                String(item?.layer?.side || "front").toLowerCase() === "back"
+            );
+
+        if (backSide) {
+            // Isolated correction: only the long-sleeve's back print surface.
             return Math.max(0.085, Math.min(0.11, width * 0.32));
         }
 
         return Math.max(0.24, width * 0.9);
     }
-
     function areaCenter(area) {
         const geometry = Array.isArray(area?.geometry) ? area.geometry : [];
         if (!geometry.length) return { x: 0.5, y: 0.5 };
@@ -2344,11 +2351,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             item.surfaceNormal = activeDrag.lastValidNormal.clone();
             item.normal = activeDrag.lastValidNormal.clone();
             item.position = item.surfacePoint.clone().addScaledVector(item.surfaceNormal, 0.008);
-            if (targetChanged || !item.mesh) {
-                project(item, item.surfacePoint, item.surfaceNormal, { silent: true });
-            } else if (item.mesh && item.target) {
-                item.mesh.position.copy(item.target.worldToLocal(item.position.clone()));
-            }
+            // Build the final decal once at the committed surface point.
+            // Pointer movement itself only translates the cached decal and gizmos.
+            project(item, item.surfacePoint, item.surfaceNormal, { silent: true });
             renderSelectedPreview();
             return;
         }
@@ -2434,6 +2439,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 activeDrag.lastSide = hitSide;
                 activeDrag.lastAreaId = area.id;
             }
+            scheduleRenderLoop();
             return true;
         }
 
