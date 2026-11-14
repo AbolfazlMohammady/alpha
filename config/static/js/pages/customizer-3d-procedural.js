@@ -1512,7 +1512,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const size = new THREE.Vector3(
             width,
             width / aspect,
-            THREE.MathUtils.clamp(width * 0.16, 0.045, 0.085)
+            Math.max(0.24, width * 0.9)
         );
         const position = surfacePoint.clone().addScaledVector(surfaceNormal, 0.008);
         const geometry = new DecalGeometry(
@@ -2177,54 +2177,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 
     function previewLayerMove(event) {
-        const activeDrag = drag;
-        const item = activeDrag ? layers.get(activeDrag.layerId) : null;
-        if (!activeDrag || !item || !activeDrag.visual) return;
-
-        const fallbackArea = areaById(item.layer.area_id, layerSide(item));
-        const hits = garmentHits(event);
-        const hit = hits.find(candidate => {
-            const candidateSide = surfaceSide(hitNormal(candidate));
-            const candidateArea = areaForSurfaceSide(candidateSide, fallbackArea);
-            return is3DPrintableArea(candidateArea) &&
-                isValidPrintSurface(candidate, candidateArea);
-        });
-        if (!hit) return;
-
-        const hitNormalVector = hitNormal(hit);
-        const hitPoint = hit.point.clone();
-        const hitTarget = hit.object;
-        const nextSide = surfaceSide(hitNormalVector);
-        const nextArea = areaForSurfaceSide(nextSide, fallbackArea);
-        if (!nextArea) return;
-
-        // A label may cross the garment's side seam while the user rotates
-        // around it. Switch the production print area at the same time as the
-        // surface hit; do not keep rejecting the back because the old area was front.
-        const previousTarget = item.target;
-        const previousSide = item.layer.side;
-        const previousAreaId = item.layer.area_id;
-        item.target = hitTarget;
-
-        // Reproject on the exact cloth hit in this frame using the cached artwork.
-        const projected = updateProjectedLayerDuringDrag(item, hitPoint, hitNormalVector);
-        if (!projected) {
-            item.target = previousTarget;
-            item.layer.side = previousSide;
-            item.layer.area_id = previousAreaId;
-            return;
-        }
-
-        item.layer.side = nextSide;
-        item.layer.area_id = nextArea.id;
-
-        activeDrag.lastValidPoint = hitPoint;
-        activeDrag.lastValidNormal = hitNormalVector;
-        activeDrag.lastValidTarget = hitTarget;
-        activeDrag.lastSide = nextSide;
-        activeDrag.lastAreaId = nextArea.id;
-
-        render();
+        moveSelected(event);
     }
 
     function applyLayerTransform(event) {
@@ -2346,35 +2299,31 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     function moveSelected(event) {
-        const item = layers.get(selectedId);
+        const activeDrag = drag;
+        const item = activeDrag ? layers.get(activeDrag.layerId) : layers.get(selectedId);
         if (!item || item.layer.locked || item.layer.visible === false) return false;
 
-        const currentArea = areaById(item.layer.area_id, layerSide(item));
-        pointerOf(event);
-        raycaster.setFromCamera(pointer, camera);
+        // Babaei reference flow:
+        // 1) Raycast from the current pointer into the real garment meshes.
+        // 2) Use the nearest hit, not a screen/tangent-plane approximation.
+        // 3) Keep the layer on the same physical garment side.
+        // 4) Validate the print area before re-projecting the decal.
+        const area = areaById(item.layer.area_id, layerSide(item));
+        const hits = garmentHits(event);
+        const hit = hits[0] || null;
 
-        // Choose the nearest visible printable surface. When the garment is
-        // rotated, this can be its front or back; the label follows the side
-        // that the pointer is actually touching rather than staying pinned
-        // to the side where it was first created.
-        const hits = raycaster.intersectObjects(garmentMeshes, false);
-        const hit = hits.find(candidate => {
-            const candidateSide = surfaceSide(hitNormal(candidate));
-            const candidateArea = areaForSurfaceSide(candidateSide, currentArea);
-            return Boolean(candidateArea && isValidPrintSurface(candidate, candidateArea));
-        });
-
-        if (!hit) {
-            status("لیبل فقط روی سطح قابل چاپ جلو یا پشت بدنه قابل جابه‌جایی است.");
+        if (!isValidPrintSurface(hit, area)) {
+            status("لیبل فقط روی بدنه قابل چاپ همان سمت لباس قابل جابه‌جایی است.");
             return false;
         }
 
         const hitSide = surfaceSide(hitNormal(hit));
-        const targetArea = areaForSurfaceSide(hitSide, currentArea);
-        if (!targetArea) return false;
+        if (hitSide !== layerSide(item)) {
+            return false;
+        }
 
         const placement = placementFromPoint(
-            targetArea,
+            area,
             hit.point,
             item.layer.width,
             item.layer.height,
@@ -2386,11 +2335,28 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             return false;
         }
 
-        item.layer.area_id = targetArea.id;
-        item.layer.side = hitSide;
+        const hitPoint = hit.point.clone();
+        const hitNormalVector = hitNormal(hit);
+        const previousTarget = item.target;
         item.target = hit.object;
-        item.normal = hitNormal(hit);
-        project(item, hit.point, hitNormal(hit));
+
+        // Rebuild the live decal from the actual surface hit. The fast path
+        // keeps the cached texture/material and existing handles, but uses
+        // Babaei's projection depth so the artwork remains intact on fabric folds.
+        const projected = updateProjectedLayerDuringDrag(item, hitPoint, hitNormalVector);
+        if (!projected) {
+            item.target = previousTarget;
+            return false;
+        }
+
+        if (activeDrag) {
+            activeDrag.lastValidPoint = hitPoint;
+            activeDrag.lastValidNormal = hitNormalVector;
+            activeDrag.lastValidTarget = hit.object;
+            activeDrag.lastSide = hitSide;
+            activeDrag.lastAreaId = area.id;
+        }
+
         return true;
     }
 
