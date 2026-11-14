@@ -951,6 +951,83 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         return !/(sleeve|آستین|collar|یقه|inside|داخل)/i.test(key + " " + name);
     }
 
+
+    function printableBodyZone(type = garmentType) {
+        const zones = {
+            tshirt:      { minX: 0.22, maxX: 0.78, minY: 0.11, maxY: 0.91 },
+            long_sleeve: { minX: 0.26, maxX: 0.74, minY: 0.12, maxY: 0.90 },
+            hoodie:      { minX: 0.23, maxX: 0.77, minY: 0.12, maxY: 0.90 },
+            // The mug is one GLB mesh. Its handle extends the positive local-X
+            // bounds, so the printable body must stop before that side section.
+            mug:         { minX: 0.035, maxX: 0.70, minY: 0.07, maxY: 0.93 },
+        };
+        return zones[String(type || "").toLowerCase()] || zones.tshirt;
+    }
+
+    function isPrintableBodyPoint(worldPoint, paddingX = 0, paddingY = 0) {
+        const normalized = normalizedGarmentPoint(worldPoint);
+        if (!normalized) return false;
+
+        const zone = printableBodyZone();
+        return (
+            normalized.x >= zone.minX + paddingX &&
+            normalized.x <= zone.maxX - paddingX &&
+            normalized.y >= zone.minY + paddingY &&
+            normalized.y <= zone.maxY - paddingY
+        );
+    }
+
+    function placementFitsPrintableBody(item, placement) {
+        if (!garment || !item || !placement) return false;
+
+        const zone = printableBodyZone();
+        const worldBox = new THREE.Box3().setFromObject(garment);
+        const worldSize = worldBox.getSize(new THREE.Vector3());
+        if (worldSize.x <= 1e-6 || worldSize.y <= 1e-6) return false;
+
+        const artworkAspect = Math.max(
+            0.15,
+            Number(item.renderAspect) ||
+                (Number(item.visibleArtworkWidth) / Math.max(1, Number(item.visibleArtworkHeight))) ||
+                1
+        );
+        const physicalWidth = Math.max(
+            0.08,
+            Math.min(1.05, 0.86 * Number(placement.width ?? item.layer.width ?? 0.35))
+        );
+        const physicalHeight = physicalWidth / artworkAspect;
+        const halfWidth = physicalWidth / worldSize.x / 2;
+        const halfHeight = physicalHeight / worldSize.y / 2;
+        const angle = THREE.MathUtils.degToRad(Number(placement.rotation ?? item.layer.rotation ?? 0));
+        const extentX = Math.abs(Math.cos(angle)) * halfWidth + Math.abs(Math.sin(angle)) * halfHeight;
+        const extentY = Math.abs(Math.sin(angle)) * halfWidth + Math.abs(Math.cos(angle)) * halfHeight;
+        const x = Number(placement.x);
+        const y = Number(placement.y);
+
+        return (
+            Number.isFinite(x) &&
+            Number.isFinite(y) &&
+            x - extentX >= zone.minX &&
+            x + extentX <= zone.maxX &&
+            y - extentY >= zone.minY &&
+            y + extentY <= zone.maxY
+        );
+    }
+
+    function labelProjectionDepth(width) {
+        // Long-sleeve fabric is comparatively thin; a deep projector intersects
+        // the opposite/back folds and creates fragmented decals. Keep hoodie and
+        // T-shirt at the proven Babaei depth, with a shallower volume for the
+        // long-sleeve and the curved mug body.
+        if (garmentType === "long_sleeve") {
+            return Math.max(0.09, Math.min(0.12, width * 0.36));
+        }
+        if (garmentType === "mug") {
+            return Math.max(0.11, Math.min(0.16, width * 0.45));
+        }
+        return Math.max(0.24, width * 0.9);
+    }
+
     function areaCenter(area) {
         const geometry = Array.isArray(area?.geometry) ? area.geometry : [];
         if (!geometry.length) return { x: 0.5, y: 0.5 };
@@ -1058,7 +1135,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (explicitSides && area.side && area.side !== side) return false;
 
         const localNormal = garmentLocalNormal(normal);
-        return Math.abs(localNormal.dot(frontAxis)) >= 0.35;
+        return (
+            Math.abs(localNormal.dot(frontAxis)) >= 0.35 &&
+            isPrintableBodyPoint(hit.point)
+        );
     }
 
     function printAreaGeometry(area) {
@@ -1230,9 +1310,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             return { ok: false, message: "ناحیه چاپ لباس معتبر نیست." };
         }
 
-        // 3D body mode intentionally does not reserve a large invisible
-        // rectangle around artwork. Every label can be placed next to another
-        // label; the visible artwork itself is the only thing the user sees.
+        if (!placementFitsPrintableBody(item, placement)) {
+            return {
+                ok: false,
+                message: garmentType === "mug"
+                    ? "لیبل باید روی بدنه‌ی ماگ بماند و نباید وارد دسته شود."
+                    : "لیبل باید کاملاً داخل بدنه‌ی لباس باشد؛ آستین و یقه ناحیه‌ی چاپ نیستند.",
+            };
+        }
+
+        // Labels can sit beside one another; only the garment's printable
+        // body boundary is enforced here.
         return { ok: true };
     }
 
@@ -1413,17 +1501,92 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         raycaster.set(origin, direction);
         const hits = raycaster.intersectObjects(garmentMeshes, false);
-        return hits.find(hit => surfaceSide(hitNormal(hit)) === side) || null;
+        return hits.find(hit =>
+            surfaceSide(hitNormal(hit)) === side &&
+            isPrintableBodyPoint(hit.point)
+        ) || null;
     }
 
-    async function reprojectLayersAfterGarmentSwitch() {
+    async function reprojectLayersAfterGarmentSwitch(previousType = "tshirt") {
+        const sourceZone = printableBodyZone(previousType);
+        const targetZone = printableBodyZone(garmentType);
+        const offsets = [
+            [0, 0], [0, -0.018], [0, 0.018],
+            [-0.018, 0], [0.018, 0],
+            [-0.035, -0.018], [0.035, -0.018],
+            [-0.035, 0.018], [0.035, 0.018],
+        ];
+
         for (const item of layers.values()) {
             const side = String(item.layer.side || "front").toLowerCase() === "back"
                 ? "back"
                 : "front";
-            const hit = garmentSurfaceHitAtPlacement(item.layer.x, item.layer.y, side);
-            if (!hit) continue;
+            const sourceX = THREE.MathUtils.clamp(
+                (Number(item.layer.x ?? 0.5) - sourceZone.minX) /
+                    Math.max(sourceZone.maxX - sourceZone.minX, 1e-6),
+                0.02,
+                0.98
+            );
+            const sourceY = THREE.MathUtils.clamp(
+                (Number(item.layer.y ?? 0.5) - sourceZone.minY) /
+                    Math.max(sourceZone.maxY - sourceZone.minY, 1e-6),
+                0.02,
+                0.98
+            );
+            const baseX = targetZone.minX + sourceX * (targetZone.maxX - targetZone.minX);
+            const baseY = targetZone.minY + sourceY * (targetZone.maxY - targetZone.minY);
+            const area = areaForSurfaceSide(
+                side,
+                areaById(item.layer.area_id, side) || areas.find(is3DPrintableArea)
+            );
+            if (!area) continue;
 
+            let hit = null;
+            let nextX = baseX;
+            let nextY = baseY;
+            for (const [dx, dy] of offsets) {
+                const candidateX = THREE.MathUtils.clamp(
+                    baseX + dx,
+                    targetZone.minX + 0.01,
+                    targetZone.maxX - 0.01
+                );
+                const candidateY = THREE.MathUtils.clamp(
+                    baseY + dy,
+                    targetZone.minY + 0.01,
+                    targetZone.maxY - 0.01
+                );
+                const candidate = garmentSurfaceHitAtPlacement(candidateX, candidateY, side);
+                if (candidate && isValidPrintSurface(candidate, area)) {
+                    hit = candidate;
+                    nextX = candidateX;
+                    nextY = candidateY;
+                    break;
+                }
+            }
+
+            // If the old relative point lands on a seam/pocket, pick a safe
+            // printable body location instead of projecting onto a sleeve.
+            if (!hit) {
+                hit = placementHit(area, item.layer.width, item.layer.height, side);
+                if (hit) {
+                    const normalized = normalizedGarmentPoint(hit.point);
+                    if (normalized) {
+                        nextX = normalized.x;
+                        nextY = normalized.y;
+                    }
+                }
+            }
+            if (!hit) {
+                item.mesh = null;
+                item.frame = null;
+                item.handles = null;
+                continue;
+            }
+
+            item.layer.x = nextX;
+            item.layer.y = nextY;
+            item.layer.side = side;
+            item.layer.area_id = area.id;
             item.target = hit.object;
             project(item, hit.point, hitNormal(hit));
         }
@@ -1462,7 +1625,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         try {
             await loadGarment(model.url);
             fitCamera(true);
-            await reprojectLayersAfterGarmentSwitch();
+            await reprojectLayersAfterGarmentSwitch(previousType);
             render();
             // Mugs temporarily force 3D; garments restore the selected view.
             setStudioView(preferredStudioView);
@@ -1514,7 +1677,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const size = new THREE.Vector3(
             width,
             width / aspect,
-            Math.max(0.24, width * 0.9)
+            labelProjectionDepth(width)
         );
         const position = surfacePoint.clone().addScaledVector(surfaceNormal, 0.008);
         const geometry = new DecalGeometry(
@@ -1600,9 +1763,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         handleGroup.visible = item.id === selectedId && item.layer.visible !== false && !item.layer.locked;
 
         const isTouchEditor = compactMedia.matches || (navigator.maxTouchPoints || 0) > 0;
+        const mugHandleScale = garmentType === "mug" ? 1.3 : 1;
         const handleSize = Math.max(
-            isTouchEditor ? 0.038 : 0.026,
-            Math.min(size.x, size.y) * (isTouchEditor ? 0.065 : 0.05)
+            (isTouchEditor ? 0.038 : 0.026) * mugHandleScale,
+            Math.min(size.x, size.y) * (isTouchEditor ? 0.065 : 0.05) * mugHandleScale
         );
         const handleGeometry = new THREE.SphereGeometry(handleSize, 12, 10);
         const handleMaterial = new THREE.MeshBasicMaterial({
@@ -1716,7 +1880,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const size = new THREE.Vector3(
             width,
             width / aspect,
-            Math.max(0.24, width * 0.9)
+            labelProjectionDepth(width)
         );
         const geometry = new DecalGeometry(
             target,
@@ -2517,6 +2681,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const item = layers.get(Number(layerId));
         if (!item) return;
         selectedId = item.id;
+        if ((!item.frame || !item.handles) && item.surfacePoint && item.surfaceNormal) {
+            project(item, item.surfacePoint, item.surfaceNormal, { silent: true });
+        }
         openSelectedPanel();
         sync({ render2D: false });
         refresh2DSelectionOverlay();
@@ -4507,8 +4674,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             if (decal) {
                 selectedId = Number(decal.object.userData.customizerLayerId);
-                openSelectedPanel();
                 const selectedLayer = layers.get(selectedId);
+                if (selectedLayer && (!selectedLayer.frame || !selectedLayer.handles) &&
+                    selectedLayer.surfacePoint && selectedLayer.surfaceNormal) {
+                    project(selectedLayer, selectedLayer.surfacePoint, selectedLayer.surfaceNormal, { silent: true });
+                }
+                openSelectedPanel();
                 if (selectedLayer && !selectedLayer.layer.locked && selectedLayer.layer.visible !== false) {
                     const selectedArea = areaById(selectedLayer.layer.area_id, layerSide(selectedLayer));
                     const startSurfaceHit = visibleGarmentHits.find(hit =>
