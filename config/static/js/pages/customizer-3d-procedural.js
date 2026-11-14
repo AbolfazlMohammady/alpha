@@ -2518,7 +2518,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (!item) return;
         selectedId = item.id;
         openSelectedPanel();
-        sync();
+        sync({ render2D: false });
+        refresh2DSelectionOverlay();
         render();
     }
 
@@ -3245,7 +3246,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         });
     }
 
-    function sync() {
+    function sync(options = {}) {
         const selected = layers.get(selectedId);
         document.dispatchEvent(new CustomEvent("babaei:selection-changed", {
             detail: {
@@ -3320,7 +3321,10 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         renderAreas();
         renderLayersPanel();
         renderSelectedPreview();
-        if (!document.getElementById("designer-2d-stage")?.classList.contains("is-hidden")) {
+        if (
+            options.render2D !== false &&
+            !document.getElementById("designer-2d-stage")?.classList.contains("is-hidden")
+        ) {
             render2DPreview();
         }
     }
@@ -3388,6 +3392,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     let previewRenderToken = 0;
     let previewLayerHitRegions = [];
     let previewPageTransform = null;
+    let previewBaseCanvas = null;
     const previewImageCache = new Map();
     const patternImageCache = new Map();
 
@@ -3573,6 +3578,26 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         context.restore();
     }
 
+    function refresh2DSelectionOverlay() {
+        const previewCanvas = document.getElementById("designer-canvas");
+        if (!previewCanvas || !previewBaseCanvas || previewCanvas.dataset.hasRendered !== "1") return;
+        if (
+            previewBaseCanvas.width !== previewCanvas.width ||
+            previewBaseCanvas.height !== previewCanvas.height
+        ) return;
+
+        const context = previewCanvas.getContext("2d");
+        if (!context) return;
+        context.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        context.drawImage(previewBaseCanvas, 0, 0);
+
+        const selectedRegion = previewLayerHitRegions.find(region => region.layerId === selectedId);
+        if (selectedRegion) {
+            const ratio = Math.min(window.devicePixelRatio || 1, 2);
+            draw2DSelection(context, selectedRegion, ratio);
+        }
+    }
+
     function pointInsidePreviewRegion(x, y, region) {
         const dx = x - region.centerX;
         const dy = y - region.centerY;
@@ -3724,6 +3749,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
             previewLayerHitRegions = regions;
             previewPageTransform = layout;
+
+            if (!previewBaseCanvas) previewBaseCanvas = document.createElement("canvas");
+            if (previewBaseCanvas.width !== width || previewBaseCanvas.height !== height) {
+                previewBaseCanvas.width = width;
+                previewBaseCanvas.height = height;
+            }
+            const baseContext = previewBaseCanvas.getContext("2d");
+            if (baseContext) {
+                baseContext.clearRect(0, 0, width, height);
+                baseContext.drawImage(previewCanvas, 0, 0);
+            }
+
             const selectedRegion = regions.find(region => region.layerId === selectedId);
             if (selectedRegion) draw2DSelection(context, selectedRegion, ratio);
 
