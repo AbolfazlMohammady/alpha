@@ -3356,7 +3356,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         let views = { front: frontView, back: backView };
         let generated = true;
         try {
-            background = await imageFromSource(preferred.background);
+            background = await loadPatternImage(preferred.background);
         } catch (generatedImageError) {
             console.warn("Generated 2D pattern SVG failed; trying configured database canvases.", generatedImageError);
             const fallbackViews = await Promise.all([
@@ -3365,7 +3365,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             ]);
             const fallback = fallbackViews.find(view => view && view.background);
             if (!fallback) throw generatedImageError;
-            background = await imageFromSource(fallback.background);
+            background = await loadPatternImage(fallback.background);
             views = {
                 front: fallbackViews[0] || fallback,
                 back: fallbackViews[1] || fallback,
@@ -3389,6 +3389,20 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     let previewLayerHitRegions = [];
     let previewPageTransform = null;
     const previewImageCache = new Map();
+    const patternImageCache = new Map();
+
+    function loadPatternImage(src) {
+        const key = String(src || "");
+        if (!key) return Promise.reject(new Error("Pattern image URL is empty."));
+        if (!patternImageCache.has(key)) {
+            const promise = imageFromSource(key).catch(error => {
+                patternImageCache.delete(key);
+                throw error;
+            });
+            patternImageCache.set(key, promise);
+        }
+        return patternImageCache.get(key);
+    }
 
     function awaitPreviewImage(src) {
         const key = String(src || "");
@@ -3490,19 +3504,32 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const maxY = Math.max(...ys);
         const areaWidth = Math.max(maxX - minX, 0.0001);
         const areaHeight = Math.max(maxY - minY, 0.0001);
-        const placement = areaRelativePlacement(item) || {
+
+        // surfacePoint is normalized against the GLB's full local bounds. The
+        // generated SVG's area geometry is page-relative. Mixing those two
+        // coordinate systems (the old areaRelativePlacement path) clamped valid
+        // points to the print-zone edges, making graphics appear outside panels.
+        const garmentPoint = normalizedGarmentPoint(item.surfacePoint || item.position);
+        const placement = garmentPoint || {
             x: Number(item.layer.x == null ? 0.5 : item.layer.x),
             y: Number(item.layer.y == null ? 0.5 : item.layer.y),
         };
+        const relativeX = THREE.MathUtils.clamp(Number(placement.x), 0, 1);
+        const relativeY = THREE.MathUtils.clamp(Number(placement.y), 0, 1);
+        const clipPoints = geometry.map(point => ({
+            x: layout.x + Number(point.x) * layout.width,
+            y: layout.y + Number(point.y) * layout.height,
+        }));
 
         return {
             layerId: item.id,
             side: layerSide(item),
-            centerX: layout.x + (minX + placement.x * areaWidth) * layout.width,
-            centerY: layout.y + (minY + placement.y * areaHeight) * layout.height,
+            centerX: layout.x + (minX + relativeX * areaWidth) * layout.width,
+            centerY: layout.y + (minY + relativeY * areaHeight) * layout.height,
             width: Math.max(1, Number(item.layer.width || 0.35) * areaWidth * layout.width),
             height: Math.max(1, Number(item.layer.height || 0.25) * areaHeight * layout.height),
             rotation: Number(item.layer.rotation || 0) * Math.PI / 180,
+            clipPoints,
             item,
         };
     }
@@ -3644,6 +3671,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                     if (item.artwork && item.artwork.is_text) {
                         const style = normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {});
                         context.save();
+                        if (region.clipPoints && region.clipPoints.length >= 3) {
+                            context.beginPath();
+                            region.clipPoints.forEach((point, index) => {
+                                if (index === 0) context.moveTo(point.x, point.y);
+                                else context.lineTo(point.x, point.y);
+                            });
+                            context.closePath();
+                            context.clip();
+                        }
                         context.translate(region.centerX, region.centerY);
                         context.rotate(region.rotation);
                         context.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
@@ -3660,6 +3696,15 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                             if (token !== previewRenderToken) return;
                             if (artImage) {
                                 context.save();
+                                if (region.clipPoints && region.clipPoints.length >= 3) {
+                                    context.beginPath();
+                                    region.clipPoints.forEach((point, index) => {
+                                        if (index === 0) context.moveTo(point.x, point.y);
+                                        else context.lineTo(point.x, point.y);
+                                    });
+                                    context.closePath();
+                                    context.clip();
+                                }
                                 context.translate(region.centerX, region.centerY);
                                 context.rotate(region.rotation);
                                 context.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
