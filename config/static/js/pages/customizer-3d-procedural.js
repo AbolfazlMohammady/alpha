@@ -2796,7 +2796,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         for (const item of visibleItems) {
             const previewOverride = selectedPreviewDrag?.layerId === item.id
                 ? selectedPreviewDrag.previewNormalized
-                : null;
+                : active2DDrag?.layerId === item.id
+                    ? active2DDrag.previewNormalized
+                    : null;
             const normalized = previewOverride || normalizedGarmentPoint(item.surfacePoint || item.position) || {
                 x: Number(item.layer.x ?? 0.5),
                 y: Number(item.layer.y ?? 0.5),
@@ -2919,7 +2921,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (!item || !rect) return null;
         const previewOverride = selectedPreviewDrag?.layerId === item.id
             ? selectedPreviewDrag.previewNormalized
-            : null;
+            : active2DDrag?.layerId === item.id
+                ? active2DDrag.previewNormalized
+                : null;
         const normalized = previewOverride || normalizedGarmentPoint(item.surfacePoint || item.position) || {
             x: Number(item.layer.x ?? 0.5),
             y: Number(item.layer.y ?? 0.5),
@@ -3497,10 +3501,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     let previewLayerHitRegions = [];
     let previewPageTransform = null;
     let previewBaseCanvas = null;
+    let previewPatternCanvas = null;
+    let previewPatternViews = null;
     let active2DDrag = null;
     let active2DDragFrameId = 0;
     let pending2DDragEvent = null;
     const previewImageCache = new Map();
+    const previewResolvedImages = new Map();
     const patternImageCache = new Map();
 
     function loadPatternImage(src) {
@@ -3520,10 +3527,16 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const key = String(src || "");
         if (!key) return Promise.resolve(null);
         if (!previewImageCache.has(key)) {
-            const promise = imageFromSource(key).catch(error => {
-                previewImageCache.delete(key);
-                throw error;
-            });
+            const promise = imageFromSource(key)
+                .then(image => {
+                    if (image) previewResolvedImages.set(key, image);
+                    return image;
+                })
+                .catch(error => {
+                    previewImageCache.delete(key);
+                    previewResolvedImages.delete(key);
+                    throw error;
+                });
             previewImageCache.set(key, promise);
         }
         return previewImageCache.get(key);
@@ -3627,11 +3640,20 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             x: Number(item.layer.x == null ? 0.5 : item.layer.x),
             y: Number(item.layer.y == null ? 0.5 : item.layer.y),
         };
-        // Layer coordinates are normalized against the full garment bounds.
-        // Keep the 2D pattern preview in that same coordinate space: the
-        // printable-body sub-zone was intentionally removed from 3D placement.
-        const relativeX = THREE.MathUtils.clamp(Number(placement.x), 0, 1);
-        const relativeY = THREE.MathUtils.clamp(Number(placement.y), 0, 1);
+        // GLB coordinates are normalized to the whole garment, while the
+        // pattern view is normalized to this print area's geometry bounds.
+        // Convert between those coordinate spaces instead of treating them
+        // as interchangeable (which shifts labels vertically/horizontally).
+        const relativeX = THREE.MathUtils.clamp(
+            (Number(placement.x) - minX) / areaWidth,
+            0,
+            1
+        );
+        const relativeY = THREE.MathUtils.clamp(
+            (Number(placement.y) - minY) / areaHeight,
+            0,
+            1
+        );
         const printBounds = { minX, maxX, minY, maxY };
         const printPolygon = geometry.map(point => ({
             x: Number(point.x),
@@ -3655,6 +3677,54 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             printPolygon,
             item,
         };
+    }
+
+
+    function draw2DLayerArtwork(context, item, region, artImage = null) {
+        if (!context || !item || !region) return;
+
+        context.save();
+        if (region.clipPoints && region.clipPoints.length >= 3) {
+            context.beginPath();
+            region.clipPoints.forEach((point, index) => {
+                if (index === 0) context.moveTo(point.x, point.y);
+                else context.lineTo(point.x, point.y);
+            });
+            context.closePath();
+            context.clip();
+        }
+
+        context.translate(region.centerX, region.centerY);
+        context.rotate(region.rotation);
+        context.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
+        context.globalAlpha = Math.max(
+            0.05,
+            Math.min(1, Number(item.layer.opacity == null ? 1 : item.layer.opacity))
+        );
+
+        if (item.artwork && item.artwork.is_text) {
+            const style = normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {});
+            context.fillStyle = item.layer.color || "#ffffff";
+            context.font = style.fontStyle + " " + style.fontWeight + " " +
+                Math.max(12, region.height * 0.48) + "px " + style.fontFamily;
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            context.fillText(
+                String(item.layer.text || item.artwork.name || ""),
+                0,
+                0,
+                Math.max(region.width, 20)
+            );
+        } else if (artImage) {
+            context.drawImage(
+                artImage,
+                -region.width / 2,
+                -region.height / 2,
+                region.width,
+                region.height
+            );
+        }
+        context.restore();
     }
 
     function draw2DSelection(context, region, ratio) {
@@ -3798,6 +3868,19 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
             draw2DPreviewRulers(context, layout, ratio);
 
+            previewPageTransform = layout;
+            previewPatternViews = resolved.views || {};
+            if (!previewPatternCanvas) previewPatternCanvas = document.createElement("canvas");
+            if (previewPatternCanvas.width !== width || previewPatternCanvas.height !== height) {
+                previewPatternCanvas.width = width;
+                previewPatternCanvas.height = height;
+            }
+            const patternContext = previewPatternCanvas.getContext("2d");
+            if (patternContext) {
+                patternContext.clearRect(0, 0, width, height);
+                patternContext.drawImage(previewCanvas, 0, 0);
+            }
+
             const regions = [];
             for (const side of ["front", "back"]) {
                 const sideView = resolved.views[side];
@@ -3811,56 +3894,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                     const region = layerPreviewGeometry(item, sideView, layout);
                     if (!region) continue;
 
-                    if (item.artwork && item.artwork.is_text) {
-                        const style = normalizeTextStyle(item.layer.text_style || item.artwork.text_style || {});
-                        context.save();
-                        if (region.clipPoints && region.clipPoints.length >= 3) {
-                            context.beginPath();
-                            region.clipPoints.forEach((point, index) => {
-                                if (index === 0) context.moveTo(point.x, point.y);
-                                else context.lineTo(point.x, point.y);
-                            });
-                            context.closePath();
-                            context.clip();
-                        }
-                        context.translate(region.centerX, region.centerY);
-                        context.rotate(region.rotation);
-                        context.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
-                        context.globalAlpha = Math.max(0.05, Math.min(1, Number(item.layer.opacity == null ? 1 : item.layer.opacity)));
-                        context.fillStyle = item.layer.color || "#ffffff";
-                        context.font = style.fontStyle + " " + style.fontWeight + " " + Math.max(12, region.height * 0.48) + "px " + style.fontFamily;
-                        context.textAlign = "center";
-                        context.textBaseline = "middle";
-                        context.fillText(String(item.layer.text || item.artwork.name || ""), 0, 0, Math.max(region.width, 20));
-                        context.restore();
-                    } else if (item.artwork && item.artwork.image) {
+                    let artImage = null;
+                    if (item.artwork && !item.artwork.is_text && item.artwork.image) {
                         try {
-                            const artImage = await awaitPreviewImage(item.artwork.image);
+                            artImage = await awaitPreviewImage(item.artwork.image);
                             if (token !== previewRenderToken) return;
-                            if (artImage) {
-                                context.save();
-                                if (region.clipPoints && region.clipPoints.length >= 3) {
-                                    context.beginPath();
-                                    region.clipPoints.forEach((point, index) => {
-                                        if (index === 0) context.moveTo(point.x, point.y);
-                                        else context.lineTo(point.x, point.y);
-                                    });
-                                    context.closePath();
-                                    context.clip();
-                                }
-                                context.translate(region.centerX, region.centerY);
-                                context.rotate(region.rotation);
-                                context.scale(item.layer.flip_x ? -1 : 1, item.layer.flip_y ? -1 : 1);
-                                context.globalAlpha = Math.max(0.05, Math.min(1, Number(item.layer.opacity == null ? 1 : item.layer.opacity)));
-                                context.drawImage(artImage, -region.width / 2, -region.height / 2, region.width, region.height);
-                                context.restore();
-                            }
                         } catch (error) {
                             // An artwork without cross-origin permission is skipped;
                             // the base SVG pattern remains intact and editable.
                             console.warn("2D artwork preview skipped", error);
                         }
                     }
+                    draw2DLayerArtwork(context, item, region, artImage);
                     regions.push(region);
                 }
             }
@@ -3898,6 +3943,64 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         }
     }
 
+
+    function render2DDragPreview() {
+        const previewCanvas = document.getElementById("designer-canvas");
+        if (!previewCanvas || !active2DDrag || !previewPatternCanvas || !previewPageTransform) return false;
+
+        const width = previewPatternCanvas.width;
+        const height = previewPatternCanvas.height;
+        if (previewCanvas.width !== width || previewCanvas.height !== height) {
+            previewCanvas.width = width;
+            previewCanvas.height = height;
+        }
+
+        const context = previewCanvas.getContext("2d");
+        if (!context) return false;
+        context.clearRect(0, 0, width, height);
+        context.drawImage(previewPatternCanvas, 0, 0);
+
+        const regions = [];
+        for (const side of ["front", "back"]) {
+            const sideView = previewPatternViews?.[side];
+            if (!sideView) continue;
+
+            const sideLayers = Array.from(layers.values())
+                .filter(item => layerSide(item) === side && item.layer.visible !== false)
+                .sort((a, b) => (Number(a.layer.z_index) || 0) - (Number(b.layer.z_index) || 0));
+
+            for (const item of sideLayers) {
+                const region = layerPreviewGeometry(item, sideView, previewPageTransform);
+                if (!region) continue;
+                const artImage = item.artwork?.is_text
+                    ? null
+                    : previewResolvedImages.get(String(item.artwork?.image || "")) || null;
+                draw2DLayerArtwork(context, item, region, artImage);
+                regions.push(region);
+            }
+        }
+
+        previewLayerHitRegions = regions;
+
+        if (!previewBaseCanvas) previewBaseCanvas = document.createElement("canvas");
+        if (previewBaseCanvas.width !== width || previewBaseCanvas.height !== height) {
+            previewBaseCanvas.width = width;
+            previewBaseCanvas.height = height;
+        }
+        const baseContext = previewBaseCanvas.getContext("2d");
+        if (baseContext) {
+            baseContext.clearRect(0, 0, width, height);
+            baseContext.drawImage(previewCanvas, 0, 0);
+        }
+
+        const selectedRegion = regions.find(region => region.layerId === selectedId);
+        if (selectedRegion) {
+            draw2DSelection(context, selectedRegion, Math.min(window.devicePixelRatio || 1, 2));
+        }
+        previewCanvas.dataset.hasRendered = "1";
+        return true;
+    }
+
     function twoDCanvasPoint(event, canvas) {
         const rect = canvas.getBoundingClientRect();
         if (rect.width < 1 || rect.height < 1) return null;
@@ -3930,8 +4033,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (!pointInPolygon(pagePoint, active.region.printPolygon)) return null;
 
         return {
-            x: relativeX,
-            y: relativeY,
+            x: bounds.minX + relativeX * areaWidth,
+            y: bounds.minY + relativeY * areaHeight,
         };
     }
 
@@ -3969,9 +4072,20 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             Math.abs(normalized.y - active.startNormalized.y) > 0.0015
         );
 
-        // The 2D artwork is redrawn at the live preview point; the committed
-        // Three.js decal is updated once, on pointerup, to avoid flicker.
-        render2DPreview();
+        // Move the cached Three.js decal with the pointer, just like Babaei.
+        // Rebuild DecalGeometry only once when the drag is committed.
+        if (active.visual && hit.object === active.startTarget) {
+            applyLayerVisualMove(
+                active.visual,
+                hit.point.clone().sub(active.startSurfacePoint)
+            );
+            scheduleRenderLoop();
+        }
+
+        // Both pattern and selected-label previews are updated from cached
+        // images; no async full-page render is started inside the pointer loop.
+        render2DDragPreview();
+        renderSelectedPreview();
     }
 
     function finish2DCanvasDrag(commit = true, finalEvent = null) {
@@ -3994,7 +4108,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (canvas) canvas.style.cursor = "";
 
         if (!item) {
+            restoreLayerVisualState(active.visual);
             render2DPreview();
+            renderSelectedPreview();
             return;
         }
 
@@ -4011,8 +4127,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             render();
             sync();
         } else {
-            // No valid drag target or pointer cancellation: restore the committed position.
+            // Pointer cancellation restores the exact starting 3D visual state.
+            restoreLayerVisualState(active.visual);
+            render();
             render2DPreview();
+            renderSelectedPreview();
             if (!commit) refresh2DSelectionOverlay();
         }
     }
@@ -4062,9 +4181,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 startPointer: { x: point.x, y: point.y },
                 startNormalized: { x: normalized.x, y: normalized.y },
                 previewNormalized: { x: normalized.x, y: normalized.y },
+                startSurfacePoint: item.surfacePoint?.clone() || item.position?.clone() || null,
                 previewPoint: item.surfacePoint?.clone() || item.position?.clone() || null,
                 previewNormal: item.surfaceNormal?.clone() || item.normal?.clone() || null,
                 previewTarget: item.target || null,
+                startTarget: item.target || null,
+                visual: captureLayerVisualState(item),
                 moved: false,
             };
 
