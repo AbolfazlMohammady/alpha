@@ -3627,11 +3627,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             x: Number(item.layer.x == null ? 0.5 : item.layer.x),
             y: Number(item.layer.y == null ? 0.5 : item.layer.y),
         };
-        const zone = printableBodyZone();
-        const zoneWidth = Math.max(zone.maxX - zone.minX, 1e-6);
-        const zoneHeight = Math.max(zone.maxY - zone.minY, 1e-6);
-        const relativeX = THREE.MathUtils.clamp((Number(placement.x) - zone.minX) / zoneWidth, 0, 1);
-        const relativeY = THREE.MathUtils.clamp((Number(placement.y) - zone.minY) / zoneHeight, 0, 1);
+        // Layer coordinates are normalized against the full garment bounds.
+        // Keep the 2D pattern preview in that same coordinate space: the
+        // printable-body sub-zone was intentionally removed from 3D placement.
+        const relativeX = THREE.MathUtils.clamp(Number(placement.x), 0, 1);
+        const relativeY = THREE.MathUtils.clamp(Number(placement.y), 0, 1);
         const printBounds = { minX, maxX, minY, maxY };
         const printPolygon = geometry.map(point => ({
             x: Number(point.x),
@@ -3912,25 +3912,13 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         const bounds = active.region.printBounds;
         const layout = active.layout;
-        const zone = printableBodyZone();
-        const zoneWidth = Math.max(zone.maxX - zone.minX, 1e-6);
-        const zoneHeight = Math.max(zone.maxY - zone.minY, 1e-6);
         const areaWidth = Math.max(bounds.maxX - bounds.minX, 1e-6);
         const areaHeight = Math.max(bounds.maxY - bounds.minY, 1e-6);
 
-        // Preserve the point where the user grabbed the artwork. The pointer
-        // delta moves the artwork center; it must not snap the center to the
-        // cursor when the user grabs an edge or corner of a label.
-        const startRelativeX = THREE.MathUtils.clamp(
-            (active.startNormalized.x - zone.minX) / zoneWidth,
-            0,
-            1
-        );
-        const startRelativeY = THREE.MathUtils.clamp(
-            (active.startNormalized.y - zone.minY) / zoneHeight,
-            0,
-            1
-        );
+        // Keep the grabbed point's offset from the artwork center. Both the
+        // renderer and the drag mapper use full-garment normalized coordinates.
+        const startRelativeX = THREE.MathUtils.clamp(Number(active.startNormalized.x), 0, 1);
+        const startRelativeY = THREE.MathUtils.clamp(Number(active.startNormalized.y), 0, 1);
         const deltaRelativeX = (point.x - active.startPointer.x) / Math.max(layout.width * areaWidth, 1);
         const deltaRelativeY = (point.y - active.startPointer.y) / Math.max(layout.height * areaHeight, 1);
         const relativeX = THREE.MathUtils.clamp(startRelativeX + deltaRelativeX, 0, 1);
@@ -3942,8 +3930,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         if (!pointInPolygon(pagePoint, active.region.printPolygon)) return null;
 
         return {
-            x: zone.minX + relativeX * zoneWidth,
-            y: zone.minY + relativeY * zoneHeight,
+            x: relativeX,
+            y: relativeY,
         };
     }
 
