@@ -1322,6 +1322,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     function orientation(normal, rotation) {
+        garment?.updateWorldMatrix(true, false);
         const n = normal.clone().normalize();
 
         // Build a stable surface frame instead of using setFromUnitVectors().
@@ -1760,8 +1761,11 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         mesh.userData.customizerLayerId = item.id;
         target.add(mesh);
 
-        // Re-use the existing frame and handles where possible; only move their
-        // anchors and orientation. The box follows the current surface point.
+        // Re-use the existing frame and handles where possible; when the ray
+        // moves across separate GLB mesh parts (body, pocket, sleeve), re-parent
+        // them to the currently hit mesh before applying its local transform.
+        if (item.frame && item.frame.parent !== target) target.add(item.frame);
+        if (item.handles && item.handles.parent !== target) target.add(item.handles);
         const targetLocal = target.worldToLocal(position.clone());
         const targetQuaternion = target.getWorldQuaternion(new THREE.Quaternion());
         const worldQuaternion = new THREE.Quaternion().setFromEuler(
