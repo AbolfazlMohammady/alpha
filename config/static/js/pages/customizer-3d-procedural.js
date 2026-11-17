@@ -3501,25 +3501,27 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     function rasterizeGarmentSilhouette(side, bounds, widthPx, heightPx) {
-        const silhouette = document.createElement("canvas");
-        silhouette.width = widthPx;
-        silhouette.height = heightPx;
-        const context = silhouette.getContext("2d");
+        // Scan-line triangle fill into a plain byte mask (2x supersampled).
+        // This is O(covered pixels) and never builds a giant canvas path,
+        // which can freeze the browser tab on dense GLB meshes.
+        const SS = 2;
+        const W = widthPx * SS;
+        const H = heightPx * SS;
+        const mask = new Uint8Array(W * H);
         const size = bounds.getSize(new THREE.Vector3());
-        const sx = widthPx / size.x;
-        const sy = heightPx / size.y;
+        const sx = W / size.x;
+        const sy = H / size.y;
         const toLocal = new THREE.Matrix4();
         const vertex = new THREE.Vector3();
 
         garment.updateMatrixWorld(true);
         const inverseGarment = garment.matrixWorld.clone().invert();
 
-        // Decorative stitch meshes are ~65% of the t-shirt's triangles and lie
-        // inside the fabric outline, so they never change the silhouette.
+        // Decorative stitch meshes lie inside the fabric outline and are most
+        // of the triangles, so they never change the silhouette.
         const fabricMeshes = garmentMeshes.filter(mesh => !/stitch/i.test(mesh.name || ""));
         const silhouetteMeshes = fabricMeshes.length ? fabricMeshes : garmentMeshes;
 
-        context.beginPath();
         for (const mesh of silhouetteMeshes) {
             const position = mesh.geometry?.attributes?.position;
             if (!mesh.visible || !position) continue;
@@ -3540,20 +3542,57 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             const triangles = Math.floor((index ? index.count : position.count) / 3);
             for (let t = 0; t < triangles; t += 1) {
                 const a = index ? index.getX(t * 3) : t * 3;
-                let b = index ? index.getX(t * 3 + 1) : t * 3 + 1;
-                let c = index ? index.getX(t * 3 + 2) : t * 3 + 2;
-                // Normalise winding so the non-zero fill is a true union.
-                const area2 = (xs[b] - xs[a]) * (ys[c] - ys[a]) - (xs[c] - xs[a]) * (ys[b] - ys[a]);
-                if (Math.abs(area2) < 1e-6) continue;
-                if (area2 < 0) { const swap = b; b = c; c = swap; }
-                context.moveTo(xs[a], ys[a]);
-                context.lineTo(xs[b], ys[b]);
-                context.lineTo(xs[c], ys[c]);
-                context.closePath();
+                const b = index ? index.getX(t * 3 + 1) : t * 3 + 1;
+                const c = index ? index.getX(t * 3 + 2) : t * 3 + 2;
+                const ax = xs[a], ay = ys[a], bx = xs[b], by = ys[b], cx = xs[c], cy = ys[c];
+
+                const rowStart = Math.max(0, Math.ceil(Math.min(ay, by, cy) - 0.5));
+                const rowEnd = Math.min(H - 1, Math.floor(Math.max(ay, by, cy) - 0.5));
+                for (let row = rowStart; row <= rowEnd; row += 1) {
+                    const yc = row + 0.5;
+                    let minX = Infinity;
+                    let maxX = -Infinity;
+                    for (let e = 0; e < 3; e += 1) {
+                        const x0 = e === 0 ? ax : e === 1 ? bx : cx;
+                        const y0 = e === 0 ? ay : e === 1 ? by : cy;
+                        const x1 = e === 0 ? bx : e === 1 ? cx : ax;
+                        const y1 = e === 0 ? by : e === 1 ? cy : ay;
+                        if ((y0 <= yc && y1 > yc) || (y1 <= yc && y0 > yc)) {
+                            const x = x0 + ((yc - y0) / (y1 - y0)) * (x1 - x0);
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                        }
+                    }
+                    if (minX > maxX) continue;
+                    const colStart = Math.max(0, Math.ceil(minX - 0.5));
+                    const colEnd = Math.min(W - 1, Math.floor(maxX - 0.5));
+                    const base = row * W;
+                    for (let col = colStart; col <= colEnd; col += 1) mask[base + col] = 255;
+                }
             }
         }
-        context.fillStyle = "#ffffff";
-        context.fill("nonzero");
+
+        const big = document.createElement("canvas");
+        big.width = W;
+        big.height = H;
+        const bigContext = big.getContext("2d");
+        const image = bigContext.createImageData(W, H);
+        for (let i = 0; i < mask.length; i += 1) {
+            const o = i * 4;
+            image.data[o] = 255;
+            image.data[o + 1] = 255;
+            image.data[o + 2] = 255;
+            image.data[o + 3] = mask[i];
+        }
+        bigContext.putImageData(image, 0, 0);
+
+        const silhouette = document.createElement("canvas");
+        silhouette.width = widthPx;
+        silhouette.height = heightPx;
+        const context = silhouette.getContext("2d");
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = "high";
+        context.drawImage(big, 0, 0, widthPx, heightPx);
         return silhouette;
     }
 
