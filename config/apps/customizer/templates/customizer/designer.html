@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261114-long-sleeve-back-drag2">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio-ui.css' %}?v=20261113-preview-drag2">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-mobile-nav.css' %}?v=20260925-1">
+<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-designs.css' %}?v=20261117-designs1">
 {% endblock %}
 
 {% block content %}
@@ -225,6 +226,9 @@
                 </button>
                 <button type="button" class="desktop-tool" data-desktop-tool="text-font" title="متن و استایل" aria-label="متن و استایل متن">
                     <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 18 10.5 5h3L19 18M7.2 13h9.6" stroke="currentColor" stroke-width="1.65" stroke-linecap="round"/><path d="M17 6h3M18.5 4.5v3" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg></span>
+                </button>
+                <button type="button" class="desktop-tool desktop-tool--designs" data-designs-tool title="طرح‌ها" aria-label="کتابخانه طرح‌ها" aria-haspopup="dialog" aria-expanded="false">
+                    <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 16 10H8l4-6.5Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.4" stroke="currentColor" stroke-width="1.65"/><circle cx="16.5" cy="17" r="3.5" stroke="currentColor" stroke-width="1.65"/></svg></span>
                 </button>
                 <button type="button" class="desktop-tool desktop-tool--save" data-desktop-tool="save" title="افزودن به سبد خرید" aria-label="افزودن طراحی به سبد خرید">
                     <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13H5V4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 4v6h7V4M8 20v-6h8v6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m10 17 1.5 1.5L14.5 15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
@@ -616,6 +620,8 @@
 <script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261114-2d-drag-layer1"></script>
 <script src="{% static 'js/pages/customizer-3d-studio-ui.js' %}?v=20261113-clean-stage1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261114-product-picker-redesign1" defer></script>
+<script src="{% static 'js/pages/customizer-3d-design-templates.js' %}?v=20261117-designs1" defer></script>
+<script src="{% static 'js/pages/customizer-3d-designs.js' %}?v=20261117-designs1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-mobile-nav.js' %}?v=20261113-garment-toolbar1" defer></script>
 {% endif %}
 {% endblock %}
