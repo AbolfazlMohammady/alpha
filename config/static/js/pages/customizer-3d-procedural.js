@@ -531,6 +531,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         garmentMaterials = [];
         garmentLocalBounds = null;
         garmentWorldBounds = null;
+        garmentSheet = null;
 
         garment = gltf.scene;
         garment.name = "BabaeiTshirtGLB";
@@ -3454,7 +3455,201 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
 
+    // ================================================================
+    // UNIFIED GARMENT SHEET (single source of truth for 2D <-> 3D)
+    // The 2D editor no longer uses a separate FreeSewing pattern whose
+    // proportions differ from the GLB. Instead the front/back silhouettes are
+    // rasterised from the loaded GLB itself, using the same bounding box that
+    // normalizedGarmentPoint() / garmentSurfaceHitAtPlacement() use for 3D.
+    // Therefore a label at garment-normalised (x, y) is drawn at exactly the
+    // same spot and with the same physical size in 2D as it is in 3D.
+    // ================================================================
+    const GARMENT_REAL_HEIGHT_MM = { tshirt: 700, long_sleeve: 740, hoodie: 720 };
+    const SHEET_PX_PER_MM = 1.5;
+    let garmentSheet = null;
+
+    function sheetKey() {
+        return garment ? garmentType + ":" + garment.uuid : null;
+    }
+
+    function labelWorldWidth(item) {
+        // Must stay identical to the decal width used in buildProjectedLayer().
+        return Math.max(0.08, Math.min(1.05, 0.86 * Number(item?.layer?.width || 0.35)));
+    }
+
+    function labelAspectRatio(item) {
+        const cropped = item?.visibleArtwork || null;
+        const texture = item?.visibleTexture || null;
+        const width = cropped?.visibleWidth || texture?.image?.width;
+        const height = cropped?.visibleHeight || texture?.image?.height;
+        if (width && height) return Math.max(0.15, width / Math.max(1, height));
+        return Math.max(0.15, Number(item?.layer?.width || 0.35) / Math.max(0.05, Number(item?.layer?.height || 0.25)));
+    }
+
+    function garmentNormalizedToSheetMm(side, gx, gy) {
+        if (!garmentSheet) return null;
+        const rect = side === "back" ? garmentSheet.back : garmentSheet.front;
+        const nx = side === "back" ? 1 - gx : gx;
+        return { x: rect.x + nx * rect.w, y: rect.y + gy * rect.h };
+    }
+
+    function sheetMmToGarmentNormalized(side, x, y) {
+        if (!garmentSheet) return null;
+        const rect = side === "back" ? garmentSheet.back : garmentSheet.front;
+        const nx = (x - rect.x) / rect.w;
+        return { x: side === "back" ? 1 - nx : nx, y: (y - rect.y) / rect.h };
+    }
+
+    function rasterizeGarmentSilhouette(side, bounds, widthPx, heightPx) {
+        const silhouette = document.createElement("canvas");
+        silhouette.width = widthPx;
+        silhouette.height = heightPx;
+        const context = silhouette.getContext("2d");
+        const size = bounds.getSize(new THREE.Vector3());
+        const sx = widthPx / size.x;
+        const sy = heightPx / size.y;
+        const toLocal = new THREE.Matrix4();
+        const vertex = new THREE.Vector3();
+
+        garment.updateMatrixWorld(true);
+        const inverseGarment = garment.matrixWorld.clone().invert();
+
+        // Decorative stitch meshes are ~65% of the t-shirt's triangles and lie
+        // inside the fabric outline, so they never change the silhouette.
+        const fabricMeshes = garmentMeshes.filter(mesh => !/stitch/i.test(mesh.name || ""));
+        const silhouetteMeshes = fabricMeshes.length ? fabricMeshes : garmentMeshes;
+
+        context.beginPath();
+        for (const mesh of silhouetteMeshes) {
+            const position = mesh.geometry?.attributes?.position;
+            if (!mesh.visible || !position) continue;
+
+            mesh.updateWorldMatrix(true, false);
+            toLocal.multiplyMatrices(inverseGarment, mesh.matrixWorld);
+
+            const xs = new Float32Array(position.count);
+            const ys = new Float32Array(position.count);
+            for (let i = 0; i < position.count; i += 1) {
+                vertex.fromBufferAttribute(position, i).applyMatrix4(toLocal);
+                // Looking at the back means the image's right edge is -X.
+                xs[i] = (side === "back" ? bounds.max.x - vertex.x : vertex.x - bounds.min.x) * sx;
+                ys[i] = (bounds.max.y - vertex.y) * sy;
+            }
+
+            const index = mesh.geometry.index;
+            const triangles = Math.floor((index ? index.count : position.count) / 3);
+            for (let t = 0; t < triangles; t += 1) {
+                const a = index ? index.getX(t * 3) : t * 3;
+                let b = index ? index.getX(t * 3 + 1) : t * 3 + 1;
+                let c = index ? index.getX(t * 3 + 2) : t * 3 + 2;
+                // Normalise winding so the non-zero fill is a true union.
+                const area2 = (xs[b] - xs[a]) * (ys[c] - ys[a]) - (xs[c] - xs[a]) * (ys[b] - ys[a]);
+                if (Math.abs(area2) < 1e-6) continue;
+                if (area2 < 0) { const swap = b; b = c; c = swap; }
+                context.moveTo(xs[a], ys[a]);
+                context.lineTo(xs[b], ys[b]);
+                context.lineTo(xs[c], ys[c]);
+                context.closePath();
+            }
+        }
+        context.fillStyle = "#ffffff";
+        context.fill("nonzero");
+        return silhouette;
+    }
+
+    function tintedCopy(source, color) {
+        const copy = document.createElement("canvas");
+        copy.width = source.width;
+        copy.height = source.height;
+        const context = copy.getContext("2d");
+        context.drawImage(source, 0, 0);
+        context.globalCompositeOperation = "source-in";
+        context.fillStyle = color;
+        context.fillRect(0, 0, copy.width, copy.height);
+        return copy;
+    }
+
+    function buildGarmentSheet() {
+        if (!garment || !garmentMeshes.length) return null;
+        if (!garmentLocalBounds) garmentLocalBounds = computeGarmentLocalBounds();
+        const bounds = garmentLocalBounds;
+        if (!bounds) return null;
+
+        const size = bounds.getSize(new THREE.Vector3());
+        if (size.x <= 1e-6 || size.y <= 1e-6) return null;
+
+        // One shared physical scale for both axes keeps proportions honest.
+        const heightMm = GARMENT_REAL_HEIGHT_MM[garmentType] || 700;
+        const mmPerUnit = heightMm / size.y;
+        const widthMm = size.x * mmPerUnit;
+        const margin = 80;
+        const gap = 100;
+        const pageWidth = Math.round(margin * 2 + gap + widthMm * 2);
+        const pageHeight = Math.round(margin * 2 + heightMm);
+        const front = { x: margin, y: margin, w: widthMm, h: heightMm };
+        const back = { x: margin + widthMm + gap, y: margin, w: widthMm, h: heightMm };
+
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(pageWidth * SHEET_PX_PER_MM);
+        canvas.height = Math.round(pageHeight * SHEET_PX_PER_MM);
+        const context = canvas.getContext("2d");
+        const pieceWidthPx = Math.round(widthMm * SHEET_PX_PER_MM);
+        const pieceHeightPx = Math.round(heightMm * SHEET_PX_PER_MM);
+
+        for (const [side, rect] of [["front", front], ["back", back]]) {
+            const silhouette = rasterizeGarmentSilhouette(side, bounds, pieceWidthPx, pieceHeightPx);
+            const edge = tintedCopy(silhouette, "#a9a493");
+            const fill = tintedCopy(silhouette, "#fffefb");
+            const x = rect.x * SHEET_PX_PER_MM;
+            const y = rect.y * SHEET_PX_PER_MM;
+            const radius = Math.max(1.6, SHEET_PX_PER_MM * 1.1);
+            for (let step = 0; step < 12; step += 1) {
+                const angle = (step / 12) * Math.PI * 2;
+                context.drawImage(edge, x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
+            }
+            context.drawImage(fill, x, y);
+
+            context.save();
+            context.strokeStyle = "rgba(90, 94, 104, 0.55)";
+            context.lineWidth = 1;
+            context.beginPath();
+            context.moveTo(x + pieceWidthPx / 2, y);
+            context.lineTo(x + pieceWidthPx / 2, y + pieceHeightPx);
+            context.stroke();
+            context.fillStyle = "rgba(90, 94, 104, 0.8)";
+            context.font = Math.round(11 * SHEET_PX_PER_MM) + "px Arial, sans-serif";
+            context.textAlign = "left";
+            context.textBaseline = "bottom";
+            context.fillText(side === "back" ? "Back" : "Front", x, y - 4);
+            context.restore();
+        }
+
+        return { key: sheetKey(), canvas, pageWidth, pageHeight, mmPerUnit, front, back };
+    }
+
     async function build2DBackgroundViews() {
+        try {
+            if (!garmentSheet || garmentSheet.key !== sheetKey()) garmentSheet = buildGarmentSheet();
+            if (garmentSheet) {
+                return {
+                    background: garmentSheet.canvas,
+                    pageWidth: garmentSheet.pageWidth,
+                    pageHeight: garmentSheet.pageHeight,
+                    views: {
+                        front: { sheet: true, side: "front", key: "front", name: "front", areas: [] },
+                        back: { sheet: true, side: "back", key: "back", name: "back", areas: [] },
+                    },
+                    generated: true,
+                };
+            }
+        } catch (sheetError) {
+            console.warn("Unified garment sheet failed; falling back to legacy pattern.", sheetError);
+            garmentSheet = null;
+        }
+        return buildLegacy2DBackgroundViews();
+    }
+
+    async function buildLegacy2DBackgroundViews() {
         const results = await Promise.all([
             resolve2DPatternView("front"),
             resolve2DPatternView("back"),
@@ -3615,7 +3810,57 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         context.restore();
     }
 
+    function sheetLayerPreviewGeometry(item, view, layout) {
+        const sheet = garmentSheet;
+        if (!sheet) return null;
+        const side = view.side === "back" ? "back" : "front";
+        const rect = sheet[side];
+
+        const garmentPoint = active2DDrag?.layerId === item.id
+            ? active2DDrag.previewNormalized
+            : normalizedGarmentPoint(item.surfacePoint || item.position);
+        const placement = garmentPoint || {
+            x: Number(item.layer.x == null ? 0.5 : item.layer.x),
+            y: Number(item.layer.y == null ? 0.5 : item.layer.y),
+        };
+        const center = garmentNormalizedToSheetMm(side, placement.x, placement.y);
+        if (!center) return null;
+
+        // Decal width is in world units; convert to GLB-local units and then
+        // to millimetres with the sheet's single physical scale.
+        const widthMm = (labelWorldWidth(item) / Math.max(garmentBaseScale.x, 1e-6)) * sheet.mmPerUnit;
+        const heightMm = widthMm / labelAspectRatio(item);
+
+        const pxX = mm => layout.x + (mm / sheet.pageWidth) * layout.width;
+        const pxY = mm => layout.y + (mm / sheet.pageHeight) * layout.height;
+        const corners = [
+            [rect.x, rect.y], [rect.x + rect.w, rect.y],
+            [rect.x + rect.w, rect.y + rect.h], [rect.x, rect.y + rect.h],
+        ];
+
+        return {
+            layerId: item.id,
+            side,
+            sheet: true,
+            centerX: pxX(center.x),
+            centerY: pxY(center.y),
+            width: Math.max(1, (widthMm / sheet.pageWidth) * layout.width),
+            height: Math.max(1, (heightMm / sheet.pageHeight) * layout.height),
+            rotation: Number(item.layer.rotation || 0) * Math.PI / 180,
+            clipPoints: corners.map(([x, y]) => ({ x: pxX(x), y: pxY(y) })),
+            printBounds: {
+                minX: rect.x / sheet.pageWidth,
+                maxX: (rect.x + rect.w) / sheet.pageWidth,
+                minY: rect.y / sheet.pageHeight,
+                maxY: (rect.y + rect.h) / sheet.pageHeight,
+            },
+            printPolygon: corners.map(([x, y]) => ({ x: x / sheet.pageWidth, y: y / sheet.pageHeight })),
+            item,
+        };
+    }
+
     function layerPreviewGeometry(item, view, layout) {
+        if (view && view.sheet) return sheetLayerPreviewGeometry(item, view, layout);
         const viewAreas = view && Array.isArray(view.areas) ? view.areas : [];
         const area = viewAreas.find(candidate => Number(candidate.id) === Number(item.layer.area_id));
         const geometry = Array.isArray(area && area.geometry) ? area.geometry : [];
@@ -4010,6 +4255,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     }
 
     function normalizedPointFromPatternPointer(point, active) {
+        if (active?.region?.sheet && garmentSheet && point && active.layout && active.startPointer) {
+            const sheet = garmentSheet;
+            const rect = active.side === "back" ? sheet.back : sheet.front;
+            const start = garmentNormalizedToSheetMm(active.side, active.startNormalized.x, active.startNormalized.y);
+            if (!start) return null;
+            // Pixel delta -> millimetre delta -> new mm position (grab offset preserved).
+            const mmX = start.x + ((point.x - active.startPointer.x) / active.layout.width) * sheet.pageWidth;
+            const mmY = start.y + ((point.y - active.startPointer.y) / active.layout.height) * sheet.pageHeight;
+            if (mmX < rect.x || mmX > rect.x + rect.w || mmY < rect.y || mmY > rect.y + rect.h) return null;
+            return sheetMmToGarmentNormalized(active.side, mmX, mmY);
+        }
         if (!point || !active?.region?.printBounds || !active?.layout || !active?.startPointer) return null;
 
         const bounds = active.region.printBounds;
