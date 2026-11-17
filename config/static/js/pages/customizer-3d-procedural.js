@@ -1017,7 +1017,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         if (backSide) {
             // Isolated correction: only the long-sleeve's back print surface.
-            return Math.max(0.085, Math.min(0.11, width * 0.32));
+            return Math.max(0.2, width * 0.9);
         }
 
         return Math.max(0.24, width * 0.9);
@@ -1387,9 +1387,162 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         hit.object.updateWorldMatrix(true, false);
         const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
-        return (hit.face?.normal?.clone() || frontAxis.clone())
+        const faceNormal = (hit.face?.normal?.clone() || frontAxis.clone())
             .applyMatrix3(normalMatrix)
             .normalize();
+        return flatPrintNormal(faceNormal);
+    }
+
+    // Cloth meshes are wrinkled, so a single triangle's normal tilts the
+    // projection and the artwork looks warped. Print flat along the garment's
+    // front/back axis (like screen printing) and only follow the real surface
+    // where it turns steeply away (sleeve edges, side seams).
+    function flatPrintNormal(faceNormal) {
+        if (!garment || garmentType === "mug") return faceNormal;
+        garment.updateWorldMatrix(true, false);
+        const axis = frontAxis.clone().transformDirection(garment.matrixWorld);
+        const facing = faceNormal.dot(axis);
+        if (Math.abs(facing) < 0.02) return faceNormal;
+        if (facing < 0) axis.negate();
+        const angle = Math.acos(Math.min(1, Math.abs(facing)));
+        const blend = THREE.MathUtils.smoothstep(
+            angle,
+            THREE.MathUtils.degToRad(35),
+            THREE.MathUtils.degToRad(70)
+        );
+        return axis.lerp(faceNormal, blend).normalize();
+    }
+
+    // ---- Fast, layered decal projection ---------------------------------
+    // DecalGeometry walks every triangle of the mesh (~80-230 ms on this
+    // t-shirt), which is why live dragging stuttered. We pre-filter triangles
+    // near the decal box, and project onto every overlapping fabric layer so
+    // layered / chunked meshes (long-sleeve back) have no holes or hard cuts.
+    const decalWorldCache = new WeakMap();
+
+    function decalWorldVertices(mesh) {
+        mesh.updateWorldMatrix(true, false);
+        const elements = mesh.matrixWorld.elements;
+        const position = mesh.geometry.attributes.position;
+        const cached = decalWorldCache.get(mesh);
+        if (cached && cached.position === position && cached.matrix.every((v, i) => v === elements[i])) {
+            return cached;
+        }
+        const world = new Float32Array(position.count * 3);
+        const min = [Infinity, Infinity, Infinity];
+        const max = [-Infinity, -Infinity, -Infinity];
+        const vertex = new THREE.Vector3();
+        for (let i = 0; i < position.count; i += 1) {
+            vertex.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+            world[i * 3] = vertex.x;
+            world[i * 3 + 1] = vertex.y;
+            world[i * 3 + 2] = vertex.z;
+            if (vertex.x < min[0]) min[0] = vertex.x;
+            if (vertex.y < min[1]) min[1] = vertex.y;
+            if (vertex.z < min[2]) min[2] = vertex.z;
+            if (vertex.x > max[0]) max[0] = vertex.x;
+            if (vertex.y > max[1]) max[1] = vertex.y;
+            if (vertex.z > max[2]) max[2] = vertex.z;
+        }
+        const entry = { position, matrix: Array.from(elements), world, min, max };
+        decalWorldCache.set(mesh, entry);
+        return entry;
+    }
+
+    function buildLayeredDecalGeometry(target, center, euler, size) {
+        const radius = 0.5 * Math.hypot(size.x, size.y, size.z);
+        const lo = [center.x - radius, center.y - radius, center.z - radius];
+        const hi = [center.x + radius, center.y + radius, center.z + radius];
+        const meshes = garmentMeshes.filter(mesh =>
+            mesh.visible && mesh.geometry?.attributes?.position && !/stitch/i.test(mesh.name || "")
+        );
+        if (target && !meshes.includes(target)) meshes.push(target);
+
+        const positions = [];
+        const normals = [];
+        const uvs = [];
+        let hasNormals = true;
+
+        for (const mesh of meshes) {
+            const cache = decalWorldVertices(mesh);
+            if (
+                cache.max[0] < lo[0] || cache.min[0] > hi[0] ||
+                cache.max[1] < lo[1] || cache.min[1] > hi[1] ||
+                cache.max[2] < lo[2] || cache.min[2] > hi[2]
+            ) continue;
+
+            const geometry = mesh.geometry;
+            const position = geometry.attributes.position;
+            const normal = geometry.attributes.normal;
+            const index = geometry.index;
+            const world = cache.world;
+            const faceCount = Math.floor((index ? index.count : position.count) / 3);
+            const pickedPositions = [];
+            const pickedNormals = [];
+
+            for (let f = 0; f < faceCount; f += 1) {
+                const a = index ? index.getX(f * 3) : f * 3;
+                const b = index ? index.getX(f * 3 + 1) : f * 3 + 1;
+                const c = index ? index.getX(f * 3 + 2) : f * 3 + 2;
+                let outside = false;
+                for (let axis = 0; axis < 3; axis += 1) {
+                    const va = world[a * 3 + axis];
+                    const vb = world[b * 3 + axis];
+                    const vc = world[c * 3 + axis];
+                    if (
+                        (va < lo[axis] && vb < lo[axis] && vc < lo[axis]) ||
+                        (va > hi[axis] && vb > hi[axis] && vc > hi[axis])
+                    ) { outside = true; break; }
+                }
+                if (outside) continue;
+                for (const vi of [a, b, c]) {
+                    pickedPositions.push(position.getX(vi), position.getY(vi), position.getZ(vi));
+                    if (normal) pickedNormals.push(normal.getX(vi), normal.getY(vi), normal.getZ(vi));
+                }
+            }
+            if (!pickedPositions.length) continue;
+
+            const reduced = new THREE.BufferGeometry();
+            reduced.setAttribute("position", new THREE.Float32BufferAttribute(pickedPositions, 3));
+            if (normal) reduced.setAttribute("normal", new THREE.Float32BufferAttribute(pickedNormals, 3));
+            const proxy = new THREE.Mesh(reduced);
+            proxy.matrixWorld.copy(mesh.matrixWorld);
+            const part = new DecalGeometry(proxy, center, euler, size);
+            const partPosition = part.attributes.position;
+            if (partPosition?.count) {
+                const partNormal = part.attributes.normal;
+                const partUv = part.attributes.uv;
+                for (let i = 0; i < partPosition.count; i += 1) {
+                    positions.push(partPosition.getX(i), partPosition.getY(i), partPosition.getZ(i));
+                    uvs.push(partUv.getX(i), partUv.getY(i));
+                    if (partNormal) normals.push(partNormal.getX(i), partNormal.getY(i), partNormal.getZ(i));
+                    else hasNormals = false;
+                }
+            }
+            part.dispose();
+            reduced.dispose();
+        }
+
+        if (!positions.length) return null;
+        const merged = new THREE.BufferGeometry();
+        merged.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+        if (hasNormals && normals.length === positions.length) {
+            merged.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+        }
+        merged.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+        return merged;
+    }
+
+    function createDecalGeometry(target, center, euler, size) {
+        if (garmentType !== "mug") {
+            try {
+                const layered = buildLayeredDecalGeometry(target, center, euler, size);
+                if (layered) return layered;
+            } catch (decalError) {
+                console.warn("Layered decal failed; using single-mesh decal.", decalError);
+            }
+        }
+        return new DecalGeometry(target, center, euler, size);
     }
 
     function orientation(normal, rotation) {
@@ -1586,7 +1739,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             labelProjectionDepth(width, item, surfaceNormal)
         );
         const position = surfacePoint.clone().addScaledVector(surfaceNormal, 0.008);
-        const geometry = new DecalGeometry(
+        const geometry = createDecalGeometry(
             target,
             position,
             orientation(surfaceNormal, item.layer.rotation),
@@ -1788,7 +1941,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             width / aspect,
             labelProjectionDepth(width, item, surfaceNormal)
         );
-        const geometry = new DecalGeometry(
+        const geometry = createDecalGeometry(
             target,
             position,
             orientation(surfaceNormal, item.layer.rotation),
@@ -2132,6 +2285,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         } : null;
 
         return {
+            itemId: item.id,
+            replaced: false,
             target,
             center: target.worldToLocal(item.surfacePoint.clone()),
             surfacePoint: item.surfacePoint.clone(),
@@ -2144,6 +2299,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     function restoreLayerVisualState(state) {
         if (!state) return;
+        if (state.replaced) {
+            // The decal was re-projected live while dragging, so the snapshotted
+            // objects are gone: rebuild the layer at its original position.
+            const item = layers.get(state.itemId);
+            if (item) {
+                item.target = state.target;
+                project(item, state.surfacePoint.clone(), state.surfaceNormal.clone(), { silent: true });
+            }
+            state.replaced = false;
+            return;
+        }
         [state.mesh, state.frame, state.handles].forEach(saved => {
             if (!saved?.object) return;
             saved.object.position.copy(saved.position);
@@ -2375,6 +2541,30 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         render();
     }
 
+    // Re-project the decal onto the real surface while dragging so it conforms
+    // to the cloth continuously instead of sliding like a flat picture.
+    function liveReprojectLayer(item, hit, normal, state, visual) {
+        const now = performance.now();
+        if (state && now - (state.lastLiveBuild || 0) < (state.liveInterval || 0)) return state.liveReprojected === true;
+
+        const previousTarget = item.target;
+        item.target = hit.object;
+        const started = performance.now();
+        const ok = updateProjectedLayerDuringDrag(item, hit.point.clone(), normal.clone());
+        if (!ok) {
+            item.target = previousTarget;
+            return false;
+        }
+        const finished = performance.now();
+        if (state) {
+            state.lastLiveBuild = finished;
+            state.liveInterval = Math.min(50, (finished - started) * 0.6);
+            state.liveReprojected = true;
+        }
+        if (visual) visual.replaced = true;
+        return true;
+    }
+
     function moveSelected(event) {
         const activeDrag = drag;
         const item = activeDrag ? layers.get(activeDrag.layerId) : layers.get(selectedId);
@@ -2420,6 +2610,18 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         // Rebuilding DecalGeometry on every pointer event caused visible stutter.
         // When the pointer moves over another mesh section, defer the re-projection
         // until pointer-up; the layer stays visually responsive in the meantime.
+        if (activeDrag) {
+            activeDrag.lastValidPoint = hitPoint;
+            activeDrag.lastValidNormal = hitNormalVector;
+            activeDrag.lastValidTarget = hit.object;
+            activeDrag.lastSide = hitSide;
+            activeDrag.lastAreaId = area.id;
+            if (liveReprojectLayer(item, hit, hitNormalVector, activeDrag, activeDrag.visual)) {
+                scheduleRenderLoop();
+                return true;
+            }
+        }
+
         if (startTarget && hit.object === startTarget) {
             if (activeDrag?.visual) {
                 const worldDelta = hitPoint.clone().sub(activeDrag.startSurfacePoint);
@@ -3624,7 +3826,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         const margin = 80;
         const gap = 100;
         const pageWidth = Math.round(margin * 2 + gap + widthMm * 2);
-        const pageHeight = Math.round(margin * 2 + heightMm);
+        const captionSpace = 70;
+        const pageHeight = Math.round(margin * 2 + heightMm + captionSpace);
         const front = { x: margin, y: margin, w: widthMm, h: heightMm };
         const back = { x: margin + widthMm + gap, y: margin, w: widthMm, h: heightMm };
 
@@ -3655,11 +3858,17 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             context.moveTo(x + pieceWidthPx / 2, y);
             context.lineTo(x + pieceWidthPx / 2, y + pieceHeightPx);
             context.stroke();
-            context.fillStyle = "rgba(90, 94, 104, 0.8)";
-            context.font = Math.round(11 * SHEET_PX_PER_MM) + "px Arial, sans-serif";
-            context.textAlign = "left";
-            context.textBaseline = "bottom";
-            context.fillText(side === "back" ? "Back" : "Front", x, y - 4);
+            // Caption under each garment: which one is the front and which is the back.
+            const captionCenterX = x + pieceWidthPx / 2;
+            const captionY = y + pieceHeightPx + 14 * SHEET_PX_PER_MM;
+            context.textAlign = "center";
+            context.textBaseline = "top";
+            context.fillStyle = "rgba(60, 64, 74, 0.95)";
+            context.font = "bold " + Math.round(17 * SHEET_PX_PER_MM) + "px Vazirmatn, Tahoma, Arial, sans-serif";
+            context.fillText(side === "back" ? "نمای پشت" : "نمای جلو", captionCenterX, captionY);
+            context.fillStyle = "rgba(110, 114, 124, 0.9)";
+            context.font = "600 " + Math.round(10 * SHEET_PX_PER_MM) + "px Arial, sans-serif";
+            context.fillText(side === "back" ? "BACK" : "FRONT", captionCenterX, captionY + 21 * SHEET_PX_PER_MM);
             context.restore();
         }
 
@@ -4376,7 +4585,9 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         // Move the cached Three.js decal with the pointer, just like Babaei.
         // Rebuild DecalGeometry only once when the drag is committed.
-        if (active.visual && hit.object === active.startTarget) {
+        if (liveReprojectLayer(item, hit, normal, active, active.visual)) {
+            scheduleRenderLoop();
+        } else if (active.visual && !active.liveReprojected && hit.object === active.startTarget) {
             applyLayerVisualMove(
                 active.visual,
                 hit.point.clone().sub(active.startSurfacePoint)
