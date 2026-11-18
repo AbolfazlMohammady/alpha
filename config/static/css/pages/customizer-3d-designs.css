@@ -13,8 +13,8 @@
     left: 16px;
     right: var(--designs-right, 16px);
     bottom: var(--designs-bottom, 96px);
-    width: min(1040px, calc(100vw - var(--designs-right, 16px) - 32px));
-    max-height: min(620px, calc(100vh - var(--designs-bottom, 96px) - 24px));
+    width: min(960px, calc(100vw - var(--designs-right, 16px) - 32px));
+    max-height: min(560px, calc(100vh - var(--designs-bottom, 96px) - 24px));
     margin-inline: auto;
     display: flex;
     flex-direction: column;
@@ -33,12 +33,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 18px 6px;
+    padding: 12px 16px 2px;
 }
 
 .designs-header h2 {
     margin: 0;
-    font-size: 19px;
+    font-size: 17px;
     font-weight: 800;
     color: #1c1c1e;
 }
@@ -63,27 +63,27 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-    padding: 4px 18px 16px;
+    padding: 2px 16px 14px;
     scrollbar-width: thin;
 }
 
 .designs-section-title {
-    margin: 8px 0 10px;
-    font-size: 15px;
+    margin: 4px 0 8px;
+    font-size: 13px;
     color: #6b6b70;
 }
 
 .designs-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 14px;
+    gap: 6px;
+    margin-bottom: 10px;
 }
 
 .designs-chip {
-    padding: 7px 16px;
+    padding: 5px 13px;
     font: inherit;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
     color: #2c2c2e;
     background: #fff;
@@ -103,8 +103,8 @@
 
 .designs-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
     direction: ltr;
 }
 
@@ -112,8 +112,8 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 0 0 10px;
+    gap: 3px;
+    padding: 0 0 8px;
     overflow: hidden;
     font: inherit;
     text-align: left;
@@ -134,26 +134,29 @@
 .designs-card:focus-visible { outline: 2px solid #1d1d1f; outline-offset: 2px; }
 
 .designs-card__preview {
-    height: 138px;
+    height: 92px;
     display: grid;
     place-items: center;
-    padding: 12px 18px;
+    padding: 10px 14px 4px;
     box-sizing: border-box;
 }
 
 .designs-card__preview img {
     display: block;
     max-width: 100%;
-    max-height: 110px;
+    max-height: 74px;
     width: auto;
     height: auto;
     object-fit: contain;
 }
 
 .designs-card__name {
-    padding: 0 14px;
-    font-size: 14px;
+    padding: 0 10px;
+    font-size: 12.5px;
     color: #6b6b70;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .designs-card__badge {
@@ -184,10 +187,12 @@
 
 .designs-overlay.is-busy .designs-card:not(.is-loading) { pointer-events: none; opacity: .7; }
 
+.designs-more:empty { display: none; }
+
 .designs-more {
-    margin: 14px 0 0;
-    padding: 12px 14px;
-    font-size: 14px;
+    margin: 12px 0 0;
+    padding: 10px 12px;
+    font-size: 13px;
     color: #6b6b70;
     background: #f3f3f5;
     border-radius: 10px;
@@ -217,5 +222,60 @@
         bottom: 76px;
         max-height: calc(100vh - 100px);
     }
-    .designs-card__preview { height: 112px; }
+    .designs-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .designs-card__preview { height: 84px; }
+}
+
+/* ---- Labels dialog extras ---- */
+.designs-extra:empty { display: none; }
+
+.designs-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 10px;
+    font-size: 13px;
+    color: #3a3a3c;
+    cursor: pointer;
+}
+
+.designs-option input { width: 16px; height: 16px; accent-color: #1d1d1f; }
+
+.designs-card--upload {
+    align-items: center;
+    justify-content: center;
+    min-height: 124px;
+    text-align: center;
+    background: #fafafb;
+    border: 1.5px dashed #c6c6cc;
+}
+
+.designs-card--upload:hover { background: #f3f3f5; border-color: #8e8e93; }
+
+.designs-card--upload .designs-card__name {
+    padding: 0 8px;
+    font-weight: 700;
+    color: #2c2c2e;
+}
+
+.designs-card__plus {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    margin-top: 10px;
+    color: #fff;
+    background: #1d1d1f;
+    border-radius: 50%;
+}
+
+.designs-card__plus svg { width: 18px; height: 18px; }
+
+.designs-card__hint {
+    padding: 0 10px;
+    font-size: 11px;
+    color: #8e8e93;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }

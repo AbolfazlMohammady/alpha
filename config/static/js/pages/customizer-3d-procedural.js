@@ -4,6 +4,14 @@ import { DecalGeometry } from "three/addons/geometries/DecalGeometry.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
+// Optional raycast acceleration. The garment meshes have 100k+ triangles and
+// plain three.js raycasting costs ~13 ms per call, which made dragging laggy.
+// If the module cannot be loaded everything keeps working with plain raycasts.
+const bvhModulePromise = import("three-mesh-bvh").catch(error => {
+    console.warn("[BABAEI] three-mesh-bvh unavailable; using standard raycasting.", error);
+    return null;
+});
+
 (() => {
     "use strict";
 
@@ -96,6 +104,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
     let scene, camera, renderer, controls, garment;
     let garmentMeshes = [];
+    let raycastMeshes = [];
+    let raycastAccelerationToken = 0;
     let garmentMaterials = [];
     let garmentMaxSize = 3;
     let baseCameraDistance = 5.6;
@@ -553,6 +563,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
         if (!garmentMeshes.length) throw new Error("GLB فاقد Mesh قابل نمایش است.");
 
+        // Decorative stitch meshes are ~65% of the triangles and are never a
+        // valid print surface, so they are excluded from hit-testing.
+        raycastMeshes = garmentMeshes.filter(mesh => !/stitch/i.test(mesh.name || ""));
+        if (!raycastMeshes.length) raycastMeshes = garmentMeshes.slice();
+        accelerateRaycasts(raycastMeshes);
+
         // Keep the original PBR materials/textures from the supplied GLB.
         scene.add(garment);
         normalizeGarment(garment);
@@ -906,6 +922,28 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         }
     }
 
+    // Builds a BVH per fabric mesh (one mesh per tick so the UI never freezes).
+    // Until it finishes, raycasts simply use the standard (slower) path.
+    async function accelerateRaycasts(meshes) {
+        const token = ++raycastAccelerationToken;
+        const bvh = await bvhModulePromise;
+        if (!bvh) return;
+        if (THREE.Mesh.prototype.raycast !== bvh.acceleratedRaycast) {
+            THREE.Mesh.prototype.raycast = bvh.acceleratedRaycast;
+        }
+        for (const mesh of meshes) {
+            if (token !== raycastAccelerationToken) return;
+            const geometry = mesh.geometry;
+            if (!geometry || geometry.boundsTree) continue;
+            try {
+                geometry.boundsTree = new bvh.MeshBVH(geometry);
+            } catch (bvhError) {
+                console.warn("[BABAEI] BVH build failed for", mesh.name, bvhError);
+            }
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+
     function pointerOf(event) {
         const rect = canvas.getBoundingClientRect();
         pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -915,12 +953,12 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
     function garmentHits(event) {
         pointerOf(event);
         raycaster.setFromCamera(pointer, camera);
-        return raycaster.intersectObjects(garmentMeshes, false);
+        return raycaster.intersectObjects(raycastMeshes, false);
     }
 
     function centerHit() {
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-        return raycaster.intersectObjects(garmentMeshes, false)[0] || null;
+        return raycaster.intersectObjects(raycastMeshes, false)[0] || null;
     }
 
     function computeGarmentLocalBounds() {
@@ -1370,7 +1408,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 THREE.MathUtils.clamp(ndc.y, -0.98, 0.98),
             ), camera);
 
-            const hit = raycaster.intersectObjects(garmentMeshes, false)[0];
+            const hit = raycaster.intersectObjects(raycastMeshes, false)[0];
             if (!isValidPrintSurface(hit, area)) continue;
 
             const side = surfaceSide(hitNormal(hit));
@@ -1424,11 +1462,14 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         mesh.updateWorldMatrix(true, false);
         const elements = mesh.matrixWorld.elements;
         const position = mesh.geometry.attributes.position;
+        const normal = mesh.geometry.attributes.normal;
         const cached = decalWorldCache.get(mesh);
         if (cached && cached.position === position && cached.matrix.every((v, i) => v === elements[i])) {
             return cached;
         }
         const world = new Float32Array(position.count * 3);
+        const worldNormals = normal ? new Float32Array(position.count * 3) : null;
+        const normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
         const min = [Infinity, Infinity, Infinity];
         const max = [-Infinity, -Infinity, -Infinity];
         const vertex = new THREE.Vector3();
@@ -1443,25 +1484,84 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             if (vertex.x > max[0]) max[0] = vertex.x;
             if (vertex.y > max[1]) max[1] = vertex.y;
             if (vertex.z > max[2]) max[2] = vertex.z;
+            if (worldNormals) {
+                vertex.fromBufferAttribute(normal, i).applyMatrix3(normalMatrix).normalize();
+                worldNormals[i * 3] = vertex.x;
+                worldNormals[i * 3 + 1] = vertex.y;
+                worldNormals[i * 3 + 2] = vertex.z;
+            }
         }
-        const entry = { position, matrix: Array.from(elements), world, min, max };
+        const entry = { position, matrix: Array.from(elements), world, worldNormals, min, max };
         decalWorldCache.set(mesh, entry);
         return entry;
     }
 
+    // Scratch buffers shared by every decal build (a build never overlaps another).
+    const decalCorners = new Int32Array(3);
+    let decalOutPosition = new Float32Array(3 * 8192);
+    let decalOutNormal = new Float32Array(3 * 8192);
+    let decalOutUv = new Float32Array(2 * 8192);
+    const decalPolyA = new Float64Array(6 * 16);
+    const decalPolyB = new Float64Array(6 * 16);
+
+    function growDecalOutput(vertexCount) {
+        if (decalOutUv.length >= vertexCount * 2) return;
+        let capacity = decalOutUv.length / 2;
+        while (capacity < vertexCount) capacity *= 2;
+        const position = new Float32Array(capacity * 3);
+        const normal = new Float32Array(capacity * 3);
+        const uv = new Float32Array(capacity * 2);
+        position.set(decalOutPosition);
+        normal.set(decalOutNormal);
+        uv.set(decalOutUv);
+        decalOutPosition = position;
+        decalOutNormal = normal;
+        decalOutUv = uv;
+    }
+
+    // Sutherland-Hodgman clip of a convex polygon (6 floats per vertex:
+    // projector-space xyz + world-space normal) against |axis| <= limit.
+    function clipDecalPolygon(input, count, axis, sign, limit, output) {
+        let out = 0;
+        for (let i = 0; i < count; i += 1) {
+            const j = (i + 1) % count;
+            const a = i * 6;
+            const b = j * 6;
+            const da = sign * input[a + axis] - limit;
+            const db = sign * input[b + axis] - limit;
+            const aIn = da <= 0;
+            if (aIn) {
+                for (let k = 0; k < 6; k += 1) output[out * 6 + k] = input[a + k];
+                out += 1;
+            }
+            if (aIn !== (db <= 0)) {
+                const t = da / (da - db);
+                for (let k = 0; k < 6; k += 1) {
+                    output[out * 6 + k] = input[a + k] + (input[b + k] - input[a + k]) * t;
+                }
+                out += 1;
+            }
+        }
+        return out;
+    }
+
     function buildLayeredDecalGeometry(target, center, euler, size) {
-        const radius = 0.5 * Math.hypot(size.x, size.y, size.z);
+        const rotation = new THREE.Matrix4().makeRotationFromEuler(euler).elements;
+        const r00 = rotation[0], r10 = rotation[1], r20 = rotation[2];
+        const r01 = rotation[4], r11 = rotation[5], r21 = rotation[6];
+        const r02 = rotation[8], r12 = rotation[9], r22 = rotation[10];
+        const half = [size.x / 2, size.y / 2, size.z / 2];
+        const radius = Math.hypot(half[0], half[1], half[2]);
         const lo = [center.x - radius, center.y - radius, center.z - radius];
         const hi = [center.x + radius, center.y + radius, center.z + radius];
+
         const meshes = garmentMeshes.filter(mesh =>
             mesh.visible && mesh.geometry?.attributes?.position && !/stitch/i.test(mesh.name || "")
         );
         if (target && !meshes.includes(target)) meshes.push(target);
 
-        const positions = [];
-        const normals = [];
-        const uvs = [];
-        let hasNormals = true;
+        let vertexTotal = 0;
+        let allHaveNormals = true;
 
         for (const mesh of meshes) {
             const cache = decalWorldVertices(mesh);
@@ -1471,65 +1571,110 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
                 cache.max[2] < lo[2] || cache.min[2] > hi[2]
             ) continue;
 
-            const geometry = mesh.geometry;
-            const position = geometry.attributes.position;
-            const normal = geometry.attributes.normal;
-            const index = geometry.index;
             const world = cache.world;
-            const faceCount = Math.floor((index ? index.count : position.count) / 3);
-            const pickedPositions = [];
-            const pickedNormals = [];
+            const normals = cache.worldNormals;
+            if (!normals) allHaveNormals = false;
+            const vertexCount = world.length / 3;
 
+            const index = mesh.geometry.index;
+            const indexArray = index ? index.array : null;
+            const faceCount = Math.floor((index ? index.count : vertexCount) / 3);
             for (let f = 0; f < faceCount; f += 1) {
-                const a = index ? index.getX(f * 3) : f * 3;
-                const b = index ? index.getX(f * 3 + 1) : f * 3 + 1;
-                const c = index ? index.getX(f * 3 + 2) : f * 3 + 2;
+                const ia = indexArray ? indexArray[f * 3] : f * 3;
+                const ib = indexArray ? indexArray[f * 3 + 1] : f * 3 + 1;
+                const ic = indexArray ? indexArray[f * 3 + 2] : f * 3 + 2;
+
+                // Cheap world-space reject first; only nearby triangles are
+                // projected into the decal's space (the expensive part).
                 let outside = false;
                 for (let axis = 0; axis < 3; axis += 1) {
-                    const va = world[a * 3 + axis];
-                    const vb = world[b * 3 + axis];
-                    const vc = world[c * 3 + axis];
+                    const va = world[ia * 3 + axis];
+                    const vb = world[ib * 3 + axis];
+                    const vc = world[ic * 3 + axis];
                     if (
                         (va < lo[axis] && vb < lo[axis] && vc < lo[axis]) ||
                         (va > hi[axis] && vb > hi[axis] && vc > hi[axis])
                     ) { outside = true; break; }
                 }
                 if (outside) continue;
-                for (const vi of [a, b, c]) {
-                    pickedPositions.push(position.getX(vi), position.getY(vi), position.getZ(vi));
-                    if (normal) pickedNormals.push(normal.getX(vi), normal.getY(vi), normal.getZ(vi));
-                }
-            }
-            if (!pickedPositions.length) continue;
 
-            const reduced = new THREE.BufferGeometry();
-            reduced.setAttribute("position", new THREE.Float32BufferAttribute(pickedPositions, 3));
-            if (normal) reduced.setAttribute("normal", new THREE.Float32BufferAttribute(pickedNormals, 3));
-            const proxy = new THREE.Mesh(reduced);
-            proxy.matrixWorld.copy(mesh.matrixWorld);
-            const part = new DecalGeometry(proxy, center, euler, size);
-            const partPosition = part.attributes.position;
-            if (partPosition?.count) {
-                const partNormal = part.attributes.normal;
-                const partUv = part.attributes.uv;
-                for (let i = 0; i < partPosition.count; i += 1) {
-                    positions.push(partPosition.getX(i), partPosition.getY(i), partPosition.getZ(i));
-                    uvs.push(partUv.getX(i), partUv.getY(i));
-                    if (partNormal) normals.push(partNormal.getX(i), partNormal.getY(i), partNormal.getZ(i));
-                    else hasNormals = false;
+                let polygon = decalPolyA;
+                let scratch = decalPolyB;
+                decalCorners[0] = ia;
+                decalCorners[1] = ib;
+                decalCorners[2] = ic;
+                for (let c = 0; c < 3; c += 1) {
+                    const vi = decalCorners[c];
+                    const o = c * 6;
+                    // Projector-space coordinates: local = R^T (world - center).
+                    const dx = world[vi * 3] - center.x;
+                    const dy = world[vi * 3 + 1] - center.y;
+                    const dz = world[vi * 3 + 2] - center.z;
+                    polygon[o] = r00 * dx + r10 * dy + r20 * dz;
+                    polygon[o + 1] = r01 * dx + r11 * dy + r21 * dz;
+                    polygon[o + 2] = r02 * dx + r12 * dy + r22 * dz;
+                    if (normals) {
+                        polygon[o + 3] = normals[vi * 3];
+                        polygon[o + 4] = normals[vi * 3 + 1];
+                        polygon[o + 5] = normals[vi * 3 + 2];
+                    } else {
+                        polygon[o + 3] = polygon[o + 4] = polygon[o + 5] = 0;
+                    }
+                }
+
+                outside = false;
+                for (let axis = 0; axis < 3; axis += 1) {
+                    const va = polygon[axis];
+                    const vb = polygon[6 + axis];
+                    const vc = polygon[12 + axis];
+                    if (
+                        (va > half[axis] && vb > half[axis] && vc > half[axis]) ||
+                        (va < -half[axis] && vb < -half[axis] && vc < -half[axis])
+                    ) { outside = true; break; }
+                }
+                if (outside) continue;
+
+                let n = 3;
+                for (let axis = 0; axis < 3 && n >= 3; axis += 1) {
+                    n = clipDecalPolygon(polygon, n, axis, 1, half[axis], scratch);
+                    [polygon, scratch] = [scratch, polygon];
+                    if (n < 3) break;
+                    n = clipDecalPolygon(polygon, n, axis, -1, half[axis], scratch);
+                    [polygon, scratch] = [scratch, polygon];
+                }
+                if (n < 3) continue;
+
+                growDecalOutput(vertexTotal + (n - 2) * 3);
+                for (let t = 1; t < n - 1; t += 1) {
+                    for (const k of [0, t, t + 1]) {
+                        const o = k * 6;
+                        const lx = polygon[o];
+                        const ly = polygon[o + 1];
+                        const lz = polygon[o + 2];
+                        const w = vertexTotal * 3;
+                        decalOutPosition[w] = center.x + r00 * lx + r01 * ly + r02 * lz;
+                        decalOutPosition[w + 1] = center.y + r10 * lx + r11 * ly + r12 * lz;
+                        decalOutPosition[w + 2] = center.z + r20 * lx + r21 * ly + r22 * lz;
+                        decalOutNormal[w] = polygon[o + 3];
+                        decalOutNormal[w + 1] = polygon[o + 4];
+                        decalOutNormal[w + 2] = polygon[o + 5];
+                        decalOutUv[vertexTotal * 2] = 0.5 + lx / size.x;
+                        decalOutUv[vertexTotal * 2 + 1] = 0.5 + ly / size.y;
+                        vertexTotal += 1;
+                    }
                 }
             }
-            part.dispose();
-            reduced.dispose();
         }
 
-        if (!positions.length) return null;
+        if (!vertexTotal) return null;
         const merged = new THREE.BufferGeometry();
-        merged.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-        if (hasNormals && normals.length === positions.length) {
-            merged.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+        merged.setAttribute("position", new THREE.BufferAttribute(decalOutPosition.slice(0, vertexTotal * 3), 3));
+        merged.setAttribute("uv", new THREE.BufferAttribute(decalOutUv.slice(0, vertexTotal * 2), 2));
+        if (allHaveNormals) {
+            merged.setAttribute("normal", new THREE.BufferAttribute(decalOutNormal.slice(0, vertexTotal * 3), 3));
+        } else {
+            merged.computeVertexNormals();
         }
-        merged.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
         return merged;
     }
 
@@ -1634,7 +1779,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
             .normalize();
 
         raycaster.set(origin, direction);
-        const hits = raycaster.intersectObjects(garmentMeshes, false);
+        const hits = raycaster.intersectObjects(raycastMeshes, false);
         return hits.find(hit => surfaceSide(hitNormal(hit)) === side) || null;
     }
 
@@ -2182,7 +2327,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
         // collision check for a second/third label.
         if (!hit && layers.size === 0) {
             raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const fallbackHit = raycaster.intersectObjects(garmentMeshes, false)[0];
+            const fallbackHit = raycaster.intersectObjects(raycastMeshes, false)[0];
             if (isValidPrintSurface(fallbackHit, area)) hit = fallbackHit;
         }
 
