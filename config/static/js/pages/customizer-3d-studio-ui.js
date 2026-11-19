@@ -28,13 +28,43 @@
         });
     }
 
+    // For now only three colours are offered: white and black first, then the
+    // next colour in the catalogue. (Raise MAX_COLORS to offer more.)
+    const MAX_COLORS = 3;
+
+    function limitAvailableColors(list) {
+        if (list.length <= MAX_COLORS) return list;
+        const channels = hex => {
+            const value = String(hex || "").replace("#", "");
+            const full = value.length === 3 ? value.split("").map(c => c + c).join("") : value;
+            if (full.length !== 6) return null;
+            return [0, 2, 4].map(i => parseInt(full.slice(i, i + 2), 16) / 255);
+        };
+        // Pure white / black only: a dark blue must not count as "black".
+        const white = list.find(item => {
+            const rgb = channels(item.hex);
+            return rgb && Math.min(...rgb) >= 0.92;
+        });
+        const black = list.find(item => {
+            const rgb = channels(item.hex);
+            return rgb && Math.max(...rgb) <= 0.2;
+        });
+        const picked = [white, black].filter(Boolean);
+        for (const item of list) {
+            if (picked.length >= MAX_COLORS) break;
+            if (!picked.includes(item)) picked.push(item);
+        }
+        return picked.slice(0, MAX_COLORS);
+    }
+
     function renderColors() {
         const seen = new Set();
-        const colors = variants.filter(item => {
+        const allColors = variants.filter(item => {
             if (seen.has(item.color)) return false;
             seen.add(item.color);
             return true;
         });
+        const colors = limitAvailableColors(allColors);
 
         colorHosts.forEach(host => {
             host.innerHTML = colors.map(item => `<button type="button" class="premium-color-button" style="--swatch:${item.hex || "#fff"}" data-color="${esc(item.color)}" title="${esc(item.color)}" aria-label="${esc(item.color)}"></button>`).join("");

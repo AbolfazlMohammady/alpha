@@ -22,7 +22,7 @@
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio.css' %}?v=20261114-long-sleeve-back-drag2">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-studio-ui.css' %}?v=20261113-preview-drag2">
 <link rel="stylesheet" href="{% static 'css/pages/customizer-3d-mobile-nav.css' %}?v=20260925-1">
-<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-designs.css' %}?v=20261118-designs2">
+<link rel="stylesheet" href="{% static 'css/pages/customizer-3d-designs.css' %}?v=20261119-designs3">
 {% endblock %}
 
 {% block content %}
@@ -218,7 +218,7 @@
                         </svg>
                     </span>
                 </button>
-                <button type="button" class="desktop-tool" data-desktop-tool="shirt-color" title="رنگ تیشرت" aria-label="رنگ تیشرت">
+                <button type="button" class="desktop-tool" data-desktop-tool="shirt-color" title="رنگ محصول" aria-label="رنگ محصول">
                     <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 5 12 7l4-2 4 3-2 3-2-1v9H8v-9l-2 1-2-3 4-3Z" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/><path d="M15.5 16.5h.01" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>
                 </button>
                 <button type="button" class="desktop-tool" data-desktop-tool="size" title="سایز تیشرت" aria-label="انتخاب سایز">
@@ -232,6 +232,9 @@
                 </button>
                 <button type="button" class="desktop-tool desktop-tool--save" data-desktop-tool="save" title="افزودن به سبد خرید" aria-label="افزودن طراحی به سبد خرید">
                     <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13H5V4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 4v6h7V4M8 20v-6h8v6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m10 17 1.5 1.5L14.5 15" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                </button>
+                <button type="button" class="desktop-tool desktop-tool--turntable" data-turntable-tool title="چرخش ۳۶۰ درجه" aria-label="چرخش ۳۶۰ درجه‌ی محصول" aria-pressed="false">
+                    <span class="desktop-tool__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="7" width="12" height="10" rx="2.4" stroke="currentColor" stroke-width="1.65"/><path d="m15.5 11 5-3v8l-5-3" stroke="currentColor" stroke-width="1.65" stroke-linejoin="round"/></svg></span>
                 </button>
                 <button type="button" class="desktop-tool desktop-tool--back" id="customizer-back-button" title="بازگشت به صفحه قبل" aria-label="بازگشت به صفحه قبل">
                     <span class="desktop-tool__icon" aria-hidden="true">
@@ -386,7 +389,7 @@
                 <div><span class="panel-kicker">PRODUCT SETTINGS</span><h2>تنظیمات محصول</h2></div>
                 <button type="button" class="studio-drawer-close" data-drawer-close="right" aria-label="بستن تنظیمات محصول" title="بستن">×</button>
             </div>
-            <div class="premium-setting-group" id="mobile-product-color-section"><h3>رنگ تیشرت</h3><div class="premium-color-list" id="variant-color-list-right"></div></div>
+            <div class="premium-setting-group" id="mobile-product-color-section"><h3>رنگ محصول</h3><div class="premium-color-list" id="variant-color-list-right"></div></div>
             <div class="premium-setting-group" id="mobile-size-section"><h3>انتخاب سایز</h3><div class="premium-size-list" id="premium-size-list"></div></div>
             <div class="label-library-card">
                 <button type="button" class="label-library-trigger" id="label-library-trigger" aria-expanded="false" aria-controls="label-library-panel">
@@ -458,7 +461,7 @@
     <button type="button" class="mobile-customizer-action" data-mobile-action="garment" aria-label="نوع محصول">
         <span class="mobile-customizer-action__icon" aria-hidden="true">◈</span><strong>مدل</strong>
     </button>
-    <button type="button" class="mobile-customizer-action" data-mobile-action="shirt-color" aria-label="رنگ تیشرت">
+    <button type="button" class="mobile-customizer-action" data-mobile-action="shirt-color" aria-label="رنگ محصول">
         <span class="mobile-customizer-action__icon" aria-hidden="true">●</span><strong>رنگ</strong>
     </button>
     <button type="button" class="mobile-customizer-action" data-mobile-action="size" aria-label="سایز">
@@ -617,11 +620,11 @@
 <script src="{% static 'js/pages/customizer.js' %}?v=20261114-legacy-canvas-guard1" defer></script>
 {% if designer_has_3d %}
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/","three-mesh-bvh":"https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.9.16/build/index.module.js"}}</script>
-<script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261118-smooth-drag1"></script>
-<script src="{% static 'js/pages/customizer-3d-studio-ui.js' %}?v=20261113-clean-stage1" defer></script>
+<script type="module" src="{% static 'js/pages/customizer-3d-procedural.js' %}?v=20261119-turntable1"></script>
+<script src="{% static 'js/pages/customizer-3d-studio-ui.js' %}?v=20261119-turntable1" defer></script>
 <script src="{% static 'js/pages/customizer-3d-desktop-tools.js' %}?v=20261114-product-picker-redesign1" defer></script>
-<script src="{% static 'js/pages/customizer-3d-design-templates.js' %}?v=20261118-designs2" defer></script>
-<script src="{% static 'js/pages/customizer-3d-designs.js' %}?v=20261118-designs2" defer></script>
+<script src="{% static 'js/pages/customizer-3d-design-templates.js' %}?v=20261119-designs3" defer></script>
+<script src="{% static 'js/pages/customizer-3d-designs.js' %}?v=20261119-designs3" defer></script>
 <script src="{% static 'js/pages/customizer-3d-mobile-nav.js' %}?v=20261113-garment-toolbar1" defer></script>
 {% endif %}
 {% endblock %}

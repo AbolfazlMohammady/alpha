@@ -307,6 +307,11 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
             // Keeping the drawing buffer makes that one-time capture reliable.
             preserveDrawingBuffer: true,
         });
+        // Touching the model while it spins hands control back to the user.
+        canvas.addEventListener("pointerdown", () => {
+            if (turntableActive) setTurntable(false);
+        }, true);
+
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.05;
@@ -340,8 +345,23 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         const key = new THREE.DirectionalLight(0xffffff, 3.2);
         key.position.set(3.5, 4.5, 5.5);
         key.castShadow = true;
-        const shadowResolution = lowPowerDevice ? 512 : 1024;
+        const shadowResolution = lowPowerDevice ? 1024 : 2048;
         key.shadow.mapSize.set(shadowResolution, shadowResolution);
+        // The garment is several thin cloth layers lying 0.01-0.05 apart. With the
+        // default bias and a 10-unit shadow camera they shadow each other and
+        // leave grey "stains" on corners and seams (shadow acne). A tight
+        // frustum + normal bias fixes that.
+        key.shadow.bias = -0.0003;
+        key.shadow.normalBias = 0.03;
+        key.shadow.radius = 3;
+        const shadowCamera = key.shadow.camera;
+        shadowCamera.left = -2.6;
+        shadowCamera.right = 2.6;
+        shadowCamera.top = 2.6;
+        shadowCamera.bottom = -2.6;
+        shadowCamera.near = 1;
+        shadowCamera.far = 16;
+        shadowCamera.updateProjectionMatrix();
         scene.add(key);
 
         const fill = new THREE.DirectionalLight(0xdfe8ff, 1.25);
@@ -762,17 +782,56 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         renderer.render(scene, camera);
     }
 
+    // 360-degree turntable (like the "video" option of 3DMockups): the garment
+    // slowly spins on its own while the camera and lights stay put, so the
+    // shading stays consistent like a product video.
+    let turntableActive = false;
+    let turntableLastTime = 0;
+    const TURNTABLE_DEG_PER_SECOND = 14;
+
+    function refreshLayerGizmos() {
+        layers.forEach(item => {
+            const layerVisible = item.layer.visible !== false;
+            const selectedVisible = !turntableActive && item.id === selectedId && layerVisible;
+            if (item.frame) item.frame.visible = selectedVisible;
+            if (item.handles) item.handles.visible = selectedVisible && !item.layer.locked;
+        });
+    }
+
+    function setTurntable(enabled) {
+        const next = Boolean(enabled) && Boolean(garment);
+        if (next === turntableActive) return turntableActive;
+        turntableActive = next;
+        turntableLastTime = 0;
+        if (next) cancelLayerDrag();
+        // A clean, gizmo-free view while spinning; restored when it stops.
+        refreshLayerGizmos();
+        scheduleRenderLoop();
+        document.dispatchEvent(new CustomEvent("babaei:turntable-changed", { detail: { active: turntableActive } }));
+        return turntableActive;
+    }
+
     function scheduleRenderLoop() {
         if (renderFrameId || !renderer || !scene || !camera) return;
-        renderFrameId = requestAnimationFrame(() => {
+        renderFrameId = requestAnimationFrame(timestamp => {
             renderFrameId = 0;
+            let turning = false;
+            if (turntableActive && garment) {
+                const delta = turntableLastTime ? Math.min(0.1, (timestamp - turntableLastTime) / 1000) : 0;
+                turntableLastTime = timestamp;
+                garment.rotation.y += THREE.MathUtils.degToRad(TURNTABLE_DEG_PER_SECOND * delta);
+                garment.updateMatrixWorld(true);
+                shadowMapDirty = true;   // shadows must follow the spinning garment
+                turning = true;
+            }
             if (!controls) {
                 render();
+                if (turning) scheduleRenderLoop();
                 return;
             }
             const changed = controls.update();
             render();
-            if (changed) scheduleRenderLoop();
+            if (changed || turning) scheduleRenderLoop();
         });
     }
 
@@ -798,7 +857,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
                 Number(navigator.hardwareConcurrency || 8) <= 4;
             texture.anisotropy = Math.min(
                 renderer.capabilities.getMaxAnisotropy(),
-                lowPowerDevice ? 2 : 4
+                lowPowerDevice ? 4 : 8
             );
             return texture;
         }).catch(error => {
@@ -1431,6 +1490,34 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         return flatPrintNormal(faceNormal);
     }
 
+    // Print colour fidelity. The scene is lit hot (key light + environment) and
+    // relies on ACES tone mapping, which desaturates and shifts saturated
+    // artwork colours (the "washed out" look). Prints therefore skip tone
+    // mapping and are mostly self-lit (emissive) so the artwork shows its true
+    // colours, while a small lit term keeps the folds of the fabric visible.
+    function createDecalMaterial(texture, opacity) {
+        return new THREE.MeshPhysicalMaterial({
+            map: texture,
+            color: new THREE.Color(0.24, 0.24, 0.24),
+            transparent: true,
+            opacity: Math.max(0.2, Math.min(1, Number(opacity ?? 1))),
+            alphaTest: 0.02,
+            roughness: 0.7,
+            metalness: 0,
+            clearcoat: 0,
+            emissive: new THREE.Color("#ffffff"),
+            emissiveMap: texture,
+            emissiveIntensity: 0.66,
+            toneMapped: false,
+            depthTest: true,
+            depthWrite: false,
+            polygonOffset: true,
+            polygonOffsetFactor: -5,
+            polygonOffsetUnits: -2,
+            side: THREE.DoubleSide,
+        });
+    }
+
     // Cloth meshes are wrinkled, so a single triangle's normal tilts the
     // projection and the artwork looks warped. Print flat along the garment's
     // front/back axis (like screen printing) and only follow the real surface
@@ -1491,13 +1578,30 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
                 worldNormals[i * 3 + 2] = vertex.z;
             }
         }
-        const entry = { position, matrix: Array.from(elements), world, worldNormals, min, max };
+        // Some GLB parts ship with inverted normals. Measure which way each mesh's
+        // normals really point relative to the garment centre (+1 outward, -1
+        // inward) so the facing test below can be corrected per mesh.
+        let orientation = 1;
+        if (worldNormals && garmentLocalBounds) {
+            const centre = garmentLocalBounds.getCenter(new THREE.Vector3()).applyMatrix4(garment.matrixWorld);
+            let outward = 0;
+            const step = Math.max(1, Math.floor(position.count / 4000));
+            for (let i = 0; i < position.count; i += step) {
+                outward +=
+                    worldNormals[i * 3] * (world[i * 3] - centre.x) +
+                    worldNormals[i * 3 + 1] * (world[i * 3 + 1] - centre.y) +
+                    worldNormals[i * 3 + 2] * (world[i * 3 + 2] - centre.z);
+            }
+            orientation = outward < 0 ? -1 : 1;
+        }
+        const entry = { position, matrix: Array.from(elements), world, worldNormals, min, max, orientation };
         decalWorldCache.set(mesh, entry);
         return entry;
     }
 
     // Scratch buffers shared by every decal build (a build never overlaps another).
     const decalCorners = new Int32Array(3);
+    const DECAL_MIN_FACING = 0.12;
     let decalOutPosition = new Float32Array(3 * 8192);
     let decalOutNormal = new Float32Array(3 * 8192);
     let decalOutUv = new Float32Array(2 * 8192);
@@ -1597,6 +1701,18 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
                     ) { outside = true; break; }
                 }
                 if (outside) continue;
+
+                // Only print on triangles that face the projector. Without this,
+                // a back label leaks onto the front panel near the shoulders and
+                // sides (a "stain" at the garment corner), and inward-facing
+                // inner fabric layers get decals nobody can see.
+                if (normals) {
+                    const facing = cache.orientation * (
+                        (normals[ia * 3] + normals[ib * 3] + normals[ic * 3]) * r02 +
+                        (normals[ia * 3 + 1] + normals[ib * 3 + 1] + normals[ic * 3 + 1]) * r12 +
+                        (normals[ia * 3 + 2] + normals[ib * 3 + 2] + normals[ic * 3 + 2]) * r22);
+                    if (facing < DECAL_MIN_FACING * 3) continue;
+                }
 
                 let polygon = decalPolyA;
                 let scratch = decalPolyB;
@@ -1809,6 +1925,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
     }
 
     async function switchGarmentType(type) {
+        if (turntableActive) setTurntable(false);
         const key = String(type || "").toLowerCase();
         const model = garmentModels[key];
         if (!model?.url) {
@@ -1904,25 +2021,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
 
         let material = item.decalMaterial;
         if (!material) {
-            material = new THREE.MeshPhysicalMaterial({
-                map: texture,
-                color: new THREE.Color("#ffffff"),
-                transparent: true,
-                opacity: Math.max(0.2, Math.min(1, Number(item.layer.opacity ?? 1))),
-                alphaTest: 0.02,
-                roughness: 0.62,
-                metalness: 0,
-                clearcoat: 0.02,
-                emissive: new THREE.Color("#ffffff"),
-                emissiveMap: texture,
-                emissiveIntensity: 0.16,
-                depthTest: true,
-                depthWrite: false,
-                polygonOffset: true,
-                polygonOffsetFactor: -5,
-                polygonOffsetUnits: -2,
-                side: THREE.DoubleSide,
-            });
+            material = createDecalMaterial(texture, item.layer.opacity);
             item.decalMaterial = material;
         } else {
             material.map = texture;
@@ -2100,25 +2199,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         geometry.applyMatrix4(target.matrixWorld.clone().invert());
 
         if (!item.decalMaterial) {
-            item.decalMaterial = new THREE.MeshPhysicalMaterial({
-                map: item.visibleTexture,
-                color: new THREE.Color("#ffffff"),
-                transparent: true,
-                opacity: Math.max(0.2, Math.min(1, Number(item.layer.opacity ?? 1))),
-                alphaTest: 0.02,
-                roughness: 0.62,
-                metalness: 0,
-                clearcoat: 0.02,
-                emissive: new THREE.Color("#ffffff"),
-                emissiveMap: item.visibleTexture,
-                emissiveIntensity: 0.16,
-                depthTest: true,
-                depthWrite: false,
-                polygonOffset: true,
-                polygonOffsetFactor: -5,
-                polygonOffsetUnits: -2,
-                side: THREE.DoubleSide,
-            });
+            item.decalMaterial = createDecalMaterial(item.visibleTexture, item.layer.opacity);
         } else {
             item.decalMaterial.map = item.visibleTexture;
             item.decalMaterial.emissiveMap = item.visibleTexture;
@@ -2963,6 +3044,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
     }
 
     function selectLayer(layerId) {
+        if (turntableActive) setTurntable(false);
         const item = layers.get(Number(layerId));
         if (!item) return;
         selectedId = item.id;
@@ -6047,5 +6129,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         addText,
         setGarmentType: switchGarmentType,
         getGarmentType: () => garmentType,
+        setTurntable,
+        isTurntable: () => turntableActive,
     };
 })();

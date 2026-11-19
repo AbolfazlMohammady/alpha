@@ -10,6 +10,7 @@
 
     const DESIGN_FILTERS = [
         ["all", "همه"],
+        ["persian", "ایرانی"],
         ["text", "متن"],
         ["badges", "نشان‌ها"],
         ["icons", "آیکون‌ها"],
@@ -21,13 +22,14 @@
         ["library", "کتابخانه"],
     ];
     const RASTER_LONG_SIDE = 1024;
+    const PRODUCT_ART = {"tshirt":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 110\" fill=\"#f1f1f4\" stroke=\"#1d1d1f\" stroke-width=\"3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><path d=\"M44 10 L20 22 L6 44 L24 54 L31 43 L31 100 L89 100 L89 43 L96 54 L114 44 L100 22 L76 10 C72 20 66 24 60 24 C54 24 48 20 44 10 Z\"/><path d=\"M44 10 C48 20 54 24 60 24 C66 24 72 20 76 10\" fill=\"none\" stroke-width=\"2\"/></svg>","long_sleeve":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 110\" fill=\"#f1f1f4\" stroke=\"#1d1d1f\" stroke-width=\"3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><path d=\"M44 10 L22 20 L5 84 L19 90 L34 46 L34 100 L86 100 L86 46 L101 90 L115 84 L98 20 L76 10 C72 20 66 24 60 24 C54 24 48 20 44 10 Z\"/><path d=\"M5 84 L19 90 M101 90 L115 84\" stroke-width=\"5\"/></svg>","hoodie":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 110\" fill=\"#f1f1f4\" stroke=\"#1d1d1f\" stroke-width=\"3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><path d=\"M40 16 L20 26 L5 84 L19 90 L34 50 L34 102 L86 102 L86 50 L101 90 L115 84 L100 26 L80 16 Z\"/><path d=\"M40 16 C36 -2 84 -2 80 16 C74 26 66 30 60 30 C54 30 46 26 40 16 Z\"/><path d=\"M42 78 H78 L84 98 H36 Z\" fill=\"none\"/><path d=\"M54 30 V48 M66 30 V48\" stroke-width=\"2.5\"/></svg>","mug":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 120 110\" fill=\"#f1f1f4\" stroke=\"#1d1d1f\" stroke-width=\"3\" stroke-linejoin=\"round\" stroke-linecap=\"round\"><path d=\"M28 24 H84 V80 C84 94 74 102 56 102 C38 102 28 94 28 80 Z\"/><ellipse cx=\"56\" cy=\"24\" rx=\"28\" ry=\"6\"/><path d=\"M84 38 H94 C108 38 108 68 94 68 H84\" fill=\"none\"/></svg>"};
     const PLUS_ICON = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
     function init() {
         const root = document.getElementById("customizer");
         const designsTrigger = document.querySelector("[data-designs-tool]");
         const labelTrigger = document.querySelector('#desktop-tool-dock [data-desktop-tool="label"]');
-        if (!root || (!designsTrigger && !labelTrigger) || root.dataset.libraryDialogsBound === "1") return;
+        if (!root || root.dataset.libraryDialogsBound === "1") return;
         root.dataset.libraryDialogsBound = "1";
 
         let designData = {};
@@ -54,7 +56,7 @@
         const dialogs = [];
 
         // ------------------------------------------------------------ dialog shell
-        function createDialog({ title, sectionTitle, filters, trigger, onRender }) {
+        function createDialog({ title, sectionTitle, filters, trigger, onRender, getTitle, kind }) {
             const dialog = { overlay: null, trigger, filter: "all", busy: false };
 
             const setStatus = (message, tone) => {
@@ -67,6 +69,7 @@
             function renderChips() {
                 const bar = dialog.overlay.querySelector(".designs-chips");
                 bar.innerHTML = "";
+                if (!filters.length) return;
                 filters.forEach(([key, label]) => {
                     const chip = el("button", "designs-chip" + (key === dialog.filter ? " is-active" : ""), label);
                     chip.type = "button";
@@ -101,7 +104,7 @@
                 overlay.innerHTML = `
                     <section class="designs-dialog" role="dialog" aria-label="${title}" dir="rtl">
                         <header class="designs-header">
-                            <h2>${title}</h2>
+                            <h2>${getTitle ? getTitle() : title}</h2>
                             <button type="button" class="designs-close" aria-label="بستن">
                                 <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
                             </button>
@@ -118,6 +121,7 @@
                 document.body.appendChild(overlay);
                 dialog.overlay = overlay;
                 dialog.grid = overlay.querySelector(".designs-grid");
+                if (kind) dialog.grid.dataset.kind = kind;
                 dialog.extra = overlay.querySelector(".designs-extra");
                 dialog.more = overlay.querySelector(".designs-more");
                 overlay.querySelector(".designs-close").addEventListener("click", () => dialog.close());
@@ -128,11 +132,15 @@
             dialog.render = () => onRender(dialog);
             dialog.isOpen = () => Boolean(dialog.overlay && !dialog.overlay.hidden);
             dialog.open = () => {
+                if (window.BabaeiCustomizer3D?.isTurntable?.()) window.BabaeiCustomizer3D.setTurntable(false);
                 if (current && current !== dialog) current.close(true);
                 if (!dialog.overlay) {
                     build();
                     dialog.render();
+                } else if (kind) {
+                    dialog.render();   // product / colour lists reflect the live state
                 }
+                if (getTitle) dialog.overlay.querySelector(".designs-header h2").textContent = getTitle();
                 position();
                 dialog.overlay.hidden = false;
                 trigger?.classList.add("is-active");
@@ -402,6 +410,113 @@
             }
         }
 
+        // ------------------------------------------------------------ Product picker
+        const garmentRegistry = () => Array.from(
+            document.querySelectorAll("#garment-model-registry [data-garment-type][data-model-url]")
+        );
+
+        function currentGarment() {
+            return window.BabaeiCustomizer3D?.getGarmentType?.() || "tshirt";
+        }
+
+        function garmentLabel(type) {
+            const source = garmentRegistry().find(item => item.dataset.garmentType === type);
+            return source?.dataset.garmentLabel || "محصول";
+        }
+
+        function renderProductGrid(dialog) {
+            dialog.more.textContent = "";
+            dialog.grid.innerHTML = "";
+            const active = currentGarment();
+            garmentRegistry().forEach(source => {
+                const type = source.dataset.garmentType || "";
+                const card = el("button", "designs-card designs-card--product" + (type === active ? " is-selected" : ""));
+                card.type = "button";
+                card.dataset.garmentType = type;
+                card.setAttribute("aria-pressed", String(type === active));
+
+                const preview = el("span", "designs-card__preview");
+                preview.innerHTML = PRODUCT_ART[type] || PRODUCT_ART.tshirt;
+                card.append(
+                    preview,
+                    el("span", "designs-card__name designs-card__name--strong", source.dataset.garmentLabel || type),
+                    el("small", "designs-card__hint", source.dataset.garmentSubtitle || ""),
+                );
+                const mark = el("span", "designs-card__selected");
+                mark.setAttribute("aria-hidden", "true");
+                card.appendChild(mark);
+
+                card.addEventListener("click", async () => {
+                    if (dialog.busy || type === currentGarment()) return;
+                    const studio = window.BabaeiCustomizer3D;
+                    if (!studio?.setGarmentType) return;
+                    dialog.busy = true;
+                    dialog.overlay.classList.add("is-busy");
+                    card.classList.add("is-loading");
+                    dialog.setStatus("در حال آماده‌سازی «" + (source.dataset.garmentLabel || type) + "»…");
+                    try {
+                        const changed = await studio.setGarmentType(type);
+                        if (changed) {
+                            dialog.render();
+                            dialog.setStatus("");
+                            setTimeout(() => dialog.close(true), 250);
+                        }
+                    } catch (error) {
+                        console.error("[BABAEI][PRODUCT]", error);
+                        dialog.setStatus("تغییر محصول انجام نشد.", "error");
+                    } finally {
+                        dialog.busy = false;
+                        dialog.overlay.classList.remove("is-busy");
+                        card.classList.remove("is-loading");
+                    }
+                });
+                dialog.grid.appendChild(card);
+            });
+        }
+
+        // ------------------------------------------------------------ Colour picker
+        function renderColorGrid(dialog) {
+            dialog.more.textContent = "";
+            dialog.grid.innerHTML = "";
+            const sources = Array.from(document.querySelectorAll("#variant-color-list-right button[data-color]"));
+            if (!sources.length) {
+                dialog.more.textContent = "رنگی برای این محصول تعریف نشده است.";
+                return;
+            }
+            sources.forEach(source => {
+                const name = source.dataset.color || "";
+                const hex = source.style.getPropertyValue("--swatch") || "#ffffff";
+                const selected = source.classList.contains("is-active");
+                const card = el("button", "designs-card designs-card--color" + (selected ? " is-selected" : ""));
+                card.type = "button";
+                card.dataset.color = name;
+                card.setAttribute("aria-pressed", String(selected));
+                card.setAttribute("aria-label", "رنگ " + name);
+
+                const preview = el("span", "designs-card__preview");
+                const swatch = el("span", "designs-swatch");
+                swatch.style.background = hex;
+                preview.appendChild(swatch);
+                card.append(preview, el("span", "designs-card__name designs-card__name--strong", name));
+                const mark = el("span", "designs-card__selected");
+                mark.setAttribute("aria-hidden", "true");
+                card.appendChild(mark);
+
+                card.addEventListener("click", () => {
+                    // Go through the real variant button so price, stock and the
+                    // 3D material all stay in sync (see studio-ui chooseVariant).
+                    source.click();
+                    dialog.grid.querySelectorAll(".designs-card").forEach(item => {
+                        const active = item === card;
+                        item.classList.toggle("is-selected", active);
+                        item.setAttribute("aria-pressed", String(active));
+                    });
+                    dialog.setStatus("رنگ «" + name + "» اعمال شد.", "ok");
+                });
+                dialog.grid.appendChild(card);
+            });
+        }
+
         // ------------------------------------------------------------ wiring
         if (designsTrigger && templates.length) {
             const designsDialog = createDialog({
@@ -434,10 +549,72 @@
             }, true);
         }
 
+
+        const productTrigger = document.querySelector('#desktop-tool-dock [data-desktop-tool="garment"]');
+        if (productTrigger) {
+            const productDialog = createDialog({
+                title: "انتخاب محصول",
+                sectionTitle: "چه محصولی طراحی می‌کنی؟",
+                filters: [],
+                trigger: productTrigger,
+                onRender: renderProductGrid,
+                kind: "products",
+            });
+            productTrigger.addEventListener("click", event => {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                productDialog.toggle();
+            }, true);
+        }
+
+        const colorTrigger = document.querySelector('#desktop-tool-dock [data-desktop-tool="shirt-color"]');
+        if (colorTrigger) {
+            const colorDialog = createDialog({
+                title: "رنگ محصول",
+                getTitle: () => "رنگ " + garmentLabel(currentGarment()),
+                sectionTitle: "رنگ‌های موجود",
+                filters: [],
+                trigger: colorTrigger,
+                onRender: renderColorGrid,
+                kind: "colors",
+            });
+            colorTrigger.addEventListener("click", event => {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                colorDialog.toggle();
+            }, true);
+        }
+
+        // 360-degree turntable (the "video" option of the reference editor).
+        const turntableTrigger = document.querySelector("[data-turntable-tool]");
+        if (turntableTrigger) {
+            turntableTrigger.addEventListener("click", () => {
+                const studio = window.BabaeiCustomizer3D;
+                if (!studio?.setTurntable || !studio.isReady?.()) return;
+                const turningOn = !studio.isTurntable();
+                if (turningOn) {
+                    if (current) current.close(true);
+                    // A hidden 3D view can't show the spin, so open it first.
+                    const activeView = document.querySelector("#studio-view-switcher .is-active")?.dataset.studioView;
+                    if (activeView === "2d") document.querySelector('#studio-view-switcher [data-studio-view="3d"]')?.click();
+                }
+                studio.setTurntable(turningOn);
+            });
+            document.addEventListener("babaei:turntable-changed", event => {
+                const active = Boolean(event.detail?.active);
+                turntableTrigger.classList.toggle("is-active", active);
+                turntableTrigger.setAttribute("aria-pressed", String(active));
+            });
+        }
+
         // Opening any other dock tool closes the library dialogs.
+        const ownedTriggers = new Set([labelTrigger, productTrigger, colorTrigger]);
         document.querySelectorAll('#desktop-tool-dock [data-desktop-tool]').forEach(button => {
-            if (button === labelTrigger) return;
-            button.addEventListener("click", () => { if (current) current.close(true); });
+            if (ownedTriggers.has(button)) return;
+            button.addEventListener("click", () => {
+                if (current) current.close(true);
+                if (window.BabaeiCustomizer3D?.isTurntable?.()) window.BabaeiCustomizer3D.setTurntable(false);
+            });
         });
         document.addEventListener("keydown", event => {
             if (event.key === "Escape" && current) current.close();
