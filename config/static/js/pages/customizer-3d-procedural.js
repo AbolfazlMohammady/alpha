@@ -741,10 +741,47 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         render();
     }
 
+    // Layers remember their placement as WORLD-space vectors (surfacePoint,
+    // position, normal, surfaceNormal). When the garment itself turns (rotation
+    // slider, rotate buttons, 360 turntable) those vectors go stale, so
+    // layerSide() and the 2D drag start flip front <-> back. Rebase them by the
+    // garment's world-matrix change whenever it rotates.
+    function rebaseLayersToGarment(previousWorldMatrix) {
+        if (!garment || !previousWorldMatrix) return;
+        garment.updateMatrixWorld(true);
+        const delta = garment.matrixWorld.clone().multiply(previousWorldMatrix.clone().invert());
+        const normalMatrix = new THREE.Matrix3().getNormalMatrix(delta);
+        const moved = new Set();   // some layers alias the same vector under two names
+        layers.forEach(item => {
+            for (const key of ["surfacePoint", "position"]) {
+                const vector = item[key];
+                if (vector?.isVector3 && !moved.has(vector)) {
+                    moved.add(vector);
+                    vector.applyMatrix4(delta);
+                }
+            }
+            for (const key of ["surfaceNormal", "normal"]) {
+                const vector = item[key];
+                if (vector?.isVector3 && !moved.has(vector)) {
+                    moved.add(vector);
+                    vector.applyMatrix3(normalMatrix).normalize();
+                }
+            }
+        });
+    }
+
+    function setGarmentRotationY(radians) {
+        if (!garment) return;
+        garment.updateMatrixWorld(true);
+        const previous = garment.matrixWorld.clone();
+        garment.rotation.y = radians;
+        rebaseLayersToGarment(previous);
+        shadowMapDirty = true;
+    }
+
     function rotateGarment(step) {
         if (!garment) return;
-        garment.rotation.y += THREE.MathUtils.degToRad(step);
-        shadowMapDirty = true;
+        setGarmentRotationY(garment.rotation.y + THREE.MathUtils.degToRad(step));
         render();
     }
 
@@ -835,12 +872,23 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         });
     }
 
+    let turntableBaseMatrix = null;
+
     function setTurntable(enabled) {
         const next = Boolean(enabled) && Boolean(garment);
         if (next === turntableActive) return turntableActive;
         turntableActive = next;
         turntableLastTime = 0;
-        if (next) cancelLayerDrag();
+        if (next) {
+            cancelLayerDrag();
+            garment.updateMatrixWorld(true);
+            turntableBaseMatrix = garment.matrixWorld.clone();
+        } else if (turntableBaseMatrix) {
+            // The garment turned while spinning: bring the layers' stored
+            // placement (and therefore front/back) up to date.
+            rebaseLayersToGarment(turntableBaseMatrix);
+            turntableBaseMatrix = null;
+        }
         // A clean, gizmo-free view while spinning; restored when it stops.
         refreshLayerGizmos();
         scheduleRenderLoop();
@@ -5930,7 +5978,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
 
         document.getElementById("designer-3d-rotation")?.addEventListener("input", event => {
             if (!garment) return;
-            garment.rotation.y = THREE.MathUtils.degToRad(Number(event.target.value));
+            setGarmentRotationY(THREE.MathUtils.degToRad(Number(event.target.value)));
             render();
         });
 
@@ -5989,7 +6037,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         });
 
         document.getElementById("designer-3d-reset")?.addEventListener("click", () => {
-            if (garment) garment.rotation.y = 0;
+            if (garment) setGarmentRotationY(0);
             controls?.reset();
             fitCamera();
             render();
