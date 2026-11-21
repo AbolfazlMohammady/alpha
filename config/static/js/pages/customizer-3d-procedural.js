@@ -594,9 +594,46 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         normalizeGarment(garment);
         shadowMapDirty = true;
         garmentLocalBounds = computeGarmentLocalBounds();
+        // Compile every shader program in parallel while the loading overlay is
+        // still shown. Doing it inside the first render() froze the page.
+        await precompilePrograms();
         clearModelPreview();
         setLoading("", false);
         render();
+        // Build the 2D sheet in the background so it is ready when needed.
+        setTimeout(() => ensureGarmentSheet().catch(() => {}), 120);
+    }
+
+    let decalProgramWarmedUp = false;
+
+    async function warmUpDecalProgram() {
+        if (decalProgramWarmedUp) return;
+        decalProgramWarmedUp = true;
+        const texture = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.needsUpdate = true;
+        const probe = new THREE.Mesh(new THREE.PlaneGeometry(0.01, 0.01), createDecalMaterial(texture, 1));
+        probe.position.set(0, -80, 0);
+        scene.add(probe);
+        try {
+            await renderer.compileAsync(scene, camera);
+        } finally {
+            scene.remove(probe);
+            probe.geometry.dispose();
+            probe.material.dispose();
+            texture.dispose();
+        }
+    }
+
+    async function precompilePrograms() {
+        if (!renderer?.compileAsync || !scene || !camera) return;
+        try {
+            await yieldToBrowser();          // let the loading overlay paint first
+            await renderer.compileAsync(scene, camera);
+            await warmUpDecalProgram();      // the first label would otherwise stall here
+        } catch (compileError) {
+            console.warn("[BABAEI] Shader pre-compile skipped.", compileError);
+        }
     }
 
 
@@ -3897,8 +3934,48 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
     const SHEET_PX_PER_MM = 1.5;
     let garmentSheet = null;
 
+    const sheetCache = new Map();
+    let sheetBuild = null;
+    const yieldToBrowser = () => new Promise(resolve => setTimeout(resolve, 0));
+
+    // Cache key: same model file + same measured size = same sheet, so switching
+    // back and forth between products never rebuilds it.
     function sheetKey() {
-        return garment ? garmentType + ":" + garment.uuid : null;
+        if (!garment) return null;
+        if (!garmentLocalBounds) garmentLocalBounds = computeGarmentLocalBounds();
+        const size = garmentLocalBounds ? garmentLocalBounds.getSize(new THREE.Vector3()) : null;
+        const signature = size ? [size.x, size.y, size.z].map(v => v.toFixed(4)).join("x") : garment.uuid;
+        return garmentType + ":" + modelUrl + ":" + signature;
+    }
+
+    // Builds (or reuses) the sheet without freezing the page: the rasteriser
+    // yields to the browser regularly, and the result is cached.
+    function ensureGarmentSheet() {
+        const key = sheetKey();
+        if (!key) return Promise.resolve(null);
+        if (garmentSheet && garmentSheet.key === key) return Promise.resolve(garmentSheet);
+        const cached = sheetCache.get(key);
+        if (cached) {
+            garmentSheet = cached;
+            return Promise.resolve(cached);
+        }
+        if (sheetBuild && sheetBuild.key === key) return sheetBuild.promise;
+
+        const promise = buildGarmentSheet(key)
+            .then(sheet => {
+                if (sheetBuild && sheetBuild.key === key) sheetBuild = null;
+                if (!sheet || sheetKey() !== key) return null;   // garment changed meanwhile
+                sheetCache.set(key, sheet);
+                garmentSheet = sheet;
+                return sheet;
+            })
+            .catch(error => {
+                if (sheetBuild && sheetBuild.key === key) sheetBuild = null;
+                if (error?.message !== "stale-sheet") throw error;
+                return null;
+            });
+        sheetBuild = { key, promise };
+        return promise;
     }
 
     function labelWorldWidth(item) {
@@ -3929,7 +4006,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         return { x: side === "back" ? 1 - nx : nx, y: (y - rect.y) / rect.h };
     }
 
-    function rasterizeGarmentSilhouette(side, bounds, widthPx, heightPx) {
+    async function rasterizeGarmentSilhouette(side, bounds, widthPx, heightPx, key) {
         // Scan-line triangle fill into a plain byte mask (2x supersampled).
         // This is O(covered pixels) and never builds a giant canvas path,
         // which can freeze the browser tab on dense GLB meshes.
@@ -3951,6 +4028,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         const fabricMeshes = garmentMeshes.filter(mesh => !/stitch/i.test(mesh.name || ""));
         const silhouetteMeshes = fabricMeshes.length ? fabricMeshes : garmentMeshes;
 
+        let workBudget = 0;
         for (const mesh of silhouetteMeshes) {
             const position = mesh.geometry?.attributes?.position;
             if (!mesh.visible || !position) continue;
@@ -3970,6 +4048,13 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
             const index = mesh.geometry.index;
             const triangles = Math.floor((index ? index.count : position.count) / 3);
             for (let t = 0; t < triangles; t += 1) {
+                // Keep every task short (~10 ms) so the page stays responsive.
+                workBudget += 1;
+                if (workBudget >= 25000) {
+                    workBudget = 0;
+                    await yieldToBrowser();
+                    if (sheetKey() !== key) throw new Error("stale-sheet");
+                }
                 const a = index ? index.getX(t * 3) : t * 3;
                 const b = index ? index.getX(t * 3 + 1) : t * 3 + 1;
                 const c = index ? index.getX(t * 3 + 2) : t * 3 + 2;
@@ -4037,7 +4122,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         return copy;
     }
 
-    function buildGarmentSheet() {
+    async function buildGarmentSheet(key = sheetKey()) {
         if (!garment || !garmentMeshes.length) return null;
         if (!garmentLocalBounds) garmentLocalBounds = computeGarmentLocalBounds();
         const bounds = garmentLocalBounds;
@@ -4055,8 +4140,9 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         const pageWidth = Math.round(margin * 2 + gap + widthMm * 2);
         const captionSpace = 70;
         const pageHeight = Math.round(margin * 2 + heightMm + captionSpace);
-        const front = { x: margin, y: margin, w: widthMm, h: heightMm };
-        const back = { x: margin + widthMm + gap, y: margin, w: widthMm, h: heightMm };
+        // The UI is right-to-left: the front sits on the right, the back on the left.
+        const back = { x: margin, y: margin, w: widthMm, h: heightMm };
+        const front = { x: margin + widthMm + gap, y: margin, w: widthMm, h: heightMm };
 
         const canvas = document.createElement("canvas");
         canvas.width = Math.round(pageWidth * SHEET_PX_PER_MM);
@@ -4066,7 +4152,7 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
         const pieceHeightPx = Math.round(heightMm * SHEET_PX_PER_MM);
 
         for (const [side, rect] of [["front", front], ["back", back]]) {
-            const silhouette = rasterizeGarmentSilhouette(side, bounds, pieceWidthPx, pieceHeightPx);
+            const silhouette = await rasterizeGarmentSilhouette(side, bounds, pieceWidthPx, pieceHeightPx, key);
             const edge = tintedCopy(silhouette, "#a9a493");
             const fill = tintedCopy(silhouette, "#fffefb");
             const x = rect.x * SHEET_PX_PER_MM;
@@ -4099,12 +4185,12 @@ const bvhModulePromise = import("three-mesh-bvh").catch(error => {
             context.restore();
         }
 
-        return { key: sheetKey(), canvas, pageWidth, pageHeight, mmPerUnit, front, back };
+        return { key, canvas, pageWidth, pageHeight, mmPerUnit, front, back };
     }
 
     async function build2DBackgroundViews() {
         try {
-            if (!garmentSheet || garmentSheet.key !== sheetKey()) garmentSheet = buildGarmentSheet();
+            await ensureGarmentSheet();
             if (garmentSheet) {
                 return {
                     background: garmentSheet.canvas,

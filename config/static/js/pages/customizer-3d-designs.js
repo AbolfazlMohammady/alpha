@@ -102,7 +102,7 @@
                 const overlay = el("div", "designs-overlay");
                 overlay.hidden = true;
                 overlay.innerHTML = `
-                    <section class="designs-dialog" role="dialog" aria-label="${title}" dir="rtl">
+                    <section class="designs-dialog" role="dialog" aria-label="${title}" dir="rtl" data-kind="${kind || ""}">
                         <header class="designs-header">
                             <h2>${getTitle ? getTitle() : title}</h2>
                             <button type="button" class="designs-close" aria-label="بستن">
@@ -411,9 +411,16 @@
         }
 
         // ------------------------------------------------------------ Product picker
+        const PRODUCT_ORDER = ["tshirt", "long_sleeve", "hoodie", "mug"];
         const garmentRegistry = () => Array.from(
             document.querySelectorAll("#garment-model-registry [data-garment-type][data-model-url]")
-        );
+        ).sort((a, b) => {
+            const rank = item => {
+                const index = PRODUCT_ORDER.indexOf(item.dataset.garmentType);
+                return index === -1 ? PRODUCT_ORDER.length : index;
+            };
+            return rank(a) - rank(b);
+        });
 
         function currentGarment() {
             return window.BabaeiCustomizer3D?.getGarmentType?.() || "tshirt";
